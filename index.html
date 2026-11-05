@@ -1591,30 +1591,108 @@
     }
   }
 
-  // --- EKSPORT DO EXCELA (HTML Spreadsheet / XML) ---
+  // --- EKSPORT DO EXCELA (Zgodny w 100% ze stylistyką stron PDF A4) ---
   function exportToExcel() {
-    const orderNum = document.getElementById('orderNumber').value || 'zamowienie';
+    const orderNum = document.getElementById('orderNumber').value || '';
     const orderDate = document.getElementById('orderDate').value;
     const worker = document.getElementById('workerNameInput').value;
-    const client = document.getElementById('clientData').value;
-    const model = document.getElementById('orderModel').value;
-    const color = document.getElementById('orderColor').value;
+    const client = document.getElementById('clientData').value || '';
+    const model = document.getElementById('orderModel').value || '';
+    const color = document.getElementById('orderColor').value || '';
     const boxDate = document.getElementById('boxDate').value;
-    const pickup = document.getElementById('pickupCheck').checked ? 'TAK (Odbiór osobisty)' : 'NIE';
-    const remarks = document.getElementById('remarksText').value;
+    const isBoldDate = document.getElementById('boldDateCheck').checked;
+    const isPickup = document.getElementById('pickupCheck').checked;
+    const remarks = document.getElementById('remarksText').value || '';
 
-    let itemsRows = '';
+    // Pozycje zamówienia na Karcie Głównej
+    let itemsHtml = '';
     orderItems.forEach(item => {
-      itemsRows += `
-        <tr>
-          <td>${item.qty}</td>
-          <td>${item.name || ''}</td>
-          <td>${item.customParam || ''}</td>
-        </tr>
-      `;
+      if (!item.name) return;
+      let paramStr = item.customParam ? ` ${item.customParam}` : '';
+      itemsHtml += `<div style="font-size: 15pt; line-height: 1.8; font-family: Arial, sans-serif;">${item.qty} x ${item.name}${paramStr}</div>`;
     });
 
-    const excelTemplate = `
+    // Generowanie arkuszy etykiet (4 na arkusz A4)
+    const labelUnits = generateLabelUnits();
+    const pageSize = 4;
+    const pageCount = Math.ceil(labelUnits.length / pageSize) || 1;
+
+    let labelsSheetsHtml = '';
+
+    for (let p = 0; p < pageCount; p++) {
+      const pageUnits = labelUnits.slice(p * pageSize, (p + 1) * pageSize);
+
+      function renderExcelLabelCard(unit, uIdx) {
+        if (!unit) {
+          return `<td style="width: 48%; height: 480px; border: 1px dashed #cbd5e1;"></td>`;
+        }
+        let currentVal = '';
+        if (unit.type === 'post') {
+          currentVal = unit.bottomDim || '';
+        } else {
+          currentVal = labelCustomBottomDims[uIdx] !== undefined ? labelCustomBottomDims[uIdx] : (unit.bottomDim || '');
+        }
+
+        return `
+          <td style="width: 48%; vertical-align: top; padding: 4px;">
+            <table style="width: 100%; border-collapse: collapse; border: 3.5pt solid #000000; font-family: Arial, sans-serif; height: 490px;">
+              <tr style="height: 140px;">
+                <td colspan="2" style="border-bottom: 3.5pt solid #000000; padding: 12px; font-size: 11pt; text-align: center; vertical-align: middle; position: relative;">
+                  <div style="font-size: 18pt; text-align: right; margin-bottom: 6px; font-weight: bold;">▲</div>
+                  <div>${client.replace(/\n/g, '<br/>')}</div>
+                </td>
+              </tr>
+              <tr style="height: 38px;">
+                <td style="width: 45%; border-right: 3.5pt solid #000000; border-bottom: 3.5pt solid #000000; padding: 6px 10px; font-size: 13pt; font-weight: bold;">Zamównienie nr</td>
+                <td style="width: 55%; border-bottom: 3.5pt solid #000000; padding: 6px 10px; font-size: 13pt; text-align: center;">${orderNum}</td>
+              </tr>
+              <tr style="height: 38px;">
+                <td style="border-right: 3.5pt solid #000000; border-bottom: 3.5pt solid #000000; padding: 6px 10px; font-size: 13pt; font-weight: bold;">Model</td>
+                <td style="border-bottom: 3.5pt solid #000000; padding: 6px 10px; font-size: 13pt; text-align: center;">${model}</td>
+              </tr>
+              <tr style="height: 38px;">
+                <td style="border-right: 3.5pt solid #000000; border-bottom: 3.5pt solid #000000; padding: 6px 10px; font-size: 13pt; font-weight: bold;">Kolor</td>
+                <td style="border-bottom: 3.5pt solid #000000; padding: 6px 10px; font-size: 13pt; text-align: center;">${color}</td>
+              </tr>
+              <tr style="height: 150px;">
+                <td colspan="2" style="padding: 10px; text-align: center; vertical-align: middle; font-size: 14pt; font-weight: bold; background-color: #fafafa;">
+                  <div>${unit.title}</div>
+                  ${unit.subtitle ? `<div style="font-size: 12pt; font-weight: normal; margin-top: 4px;">(${unit.subtitle})</div>` : ''}
+                </td>
+              </tr>
+              <tr style="height: 38px;">
+                <td colspan="2" style="border-top: 3.5pt solid #000000; padding: 4px 10px; text-align: center; font-size: 13pt; font-weight: bold;">
+                  ${currentVal}
+                </td>
+              </tr>
+            </table>
+          </td>
+        `;
+      }
+
+      labelsSheetsHtml += `
+        <!--[if gte mso 9]>
+        <x:ExcelWorksheet>
+          <x:Name>Etykiety strona ${p + 1}</x:Name>
+          <x:WorksheetOptions>
+            <x:PageSetup>
+              <x:Layout x:Orientation="Portrait"/>
+              <x:PageMargins x:Bottom="0.2" x:Left="0.2" x:Right="0.2" x:Top="0.2"/>
+            </x:PageSetup>
+            <x:FitToPage/>
+            <x:Print>
+              <x:ValidPrinterInfo/>
+              <x:PaperSizeIndex>9</x:PaperSizeIndex>
+              <x:FitWidth>1</x:FitWidth>
+              <x:FitHeight>1</x:FitHeight>
+            </x:Print>
+          </x:WorksheetOptions>
+        </x:ExcelWorksheet>
+        <![endif]-->
+      `;
+    }
+
+    const excelHtml = `
       <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
       <head>
         <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
@@ -1623,47 +1701,173 @@
           <x:ExcelWorkbook>
             <x:ExcelWorksheets>
               <x:ExcelWorksheet>
-                <x:Name>Zamówienie ${orderNum}</x:Name>
-                <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+                <x:Name>Karta Główna</x:Name>
+                <x:WorksheetOptions>
+                  <x:PageSetup>
+                    <x:Layout x:Orientation="Portrait"/>
+                    <x:PageMargins x:Bottom="0.2" x:Left="0.2" x:Right="0.2" x:Top="0.2"/>
+                  </x:PageSetup>
+                  <x:FitToPage/>
+                  <x:Print>
+                    <x:ValidPrinterInfo/>
+                    <x:PaperSizeIndex>9</x:PaperSizeIndex>
+                    <x:FitWidth>1</x:FitWidth>
+                    <x:FitHeight>1</x:FitHeight>
+                  </x:Print>
+                </x:WorksheetOptions>
               </x:ExcelWorksheet>
+              ${labelsSheetsHtml}
             </x:ExcelWorksheets>
           </x:ExcelWorkbook>
         </xml>
         <![endif]-->
         <style>
-          th { background-color: #1e3a8a; color: #ffffff; font-weight: bold; border: 1px solid #000; padding: 6px; }
-          td { border: 1px solid #ccc; padding: 6px; }
-          .header-title { font-size: 16pt; font-weight: bold; color: #1e3a8a; }
-          .bold { font-weight: bold; background-color: #f1f5f9; }
+          body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+          .main-page-table {
+            width: 720px;
+            height: 1020px;
+            border-collapse: collapse;
+            border: 3.5pt solid #000000;
+            margin: 10px auto;
+          }
+          .title-text { font-size: 18pt; font-family: Arial, sans-serif; }
+          .date-text { font-size: 15pt; font-family: Arial, sans-serif; text-align: right; }
+          .worker-text { font-size: 14pt; font-family: Arial, sans-serif; text-align: right; }
+          .client-cell { font-size: 13pt; line-height: 1.45; text-align: left; padding: 15px 30px; }
+          .spec-label { font-size: 18pt; font-weight: normal; }
+          .spec-value { font-size: 18pt; text-align: left; }
+          .uwagi-cell {
+            border-right: 3.5pt solid #000000;
+            border-top: none;
+            padding: 8px 12px;
+            font-size: 14pt;
+            font-weight: 500;
+            vertical-align: bottom;
+          }
+          .boxdate-cell {
+            border-top: 3.5pt solid #000000;
+            font-size: 17pt;
+            text-align: center;
+            vertical-align: middle;
+          }
+          .remarks-cell {
+            border-top: 3.5pt solid #000000;
+            height: 180px;
+            padding: 12px 16px;
+            font-size: 14pt;
+            vertical-align: top;
+          }
+          .pickup-header {
+            font-size: 15pt;
+            font-weight: bold;
+            text-align: right;
+            padding-right: 20px;
+          }
         </style>
       </head>
       <body>
-        <table>
-          <tr><td colspan="3" class="header-title">KARTA ZAMÓWIENIA NR ${orderNum}</td></tr>
-          <tr><td class="bold">Data zamówienia:</td><td colspan="2">${formatDatePL(orderDate)}</td></tr>
-          <tr><td class="bold">Pracownik:</td><td colspan="2">${worker}</td></tr>
-          <tr><td class="bold">Klient / Adres:</td><td colspan="2">${client.replace(/\n/g, '<br>')}</td></tr>
-          <tr><td class="bold">Model:</td><td colspan="2">${model}</td></tr>
-          <tr><td class="bold">Kolor:</td><td colspan="2">${color}</td></tr>
-          <tr><td class="bold">Data wysyłki:</td><td colspan="2">${formatDatePL(boxDate)}</td></tr>
-          <tr><td class="bold">Odbiór osobisty:</td><td colspan="2">${pickup}</td></tr>
-          <tr><td class="bold">Uwagi:</td><td colspan="2">${remarks.replace(/\n/g, '<br>')}</td></tr>
-          <tr><td colspan="3"></td></tr>
-          <tr>
-            <th>Ilość (szt.)</th>
-            <th>Nazwa pozycji</th>
-            <th>Wymiary / Parametr</th>
+
+        <!-- KARTA GŁÓWNA ZAMÓWIENIA -->
+        <table class="main-page-table">
+          <tr style="height: 80px;">
+            <td colspan="2" style="padding: 20px 25px 5px 25px; vertical-align: top;">
+              <table style="width: 100%; border: none;">
+                <tr>
+                  <td class="title-text" style="width: 65%;">Zamówienie nr &nbsp;&nbsp;<strong>${orderNum}</strong></td>
+                  <td style="width: 35%; text-align: right;">
+                    <div class="date-text">Data &nbsp;&nbsp; ${formatDatePL(orderDate)}</div>
+                    <div class="worker-text" style="margin-top: 4px;">${worker}</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
           </tr>
-          ${itemsRows}
+
+          <tr style="height: 100px;">
+            <td colspan="2" class="client-cell">
+              ${client.replace(/\n/g, '<br/>')}
+            </td>
+          </tr>
+
+          <tr style="height: 50px;">
+            <td colspan="2" style="padding: 5px 30px;">
+              <table style="width: 100%; border: none;">
+                <tr>
+                  <td class="spec-label" style="width: 140px;">Model</td>
+                  <td class="spec-value">${model}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr style="height: 50px;">
+            <td colspan="2" style="padding: 5px 30px;">
+              <table style="width: 100%; border: none;">
+                <tr>
+                  <td class="spec-label" style="width: 140px;">Kolor</td>
+                  <td class="spec-value">${color}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr style="height: 240px;">
+            <td colspan="2" style="padding: 20px 30px; vertical-align: top;">
+              ${itemsHtml}
+            </td>
+          </tr>
+
+          ${isPickup ? `
+          <tr style="height: 30px;">
+            <td colspan="2" class="pickup-header">ODBIÓR OSOBISTY</td>
+          </tr>
+          ` : '<tr style="height: 10px;"><td colspan="2"></td></tr>'}
+
+          <tr style="height: 60px;">
+            <td style="width: 35%;" class="uwagi-cell">Uwagi</td>
+            <td style="width: 65%; font-weight: ${isBoldDate ? 'bold' : 'normal'};" class="boxdate-cell">${formatDatePL(boxDate)}</td>
+          </tr>
+
+          <tr style="height: 180px;">
+            <td colspan="2" class="remarks-cell">${remarks.replace(/\n/g, '<br/>')}</td>
+          </tr>
         </table>
+
+        <!-- PODZIAŁ STRONY DLA EXCELA / ETYKIETY -->
+        <br style="page-break-before: always; mso-break-type: section-break;" />
+
+        ${(() => {
+          let pagesHtml = '';
+          for (let p = 0; p < pageCount; p++) {
+            const pageUnits = labelUnits.slice(p * pageSize, (p + 1) * pageSize);
+            pagesHtml += `
+              <table style="width: 720px; height: 1020px; border-collapse: collapse; margin: 15px auto;">
+                <tr style="height: 500px;">
+                  ${renderExcelLabelCard(pageUnits[0], p * pageSize + 0)}
+                  <td style="width: 4%;"></td>
+                  ${renderExcelLabelCard(pageUnits[1], p * pageSize + 1)}
+                </tr>
+                <tr style="height: 15px;"><td colspan="3"></td></tr>
+                <tr style="height: 500px;">
+                  ${renderExcelLabelCard(pageUnits[2], p * pageSize + 2)}
+                  <td style="width: 4%;"></td>
+                  ${renderExcelLabelCard(pageUnits[3], p * pageSize + 3)}
+                </tr>
+              </table>
+              <br style="page-break-before: always; mso-break-type: section-break;" />
+            `;
+          }
+          return pagesHtml;
+        })()}
+
       </body>
       </html>
     `;
 
-    const blob = new Blob([excelTemplate], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const blob = new Blob([excelHtml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `Zamowienie_${orderNum}_${formatDatePL(orderDate)}.xls`;
+    link.download = `Zamowienie_${orderNum || 'nowe'}_${formatDatePL(orderDate)}.xls`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
