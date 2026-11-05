@@ -1,0 +1,10 @@
+{
+  "name": "etykiety-dzial-techniczny",
+  "version": "1.0.0",
+  "description": "System generowania etykiet i zamowien z API pracownikow i magazynu",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {}
+}
