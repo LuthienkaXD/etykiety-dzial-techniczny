@@ -1699,9 +1699,17 @@
     let itemsHtml = '';
     orderItems.forEach(item => {
       if (!item.name) return;
-      let paramStr = item.customParam ? ` ${item.customParam}` : '';
-      const displayName = getItemDisplayName(item);
-      itemsHtml += `<div style="font-size: 15pt; line-height: 1.8; font-family: Arial, sans-serif;">${item.qty} x ${displayName}${paramStr}</div>`;
+      let paramStr = item.customParam && item.customParam.trim() ? ` ${item.customParam.trim()}` : '';
+      let bracketsStr = '';
+      if (item.assignedModelIndex !== undefined && item.assignedModelIndex >= 0) {
+        const m = orderModels[item.assignedModelIndex];
+        if (m && m.trim()) bracketsStr += ` [${m.trim()}]`;
+      }
+      if (item.assignedColorIndex !== undefined && item.assignedColorIndex >= 0) {
+        const c = orderColors[item.assignedColorIndex];
+        if (c && c.trim()) bracketsStr += ` [${c.trim()}]`;
+      }
+      itemsHtml += `<div style="font-size: 15pt; line-height: 1.8; font-family: Arial, sans-serif;">${item.qty} x ${item.name.trim()}${paramStr}${bracketsStr}</div>`;
     });
 
     // Generowanie arkuszy etykiet (4 na arkusz A4)
@@ -2766,15 +2774,17 @@
           const postObj = individualPosts[postCursor] || { name: item.name, profile: customParam, customDim: '' };
           const postNr = postCursor + 1;
           const profileText = postObj.profile ? ` ${postObj.profile}` : (customParam ? ` ${customParam}` : '');
-          let fullPostName = `${postObj.name}${profileText}`;
+          let bracketsStr = '';
           if (item.assignedModelIndex !== undefined && item.assignedModelIndex >= 0) {
             const mName = orderModels[item.assignedModelIndex];
-            if (mName && mName.trim()) fullPostName += ` [${mName.trim()}]`;
+            if (mName && mName.trim()) bracketsStr += ` [${mName.trim()}]`;
           }
           if (item.assignedColorIndex !== undefined && item.assignedColorIndex >= 0) {
             const cName = orderColors[item.assignedColorIndex];
-            if (cName && cName.trim()) fullPostName += ` [${cName.trim()}]`;
+            if (cName && cName.trim()) bracketsStr += ` [${cName.trim()}]`;
           }
+          const profileText = postObj.profile ? ` ${postObj.profile}` : (customParam ? ` ${customParam}` : '');
+          const fullPostName = `${postObj.name}${profileText}${bracketsStr}`;
 
           units.push({
             type: 'post',
@@ -2849,9 +2859,17 @@
     orderItems.forEach(item => {
       if (!item.name) return;
       const line = document.createElement('div');
-      let paramStr = item.customParam ? ` ${item.customParam}` : '';
-      const displayName = getItemDisplayName(item);
-      line.textContent = `${item.qty} x ${displayName}${paramStr}`;
+      let paramStr = item.customParam && item.customParam.trim() ? ` ${item.customParam.trim()}` : '';
+      let bracketsStr = '';
+      if (item.assignedModelIndex !== undefined && item.assignedModelIndex >= 0) {
+        const m = orderModels[item.assignedModelIndex];
+        if (m && m.trim()) bracketsStr += ` [${m.trim()}]`;
+      }
+      if (item.assignedColorIndex !== undefined && item.assignedColorIndex >= 0) {
+        const c = orderColors[item.assignedColorIndex];
+        if (c && c.trim()) bracketsStr += ` [${c.trim()}]`;
+      }
+      line.textContent = `${item.qty} x ${item.name.trim()}${paramStr}${bracketsStr}`;
       itemsListEl.appendChild(line);
     });
 
