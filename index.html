@@ -767,6 +767,9 @@
         <button class="btn-nav" onclick="openWarehouseModal()">
           📦 Magazyn pozycji
         </button>
+        <button class="btn-nav" onclick="setCloudApiUrlPrompt()" title="Konfiguracja połączenia z Render">
+          ☁️ Połącz z Render
+        </button>
       </div>
     </div>
     
@@ -955,17 +958,18 @@ CASTLECONNELL CO. LIMERICK V94 F7D8
 
 <!-- Modal Magazynu Pozycji -->
 <div class="modal-overlay" id="warehouseModal">
-  <div class="modal-box" style="width: 580px;">
+  <div class="modal-box" style="width: 650px;">
     <h3>📦 Magazyn pozycji zamówienia</h3>
     <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">
-      Zarządzaj dostępnymi pozycjami. Wpisanie ich nazwy w formularzu zamówienia podpowie się automatycznie z listy.
+      Zarządzaj dostępnymi pozycjami. Możesz dodawać, usuwać oraz edytować istniejące pozycje.
     </p>
 
     <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 14px;">
-      <h4 style="font-size: 13px; margin-bottom: 8px;">Dodaj nową pozycję do bazy:</h4>
+      <h4 style="font-size: 13px; margin-bottom: 8px;" id="warehouseFormTitle">Dodaj nową pozycję do bazy:</h4>
+      <input type="hidden" id="editWhIndex" value="-1">
       <div style="display: flex; gap: 8px; margin-bottom: 8px;">
         <input type="text" id="newWhName" class="form-control" placeholder="Nazwa np. Furtka wejściowa">
-        <select id="newWhType" class="form-control" style="width: 170px;">
+        <select id="newWhType" class="form-control" style="width: 190px;">
           <option value="standard">Standardowy (numerowany)</option>
           <option value="box">Pudełko z małymi częściami</option>
           <option value="double_gate">Brama dwuskrzydłowa (L/P)</option>
@@ -974,18 +978,19 @@ CASTLECONNELL CO. LIMERICK V94 F7D8
       </div>
       <div style="display: flex; gap: 8px;">
         <input type="text" id="newWhDefaultParam" class="form-control" placeholder="Domyślny wymiar / profil np. 120x120">
-        <button class="btn-success" onclick="addWarehouseItem()">Dodaj</button>
+        <button class="btn-success" id="saveWhBtn" onclick="saveWarehouseItem()">Dodaj</button>
+        <button class="btn-secondary" id="cancelEditWhBtn" onclick="cancelEditWarehouse()" style="display: none;">Anuluj edycję</button>
       </div>
     </div>
 
-    <div style="max-height: 220px; overflow-y: auto;">
+    <div style="max-height: 250px; overflow-y: auto;">
       <table class="warehouse-table">
         <thead>
           <tr>
             <th>Nazwa pozycji</th>
             <th>Typ</th>
             <th>Domyślny wymiar/profil</th>
-            <th style="width: 40px;">Akcja</th>
+            <th style="width: 100px; text-align: center;">Akcja</th>
           </tr>
         </thead>
         <tbody id="warehouseTableBody">
@@ -1097,22 +1102,51 @@ CASTLECONNELL CO. LIMERICK V94 F7D8
         <td><strong>${item.name}</strong></td>
         <td>${typeLabel}</td>
         <td>${item.defaultParam || '-'}</td>
-        <td><button class="btn-danger" onclick="deleteWarehouseItem(${idx})">✕</button></td>
+        <td style="text-align: center;">
+          <button type="button" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px;" onclick="startEditWarehouse(${idx})">✏️</button>
+          <button type="button" class="btn-danger" style="padding: 3px 8px; font-size: 11px;" onclick="deleteWarehouseItem(${idx})">✕</button>
+        </td>
       `;
       tbody.appendChild(tr);
     });
   }
 
   function openWarehouseModal() {
+    cancelEditWarehouse();
     renderWarehouseTable();
     document.getElementById('warehouseModal').style.display = 'flex';
   }
 
   function closeWarehouseModal() {
+    cancelEditWarehouse();
     document.getElementById('warehouseModal').style.display = 'none';
   }
 
-  function addWarehouseItem() {
+  function startEditWarehouse(idx) {
+    const item = warehouse[idx];
+    document.getElementById('editWhIndex').value = idx;
+    document.getElementById('newWhName').value = item.name;
+    document.getElementById('newWhType').value = item.type;
+    document.getElementById('newWhDefaultParam').value = item.defaultParam || '';
+
+    document.getElementById('warehouseFormTitle').textContent = `Edytuj pozycję: ${item.name}`;
+    document.getElementById('saveWhBtn').textContent = 'Zapisz zmiany';
+    document.getElementById('cancelEditWhBtn').style.display = 'inline-block';
+  }
+
+  function cancelEditWarehouse() {
+    document.getElementById('editWhIndex').value = '-1';
+    document.getElementById('newWhName').value = '';
+    document.getElementById('newWhType').value = 'standard';
+    document.getElementById('newWhDefaultParam').value = '';
+
+    document.getElementById('warehouseFormTitle').textContent = 'Dodaj nową pozycję do bazy:';
+    document.getElementById('saveWhBtn').textContent = 'Dodaj';
+    document.getElementById('cancelEditWhBtn').style.display = 'none';
+  }
+
+  function saveWarehouseItem() {
+    const editIdx = parseInt(document.getElementById('editWhIndex').value);
     const name = document.getElementById('newWhName').value.trim();
     const type = document.getElementById('newWhType').value;
     const defaultParam = document.getElementById('newWhDefaultParam').value.trim();
@@ -1122,24 +1156,111 @@ CASTLECONNELL CO. LIMERICK V94 F7D8
       return;
     }
 
-    warehouse.push({ name, type, defaultParam });
+    if (editIdx >= 0) {
+      // Edycja
+      warehouse[editIdx] = { name, type, defaultParam };
+    } else {
+      // Nowa pozycja
+      warehouse.push({ name, type, defaultParam });
+    }
+
     localStorage.setItem('order_app_warehouse', JSON.stringify(warehouse));
-    document.getElementById('newWhName').value = '';
-    document.getElementById('newWhDefaultParam').value = '';
+    syncWarehouseWithCloud();
+    cancelEditWarehouse();
     renderWarehouseTable();
     updateWarehouseDatalist();
+    renderItemFormRows();
+    renderAll();
   }
 
   function deleteWarehouseItem(idx) {
     if (confirm(`Czy na pewno usunąć "${warehouse[idx].name}" z magazynu?`)) {
       warehouse.splice(idx, 1);
       localStorage.setItem('order_app_warehouse', JSON.stringify(warehouse));
+      syncWarehouseWithCloud();
+      cancelEditWarehouse();
       renderWarehouseTable();
       updateWarehouseDatalist();
     }
   }
 
-  // --- PRACOWNIK ---
+  // --- KONFIGURACJA CHMURY (RENDER / API) ---
+  // Wpisz tutaj adres swojego serwisu Render po wdrożeniu (lub pozostaw auto-detekcję)
+  const CLOUD_API_URL = localStorage.getItem('order_app_cloud_api') || (window.location.origin.includes('github.io') ? '' : window.location.origin);
+
+  async function fetchCloudWorkers() {
+    if (!CLOUD_API_URL) return;
+    try {
+      const res = await fetch(`${CLOUD_API_URL}/api/workers`);
+      if (res.ok) {
+        const cloudWorkers = await res.json();
+        if (Array.isArray(cloudWorkers) && cloudWorkers.length > 0) {
+          // Łączymy z lokalnymi
+          cloudWorkers.forEach(w => {
+            if (!workers.includes(w)) workers.push(w);
+          });
+          localStorage.setItem('order_app_workers', JSON.stringify(workers));
+          renderWorkerList();
+        }
+      }
+    } catch (e) {
+      console.warn('Tryb offline / brak połączenia z Render:', e);
+    }
+  }
+
+  async function saveWorkerToCloud(workerName) {
+    if (!CLOUD_API_URL) return;
+    try {
+      await fetch(`${CLOUD_API_URL}/api/workers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: workerName })
+      });
+    } catch (e) {
+      console.warn('Nie udało się zapisać pracownika w chmurze:', e);
+    }
+  }
+
+  async function fetchCloudWarehouse() {
+    if (!CLOUD_API_URL) return;
+    try {
+      const res = await fetch(`${CLOUD_API_URL}/api/warehouse`);
+      if (res.ok) {
+        const cloudWh = await res.json();
+        if (Array.isArray(cloudWh) && cloudWh.length > 0) {
+          warehouse = cloudWh;
+          localStorage.setItem('order_app_warehouse', JSON.stringify(warehouse));
+          renderWarehouseTable();
+          updateWarehouseDatalist();
+        }
+      }
+    } catch (e) {
+      console.warn('Brak połączenia z chmurą dla magazynu:', e);
+    }
+  }
+
+  async function syncWarehouseWithCloud() {
+    if (!CLOUD_API_URL) return;
+    try {
+      await fetch(`${CLOUD_API_URL}/api/warehouse`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(warehouse)
+      });
+    } catch (e) {
+      console.warn('Nie udało się zsynchronizować magazynu z chmurą:', e);
+    }
+  }
+
+  function setCloudApiUrlPrompt() {
+    const current = localStorage.getItem('order_app_cloud_api') || '';
+    const newUrl = prompt('Podaj adres backendu na Render (np. https://etykiety-dzial-techniczny.onrender.com):', current);
+    if (newUrl !== null) {
+      localStorage.setItem('order_app_cloud_api', newUrl.trim());
+      alert('Zapisano adres chmury! Odśwież stronę, aby pobrać dane.');
+      location.reload();
+    }
+  }
   function renderWorkerList() {
     const select = document.getElementById('savedWorkersSelect');
     select.innerHTML = '<option value="">-- Wybierz z listy --</option>';
@@ -1177,6 +1298,7 @@ CASTLECONNELL CO. LIMERICK V94 F7D8
       if (!workers.includes(val)) {
         workers.push(val);
         localStorage.setItem('order_app_workers', JSON.stringify(workers));
+        saveWorkerToCloud(val);
       }
       currentWorker = val;
       localStorage.setItem('order_app_current_worker', currentWorker);
@@ -1656,6 +1778,10 @@ CASTLECONNELL CO. LIMERICK V94 F7D8
   renderItemFormRows();
   syncIndividualPosts();
   renderAll();
+
+  // Pobranie danych z chmury (Render)
+  fetchCloudWorkers();
+  fetchCloudWarehouse();
 </script>
 
 </body>
