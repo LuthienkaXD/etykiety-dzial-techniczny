@@ -828,6 +828,24 @@
         border: none !important;
         background: transparent !important;
       }
+
+      /* Ukrycie tekstu placeholder "Wpisz wymiar..." przy druku i PDF */
+      .label-bottom-input::placeholder {
+        color: transparent !important;
+        opacity: 0 !important;
+      }
+      .label-bottom-input::-webkit-input-placeholder {
+        color: transparent !important;
+        opacity: 0 !important;
+      }
+      .label-bottom-input::-moz-placeholder {
+        color: transparent !important;
+        opacity: 0 !important;
+      }
+      .label-bottom-input:-ms-input-placeholder {
+        color: transparent !important;
+        opacity: 0 !important;
+      }
     }
   </style>
 </head>
@@ -3008,6 +3026,17 @@
   fetchCloudWorkers();
   fetchCloudWarehouse();
   fetchCloudOrders();
+
+  // Ciągła synchronizacja magazynu pozycji i zamówień pomiędzy wszystkimi pracownikami
+  setInterval(() => {
+    fetchCloudWarehouse();
+    fetchCloudOrders();
+  }, 5000);
+
+  window.addEventListener('focus', () => {
+    fetchCloudWarehouse();
+    fetchCloudOrders();
+  });
 </script>
 
 </body>
