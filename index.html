@@ -1,0 +1,1662 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generator Kart Zamówień i Etykiet</title>
+  <style>
+    :root {
+      --primary: #1e3a8a;
+      --primary-hover: #172554;
+      --bg-color: #f1f5f9;
+      --card-bg: #ffffff;
+      --border-color: #cbd5e1;
+      --text-color: #0f172a;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      padding: 20px;
+    }
+
+    .app-container {
+      max-width: 1300px;
+      margin: 0 auto;
+    }
+
+    /* Pasek górny */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #ffffff;
+      padding: 14px 24px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      margin-bottom: 20px;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .top-bar h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-nav {
+      background: #f1f5f9;
+      color: #0f172a;
+      border: 1px solid #cbd5e1;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+    .btn-nav:hover {
+      background: #e2e8f0;
+    }
+
+    .user-section {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .badge-user {
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background-color: var(--primary);
+      color: #ffffff;
+    }
+    .btn-primary:hover {
+      background-color: var(--primary-hover);
+    }
+
+    .btn-secondary {
+      background-color: #e2e8f0;
+      color: #334155;
+    }
+    .btn-secondary:hover {
+      background-color: #cbd5e1;
+    }
+
+    .btn-success {
+      background-color: #059669;
+      color: white;
+    }
+    .btn-success:hover {
+      background-color: #047857;
+    }
+
+    .btn-danger {
+      background-color: #ef4444;
+      color: white;
+      padding: 4px 10px;
+      font-size: 12px;
+    }
+
+    /* Układ roboczy */
+    .workspace {
+      display: grid;
+      grid-template-columns: 460px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    @media (max-width: 1024px) {
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .panel {
+      background: var(--card-bg);
+      border-radius: 10px;
+      padding: 22px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    .panel h2 {
+      font-size: 17px;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: bold;
+      color: #475569;
+      margin-bottom: 5px;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .form-control:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.15);
+    }
+
+    textarea.form-control {
+      resize: vertical;
+      min-height: 70px;
+    }
+
+    .row-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    /* Pozycje / Elementy zamówienia */
+    .items-container {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 16px;
+    }
+
+    .item-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+      background: #ffffff;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .item-row input {
+      padding: 6px 8px;
+      font-size: 13px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+    }
+
+    /* SEKCJA DRAG AND DROP DLA SŁUPKÓW */
+    .posts-manager-section {
+      background: #eff6ff;
+      border: 1.5px solid #93c5fd;
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 16px;
+    }
+
+    .posts-manager-section h3 {
+      font-size: 14px;
+      color: #1e3a8a;
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .posts-hint {
+      font-size: 12px;
+      color: #475569;
+      margin-bottom: 10px;
+    }
+
+    .posts-drag-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .post-drag-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: grab;
+      user-select: none;
+      transition: background-color 0.15s, box-shadow 0.15s;
+    }
+
+    .post-drag-item:active {
+      cursor: grabbing;
+    }
+
+    .post-drag-item.dragging {
+      opacity: 0.4;
+      background: #dbeafe;
+      border-color: #3b82f6;
+    }
+
+    .post-drag-item.drag-over {
+      border-top: 2.5px solid #2563eb;
+    }
+
+    .post-drag-handle {
+      color: #94a3b8;
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    .post-number-badge {
+      background: #1e3a8a;
+      color: white;
+      font-weight: 700;
+      font-size: 12px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      min-width: 50px;
+      text-align: center;
+    }
+
+    .post-name-span {
+      font-size: 13px;
+      font-weight: 600;
+      color: #334155;
+      flex: 1;
+    }
+
+    .post-dim-input {
+      width: 140px;
+      padding: 5px 8px;
+      font-size: 13px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      text-align: center;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .tab-btn {
+      padding: 10px 18px;
+      background: #e2e8f0;
+      color: #475569;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+
+    .tab-btn.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    .actions-bar {
+      margin-bottom: 16px;
+      display: flex;
+      gap: 10px;
+    }
+
+    /* ========================================================
+       ARKUSZ ZAMÓWIENIA (Stylistyka PDF A4 - 1 do 1)
+       ======================================================== */
+    .pdf-page-container {
+      background: #525659;
+      padding: 20px;
+      border-radius: 8px;
+      display: flex;
+      justify-content: center;
+      overflow-x: auto;
+    }
+
+    .sheet-a4 {
+      width: 210mm;
+      min-height: 297mm;
+      height: 297mm;
+      background: #ffffff;
+      padding: 8mm 10mm 10mm 10mm;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      position: relative;
+      box-sizing: border-box;
+    }
+
+    .sheet-inner-border {
+      width: 100%;
+      height: 100%;
+      border: 3.5px solid #000000;
+      position: relative;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header-zone {
+      display: flex;
+      justify-content: space-between;
+      padding: 22px 30px 10px 30px;
+      align-items: flex-start;
+    }
+
+    .order-title {
+      font-size: 22px;
+      font-family: Arial, sans-serif;
+      font-weight: 500;
+    }
+
+    .order-number-val {
+      margin-left: 20px;
+      display: inline-block;
+      font-size: 22px;
+    }
+
+    .date-worker-zone {
+      text-align: right;
+      min-width: 180px;
+    }
+
+    .date-line {
+      font-size: 19px;
+      font-family: Arial, sans-serif;
+      margin-bottom: 8px;
+    }
+
+    .worker-name-line {
+      font-size: 18px;
+      font-family: Arial, sans-serif;
+      margin-top: 6px;
+    }
+
+    .client-zone {
+      padding: 15px 30px 10px 30px;
+      text-align: center;
+      font-size: 16px;
+      line-height: 1.45;
+      white-space: pre-line;
+      min-height: 70px;
+    }
+
+    .specs-zone {
+      margin-top: 15px;
+      padding: 0 40px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .spec-row {
+      display: flex;
+      align-items: center;
+      font-size: 23px;
+    }
+
+    .spec-label {
+      width: 180px;
+      font-weight: 400;
+    }
+
+    .spec-value {
+      flex: 1;
+      text-align: center;
+      font-weight: 400;
+    }
+
+    .order-items-list {
+      margin-top: 35px;
+      padding: 0 40px;
+      font-size: 19px;
+      line-height: 1.7;
+    }
+
+    .spacer-flex {
+      flex-grow: 1;
+    }
+
+    .bottom-boxes {
+      width: 100%;
+      position: relative;
+    }
+
+    /* Komunikat Odbiór osobisty nad prostokątem z datą */
+    .pickup-notice-box {
+      position: absolute;
+      right: 20px;
+      top: -34px;
+      font-size: 19px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      color: #000000;
+      text-transform: uppercase;
+      display: none;
+    }
+
+    .middle-strip {
+      display: flex;
+      height: 68px;
+    }
+
+    .uwagi-label-box {
+      width: 35%;
+      border-right: 3.5px solid #000000;
+      display: flex;
+      align-items: flex-end;
+      padding: 6px 12px;
+      font-size: 16px;
+      font-weight: 500;
+      box-sizing: border-box;
+      /* Brak górnej krawędzi bezpośrednio nad napisem Uwagi, zmiany */
+    }
+
+    .prostokat-prawy-box {
+      width: 65%;
+      border-top: 3.5px solid #000000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 21px;
+      box-sizing: border-box;
+    }
+
+    .prostokat-prawy-box.bold-date {
+      font-weight: 800;
+    }
+
+    .big-bottom-rectangle {
+      border-top: 3.5px solid #000000;
+      height: 220px;
+      padding: 16px 20px;
+      font-size: 18px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    /* ========================================================
+       ETYKIETY (Strona 2 PDF / Grid 2x2)
+       ======================================================== */
+    .labels-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 12mm;
+      width: 100%;
+      height: 100%;
+      box-sizing: border-box;
+      padding: 2mm;
+    }
+
+    .label-card {
+      border: 3.5px solid #000000;
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+      background: white;
+      position: relative;
+      height: 135mm;
+    }
+
+    .label-arrow-box {
+      position: absolute;
+      top: 12px;
+      right: 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .label-arrow-head {
+      width: 0;
+      height: 0;
+      border-left: 14px solid transparent;
+      border-right: 14px solid transparent;
+      border-bottom: 24px solid #000000;
+    }
+
+    .label-arrow-stem {
+      width: 4px;
+      height: 22px;
+      background-color: #000000;
+    }
+
+    .label-arrow-base {
+      width: 32px;
+      height: 3px;
+      background-color: #000000;
+    }
+
+    .label-header-client {
+      height: 35%;
+      padding: 18px 50px 10px 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      font-size: 14px;
+      line-height: 1.35;
+      border-bottom: 3.5px solid #000000;
+      box-sizing: border-box;
+      white-space: pre-line;
+      word-break: break-word;
+    }
+
+    .label-table-row {
+      display: flex;
+      border-bottom: 3.5px solid #000000;
+      min-height: 36px;
+      align-items: stretch;
+    }
+
+    .label-cell-left {
+      width: 42%;
+      border-right: 3.5px solid #000000;
+      padding: 8px 10px;
+      font-size: 15px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      box-sizing: border-box;
+    }
+
+    .label-cell-right {
+      width: 58%;
+      padding: 8px 10px;
+      font-size: 16px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      box-sizing: border-box;
+    }
+
+    .label-item-highlight {
+      flex: 1;
+      padding: 10px 12px;
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      background-color: #fafafa;
+    }
+
+    /* Dolny prostokąt na etykiecie - z możliwością wpisania wymiaru */
+    .label-bottom-dim-box {
+      border-top: 3.5px solid #000000;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 10px;
+      background: #ffffff;
+      box-sizing: border-box;
+    }
+
+    .label-bottom-input {
+      width: 100%;
+      height: 100%;
+      border: none;
+      text-align: center;
+      font-size: 15px;
+      font-weight: 600;
+      outline: none;
+      background: transparent;
+      font-family: inherit;
+    }
+
+    .label-bottom-input:focus {
+      background: #f8fafc;
+      border-bottom: 1px dashed #94a3b8;
+    }
+
+    /* Modale */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-box {
+      background: #ffffff;
+      border-radius: 10px;
+      padding: 24px;
+      width: 480px;
+      max-width: 95%;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+
+    .modal-box h3 {
+      margin-bottom: 14px;
+    }
+
+    /* Magazyn */
+    .warehouse-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      margin-bottom: 14px;
+    }
+
+    .warehouse-table th, .warehouse-table td {
+      border: 1px solid #e2e8f0;
+      padding: 8px 10px;
+      font-size: 13px;
+      text-align: left;
+    }
+
+    .warehouse-table th {
+      background: #f8fafc;
+      font-weight: 600;
+    }
+
+    /* Style druku A4 */
+    @media print {
+      body {
+        background: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .top-bar, .panel, .tabs, .actions-bar, .no-print {
+        display: none !important;
+      }
+
+      .workspace {
+        display: block;
+      }
+
+      .pdf-page-container {
+        background: none;
+        padding: 0;
+      }
+
+      .sheet-a4 {
+        box-shadow: none;
+        width: 100%;
+        height: 100%;
+        page-break-after: always;
+        break-after: page;
+        padding: 6mm 8mm;
+      }
+
+      .label-bottom-input {
+        border: none !important;
+        background: transparent !important;
+      }
+
+      @page {
+        size: A4 portrait;
+        margin: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Datalist do autocomplete z magazynu -->
+<datalist id="warehouseItemsDatalist">
+  <!-- Dynamicznie ładowane z bazy magazynu -->
+</datalist>
+
+<div class="app-container">
+  <!-- Pasek górny z nawigacją i odnośnikiem do Magazynu -->
+  <header class="top-bar no-print">
+    <div class="brand-section">
+      <div>
+        <h1>Generator Kart Zamówień i Etykiet</h1>
+        <p style="font-size: 12px; color: #64748b; margin-top: 2px;">Wierny format szablonu PDF</p>
+      </div>
+      <div class="nav-links">
+        <button class="btn-nav" onclick="openWarehouseModal()">
+          📦 Magazyn pozycji
+        </button>
+      </div>
+    </div>
+    
+    <div class="user-section">
+      <span>Zalogowany pracownik:</span>
+      <span class="badge-user" id="currentWorkerDisplay">Dominika</span>
+      <button class="btn-secondary" onclick="openWorkerModal()">Zmień / Rejestracja</button>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <!-- Panel edycyjny po lewej -->
+    <div class="panel no-print">
+      <h2>Formularz danych zamówienia</h2>
+
+      <div class="form-group">
+        <label for="orderNumber">Numer zamówienia ($):</label>
+        <input type="text" id="orderNumber" class="form-control" placeholder="np. 0870_26" value="0870_26" oninput="renderAll()">
+      </div>
+
+      <div class="row-2">
+        <div class="form-group">
+          <label for="orderDate">Data główna (domyślnie dziś):</label>
+          <input type="date" id="orderDate" class="form-control" onchange="renderAll()">
+        </div>
+        <div class="form-group">
+          <label for="workerNameInput">Imię pracownika (pod datą):</label>
+          <input type="text" id="workerNameInput" class="form-control" value="Dominika" oninput="updateWorkerFromInput()">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="clientData">Dane klienta / adres (&):</label>
+        <textarea id="clientData" class="form-control" rows="3" placeholder="Imię, nazwisko, adres, telefon..." oninput="renderAll()">EFI " Colm and Claire Limerick RUAN
+CASTLECONNELL CO. LIMERICK V94 F7D8
++353 86 368 6300"</textarea>
+      </div>
+
+      <div class="row-2">
+        <div class="form-group">
+          <label for="orderModel">Model (^):</label>
+          <input type="text" id="orderModel" class="form-control" placeholder="np. Nu" value="Nu" oninput="renderAll()">
+        </div>
+        <div class="form-group">
+          <label for="orderColor">Kolor (#):</label>
+          <input type="text" id="orderColor" class="form-control" placeholder="np. 581-7016" value="581-7016" oninput="renderAll()">
+        </div>
+      </div>
+
+      <!-- Konfiguracja pozycji do wygenerowania etykiet -->
+      <div class="form-group">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+          <label style="margin-bottom: 0;">Pozycje zamówienia (z magazynu / wpisywane):</label>
+          <span style="font-size: 11px; color: #64748b;">Wpisz początkowe litery, aby wybrać</span>
+        </div>
+        
+        <div class="items-container" id="itemsListContainer">
+          <!-- Dynamiczne wiersze -->
+        </div>
+        <button type="button" class="btn-secondary" onclick="addNewItemRow()" style="width: 100%; margin-top: 5px;">+ Dodaj kolejną pozycję</button>
+      </div>
+
+      <div class="row-2" style="background: #e2e8f0; padding: 10px; border-radius: 6px; margin-bottom: 14px;">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="boxDate">Data wysyłki:</label>
+          <input type="date" id="boxDate" class="form-control" onchange="renderAll()">
+        </div>
+        <div class="form-group" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: flex-end; gap: 6px;">
+          <label style="cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: bold; margin-bottom: 0;">
+            <input type="checkbox" id="boldDateCheck" onchange="renderAll()"> Pogrubienie daty
+          </label>
+          <label style="cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: bold; color: #1e3a8a; margin-bottom: 0;">
+            <input type="checkbox" id="pickupCheck" onchange="renderAll()"> Odbiór osobisty
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="remarksText">Uwagi, zmiany:</label>
+        <textarea id="remarksText" class="form-control" rows="3" placeholder="Wpisz uwagi lub dodatkowe instrukcje produkcyjne..." oninput="renderAll()"></textarea>
+      </div>
+
+      <!-- DYNAMICZNA SEKCJA SŁUPKÓW (Drag & Drop + Wymiary) -->
+      <div id="postsManagerWrapper" class="posts-manager-section" style="display: none;">
+        <h3>
+          <span>🧱 Słupki (kolejność i wymiary na etykietach)</span>
+          <span style="font-size: 11px; font-weight: normal; color: #2563eb;">przeciągaj, by zamienić kolejność</span>
+        </h3>
+        <p class="posts-hint">Wpisz wymiar dla poszczególnych słupków. Trafi on do dolnego prostokąta na ich etykietach.</p>
+        <div class="posts-drag-list" id="postsDragList">
+          <!-- Wiersze generowane dynamicznie -->
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <button class="btn-primary" onclick="window.print()" style="flex: 1; padding: 12px; font-size: 15px;">
+          🖨️ Drukuj / Zapisz PDF
+        </button>
+      </div>
+    </div>
+
+    <!-- Podgląd wydruku / dokumentów -->
+    <div>
+      <div class="actions-bar no-print">
+        <div class="tabs">
+          <button class="tab-btn active" id="tabBtn1" onclick="switchTab('sheet')">📄 Karta Główna Zamówienia</button>
+          <button class="tab-btn" id="tabBtn2" onclick="switchTab('labels')">🏷️ Etykiety Produktowe</button>
+        </div>
+      </div>
+
+      <!-- Widok Karty Głównej -->
+      <div id="viewSheet" class="pdf-page-container">
+        <div class="sheet-a4">
+          <div class="sheet-inner-border">
+            
+            <!-- Górna belka: Zamówienie nr $ oraz Data i Pracownik -->
+            <div class="header-zone">
+              <div class="order-title">
+                Zamówienie nr <span class="order-number-val" id="viewOrderNum">0870_26</span>
+              </div>
+              <div class="date-worker-zone">
+                <div class="date-line">Data &nbsp;&nbsp;&nbsp; <span id="viewDate">09.03.2026</span></div>
+                <div class="worker-name-line" id="viewWorker">Dominika</div>
+              </div>
+            </div>
+
+            <!-- Pole klienta & -->
+            <div class="client-zone" id="viewClient">
+              EFI " Colm and Claire Limerick RUAN
+              CASTLECONNELL CO. LIMERICK V94 F7D8
+              +353 86 368 6300"
+            </div>
+
+            <!-- Model ^ oraz Kolor # -->
+            <div class="specs-zone">
+              <div class="spec-row">
+                <span class="spec-label">Model</span>
+                <span class="spec-value" id="viewModel">Nu</span>
+              </div>
+              <div class="spec-row">
+                <span class="spec-label">Kolor</span>
+                <span class="spec-value" id="viewColor">581-7016</span>
+              </div>
+            </div>
+
+            <!-- Lista wygenerowanych pozycji -->
+            <div class="order-items-list" id="viewItemsList">
+              <!-- generowane dynamicznie -->
+            </div>
+
+            <div class="spacer-flex"></div>
+
+            <!-- Dolna część: Uwagi, zmiany + prawy prostokąt + duży prostokąt -->
+            <div class="bottom-boxes">
+              <!-- Komunikat Odbiór osobisty nad prostokątem z datą -->
+              <div class="pickup-notice-box" id="viewPickupNotice">
+                ODBIÓR OSOBISTY
+              </div>
+
+              <div class="middle-strip">
+                <div class="uwagi-label-box">
+                  Uwagi, zmiany
+                </div>
+                <div class="prostokat-prawy-box" id="viewBoxDate">
+                  09.03.2026
+                </div>
+              </div>
+              <div class="big-bottom-rectangle" id="viewRemarks">
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Widok Etykiet (Grid) -->
+      <div id="viewLabels" class="pdf-page-container" style="display: none;">
+        <div id="labelsA4Pages">
+          <!-- Strony etykiet w formacie A4 generowane przez JS -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Modal Magazynu Pozycji -->
+<div class="modal-overlay" id="warehouseModal">
+  <div class="modal-box" style="width: 580px;">
+    <h3>📦 Magazyn pozycji zamówienia</h3>
+    <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">
+      Zarządzaj dostępnymi pozycjami. Wpisanie ich nazwy w formularzu zamówienia podpowie się automatycznie z listy.
+    </p>
+
+    <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 14px;">
+      <h4 style="font-size: 13px; margin-bottom: 8px;">Dodaj nową pozycję do bazy:</h4>
+      <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+        <input type="text" id="newWhName" class="form-control" placeholder="Nazwa np. Furtka wejściowa">
+        <select id="newWhType" class="form-control" style="width: 170px;">
+          <option value="standard">Standardowy (numerowany)</option>
+          <option value="box">Pudełko z małymi częściami</option>
+          <option value="double_gate">Brama dwuskrzydłowa (L/P)</option>
+          <option value="post">Słupek</option>
+        </select>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <input type="text" id="newWhDefaultParam" class="form-control" placeholder="Domyślny wymiar / profil np. 120x120">
+        <button class="btn-success" onclick="addWarehouseItem()">Dodaj</button>
+      </div>
+    </div>
+
+    <div style="max-height: 220px; overflow-y: auto;">
+      <table class="warehouse-table">
+        <thead>
+          <tr>
+            <th>Nazwa pozycji</th>
+            <th>Typ</th>
+            <th>Domyślny wymiar/profil</th>
+            <th style="width: 40px;">Akcja</th>
+          </tr>
+        </thead>
+        <tbody id="warehouseTableBody">
+          <!-- Wiersze z magazynu -->
+        </tbody>
+      </table>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px;">
+      <button class="btn-secondary" onclick="closeWarehouseModal()">Zamknij</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal zmiany pracownika / rejestracji -->
+<div class="modal-overlay" id="workerModal">
+  <div class="modal-box">
+    <h3>Zaloguj lub zarejestruj pracownika</h3>
+    <div class="form-group">
+      <label for="newWorkerInput">Imię pracownika (login):</label>
+      <input type="text" id="newWorkerInput" class="form-control" placeholder="Wpisz swoje imię...">
+    </div>
+    <div class="form-group">
+      <label>Zapisani pracownicy:</label>
+      <select id="savedWorkersSelect" class="form-control" onchange="selectSavedWorker(this.value)">
+        <!-- opcje -->
+      </select>
+    </div>
+    <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px;">
+      <button class="btn-secondary" onclick="closeWorkerModal()">Anuluj</button>
+      <button class="btn-primary" onclick="saveNewWorker()">Zapisz i ustaw</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Domyślny magazyn pozycji
+  const defaultWarehouse = [
+    { name: 'Pudełko z małymi częściami', type: 'box', defaultParam: '' },
+    { name: 'Brama dwuskrzydłowa', type: 'double_gate', defaultParam: '' },
+    { name: 'Słupek', type: 'post', defaultParam: '120x120' },
+    { name: 'Furtka wejściowa', type: 'standard', defaultParam: '1000x1500' },
+    { name: 'Przęsło ogrodzeniowe', type: 'standard', defaultParam: '2000x1200' },
+    { name: 'Brama przesuwna', type: 'standard', defaultParam: '4000x1500' }
+  ];
+
+  let warehouse = JSON.parse(localStorage.getItem('order_app_warehouse')) || defaultWarehouse;
+
+  // Domyślna lista pracowników z pamięci lokalnej
+  let workers = JSON.parse(localStorage.getItem('order_app_workers')) || ['Dominika', 'Jan', 'Marek', 'Anna'];
+  let currentWorker = localStorage.getItem('order_app_current_worker') || 'Dominika';
+
+  // Pozycje bieżącego zamówienia
+  let orderItems = [
+    { name: 'Pudełko z małymi częściami', qty: 1, type: 'box', customParam: '' },
+    { name: 'Brama dwuskrzydłowa', qty: 1, type: 'double_gate', customParam: '' },
+    { name: 'Słupek', qty: 2, type: 'post', customParam: '120x120' }
+  ];
+
+  // Tablica pojedynczych słupków do sekcji Drag & Drop:
+  // Każdy obiekt: { id: string, name: string, profile: string, customDim: string }
+  let individualPosts = [];
+
+  // Obiekt przechowujący wpisane wymiary w dolnym prostokącie etykiet dla niesłupków
+  let labelCustomBottomDims = {};
+
+  function initDates() {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${yyyy}-${mm}-${dd}`;
+
+    document.getElementById('orderDate').value = todayStr;
+    document.getElementById('boxDate').value = todayStr;
+  }
+
+  function formatDatePL(dateStr) {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}.${parts[1]}.${parts[0]}`;
+    }
+    return dateStr;
+  }
+
+  // --- MAGAZYN ---
+  function updateWarehouseDatalist() {
+    const datalist = document.getElementById('warehouseItemsDatalist');
+    datalist.innerHTML = '';
+    warehouse.forEach(whItem => {
+      const opt = document.createElement('option');
+      opt.value = whItem.name;
+      datalist.appendChild(opt);
+    });
+  }
+
+  function renderWarehouseTable() {
+    const tbody = document.getElementById('warehouseTableBody');
+    tbody.innerHTML = '';
+    warehouse.forEach((item, idx) => {
+      const tr = document.createElement('tr');
+      let typeLabel = 'Standardowy';
+      if (item.type === 'box') typeLabel = 'Pudełko z cz.';
+      if (item.type === 'double_gate') typeLabel = 'Brama dwuskrzydłowa';
+      if (item.type === 'post') typeLabel = 'Słupek';
+
+      tr.innerHTML = `
+        <td><strong>${item.name}</strong></td>
+        <td>${typeLabel}</td>
+        <td>${item.defaultParam || '-'}</td>
+        <td><button class="btn-danger" onclick="deleteWarehouseItem(${idx})">✕</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function openWarehouseModal() {
+    renderWarehouseTable();
+    document.getElementById('warehouseModal').style.display = 'flex';
+  }
+
+  function closeWarehouseModal() {
+    document.getElementById('warehouseModal').style.display = 'none';
+  }
+
+  function addWarehouseItem() {
+    const name = document.getElementById('newWhName').value.trim();
+    const type = document.getElementById('newWhType').value;
+    const defaultParam = document.getElementById('newWhDefaultParam').value.trim();
+
+    if (!name) {
+      alert('Podaj nazwę pozycji!');
+      return;
+    }
+
+    warehouse.push({ name, type, defaultParam });
+    localStorage.setItem('order_app_warehouse', JSON.stringify(warehouse));
+    document.getElementById('newWhName').value = '';
+    document.getElementById('newWhDefaultParam').value = '';
+    renderWarehouseTable();
+    updateWarehouseDatalist();
+  }
+
+  function deleteWarehouseItem(idx) {
+    if (confirm(`Czy na pewno usunąć "${warehouse[idx].name}" z magazynu?`)) {
+      warehouse.splice(idx, 1);
+      localStorage.setItem('order_app_warehouse', JSON.stringify(warehouse));
+      renderWarehouseTable();
+      updateWarehouseDatalist();
+    }
+  }
+
+  // --- PRACOWNIK ---
+  function renderWorkerList() {
+    const select = document.getElementById('savedWorkersSelect');
+    select.innerHTML = '<option value="">-- Wybierz z listy --</option>';
+    workers.forEach(w => {
+      const opt = document.createElement('option');
+      opt.value = w;
+      opt.textContent = w;
+      if (w === currentWorker) opt.selected = true;
+      select.appendChild(opt);
+    });
+
+    document.getElementById('currentWorkerDisplay').textContent = currentWorker;
+    document.getElementById('workerNameInput').value = currentWorker;
+  }
+
+  function openWorkerModal() {
+    document.getElementById('newWorkerInput').value = currentWorker;
+    renderWorkerList();
+    document.getElementById('workerModal').style.display = 'flex';
+  }
+
+  function closeWorkerModal() {
+    document.getElementById('workerModal').style.display = 'none';
+  }
+
+  function selectSavedWorker(val) {
+    if (val) {
+      document.getElementById('newWorkerInput').value = val;
+    }
+  }
+
+  function saveNewWorker() {
+    const val = document.getElementById('newWorkerInput').value.trim();
+    if (val) {
+      if (!workers.includes(val)) {
+        workers.push(val);
+        localStorage.setItem('order_app_workers', JSON.stringify(workers));
+      }
+      currentWorker = val;
+      localStorage.setItem('order_app_current_worker', currentWorker);
+      renderWorkerList();
+      renderAll();
+    }
+    closeWorkerModal();
+  }
+
+  function updateWorkerFromInput() {
+    currentWorker = document.getElementById('workerNameInput').value;
+    document.getElementById('currentWorkerDisplay').textContent = currentWorker;
+    renderAll();
+  }
+
+  // --- ZARZĄDZANIE POZYCJAMI ZAMÓWIENIA ---
+  function isPostItem(item) {
+    if (!item) return false;
+    const lower = (item.name || '').toLowerCase();
+    return item.type === 'post' || lower.includes('słupek') || lower.includes('slupek');
+  }
+
+  function renderItemFormRows() {
+    const container = document.getElementById('itemsListContainer');
+    container.innerHTML = '';
+
+    orderItems.forEach((item, index) => {
+      const row = document.createElement('div');
+      row.className = 'item-row';
+
+      row.innerHTML = `
+        <input type="number" min="1" max="50" value="${item.qty}" style="width: 50px;" onchange="updateItemQty(${index}, this.value)" title="Ilość">
+        <input type="text" list="warehouseItemsDatalist" value="${item.name || ''}" placeholder="Wpisz lub wybierz pozycję..." style="flex: 1;" oninput="onItemNameChange(${index}, this.value)">
+        <input type="text" placeholder="Profil np. 120x120" value="${item.customParam || ''}" style="width: 120px;" oninput="updateItemParam(${index}, this.value)">
+        <button type="button" class="btn-danger" onclick="removeItemRow(${index})">✕</button>
+      `;
+      container.appendChild(row);
+    });
+  }
+
+  function onItemNameChange(index, value) {
+    orderItems[index].name = value;
+
+    const matched = warehouse.find(w => w.name.toLowerCase() === value.toLowerCase().trim());
+    if (matched) {
+      orderItems[index].type = matched.type;
+      if (!orderItems[index].customParam && matched.defaultParam) {
+        orderItems[index].customParam = matched.defaultParam;
+      }
+    } else {
+      const lower = value.toLowerCase();
+      if (lower.includes('pudełko') || lower.includes('pudelko')) {
+        orderItems[index].type = 'box';
+      } else if (lower.includes('brama dwuskrzydłowa') || lower.includes('brama dwuskrzydlowa')) {
+        orderItems[index].type = 'double_gate';
+      } else if (lower.includes('słupek') || lower.includes('slupek')) {
+        orderItems[index].type = 'post';
+        if (!orderItems[index].customParam) orderItems[index].customParam = '120x120';
+      } else {
+        orderItems[index].type = 'standard';
+      }
+    }
+    syncIndividualPosts();
+    renderAll();
+  }
+
+  function updateItemQty(index, val) {
+    orderItems[index].qty = parseInt(val) || 1;
+    syncIndividualPosts();
+    renderAll();
+  }
+
+  function updateItemParam(index, val) {
+    orderItems[index].customParam = val;
+    syncIndividualPosts();
+    renderAll();
+  }
+
+  function addNewItemRow() {
+    orderItems.push({ name: '', qty: 1, type: 'standard', customParam: '' });
+    renderItemFormRows();
+  }
+
+  function removeItemRow(index) {
+    orderItems.splice(index, 1);
+    renderItemFormRows();
+    syncIndividualPosts();
+    renderAll();
+  }
+
+  // --- SEKCJA DRAG AND DROP DLA SŁUPKÓW ---
+  function syncIndividualPosts() {
+    // Sprawdź ile łącznie słupków jest w zamówieniu
+    const requiredPosts = [];
+    orderItems.forEach((item) => {
+      if (isPostItem(item)) {
+        const qty = parseInt(item.qty) || 1;
+        const profile = item.customParam ? item.customParam.trim() : '120x120';
+        const name = item.name.trim() || 'Słupek';
+        for (let i = 0; i < qty; i++) {
+          requiredPosts.push({ name, profile });
+        }
+      }
+    });
+
+    // Dopasuj listę individualPosts zachowując już wpisane wymiary i kolejność o ile to możliwe
+    const newIndividual = [];
+    requiredPosts.forEach((req, idx) => {
+      if (individualPosts[idx]) {
+        newIndividual.push({
+          id: individualPosts[idx].id || 'post_' + Math.random().toString(36).substr(2, 9),
+          name: req.name,
+          profile: req.profile,
+          customDim: individualPosts[idx].customDim || ''
+        });
+      } else {
+        newIndividual.push({
+          id: 'post_' + Math.random().toString(36).substr(2, 9),
+          name: req.name,
+          profile: req.profile,
+          customDim: '' // Puste do uzupełnienia
+        });
+      }
+    });
+
+    individualPosts = newIndividual;
+    renderPostsManager();
+  }
+
+  function renderPostsManager() {
+    const wrapper = document.getElementById('postsManagerWrapper');
+    const dragList = document.getElementById('postsDragList');
+
+    if (individualPosts.length === 0) {
+      wrapper.style.display = 'none';
+      dragList.innerHTML = '';
+      return;
+    }
+
+    wrapper.style.display = 'block';
+    dragList.innerHTML = '';
+
+    individualPosts.forEach((post, index) => {
+      const itemEl = document.createElement('div');
+      itemEl.className = 'post-drag-item';
+      itemEl.draggable = true;
+      itemEl.dataset.index = index;
+
+      const postNumber = index + 1;
+      const profileText = post.profile ? ` ${post.profile}` : '';
+
+      itemEl.innerHTML = `
+        <span class="post-drag-handle">☰</span>
+        <span class="post-number-badge">nr ${postNumber}</span>
+        <span class="post-name-span">${post.name}${profileText}</span>
+        <input type="text" class="post-dim-input" placeholder="Wpisz wymiar..." value="${post.customDim || ''}" 
+               oninput="updatePostDim(${index}, this.value)">
+      `;
+
+      // Eventy Drag and Drop
+      itemEl.addEventListener('dragstart', handleDragStart);
+      itemEl.addEventListener('dragover', handleDragOver);
+      itemEl.addEventListener('dragleave', handleDragLeave);
+      itemEl.addEventListener('drop', handleDrop);
+      itemEl.addEventListener('dragend', handleDragEnd);
+
+      dragList.appendChild(itemEl);
+    });
+  }
+
+  let draggedItemIndex = null;
+
+  function handleDragStart(e) {
+    draggedItemIndex = parseInt(this.dataset.index);
+    this.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  }
+
+  function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    this.classList.add('drag-over');
+  }
+
+  function handleDragLeave() {
+    this.classList.remove('drag-over');
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    this.classList.remove('drag-over');
+    const targetIndex = parseInt(this.dataset.index);
+
+    if (draggedItemIndex !== null && draggedItemIndex !== targetIndex) {
+      // Zamień kolejność w tablicy
+      const movedItem = individualPosts.splice(draggedItemIndex, 1)[0];
+      individualPosts.splice(targetIndex, 0, movedItem);
+      renderPostsManager();
+      renderAll();
+    }
+  }
+
+  function handleDragEnd() {
+    this.classList.remove('dragging');
+    const all = document.querySelectorAll('.post-drag-item');
+    all.forEach(el => el.classList.remove('drag-over'));
+  }
+
+  function updatePostDim(index, value) {
+    individualPosts[index].customDim = value;
+    renderAll();
+  }
+
+  // --- ZAKŁADKI ---
+  function switchTab(tab) {
+    const viewSheet = document.getElementById('viewSheet');
+    const viewLabels = document.getElementById('viewLabels');
+    const btn1 = document.getElementById('tabBtn1');
+    const btn2 = document.getElementById('tabBtn2');
+
+    if (tab === 'sheet') {
+      viewSheet.style.display = 'flex';
+      viewLabels.style.display = 'none';
+      btn1.classList.add('active');
+      btn2.classList.remove('active');
+    } else {
+      viewSheet.style.display = 'none';
+      viewLabels.style.display = 'flex';
+      btn1.classList.remove('active');
+      btn2.classList.add('active');
+    }
+  }
+
+  // --- GENEROWANIE ETYKIET ---
+  function generateLabelUnits() {
+    const units = [];
+    const nameCounters = {};
+
+    let postCursor = 0;
+
+    orderItems.forEach(item => {
+      const qty = parseInt(item.qty) || 1;
+      const itemName = item.name.trim() || 'Pozycja';
+      const itemType = item.type;
+      const customParam = item.customParam ? item.customParam.trim() : '';
+
+      if (itemType === 'box' || itemName.toLowerCase().includes('pudełko') || itemName.toLowerCase().includes('pudelko')) {
+        // Pudełko z częściami - BEZ NUMERU "nr 1"
+        for (let i = 0; i < qty; i++) {
+          units.push({
+            type: 'box',
+            title: itemName,
+            subtitle: '',
+            bottomDim: '' // Puste do uzupełnienia
+          });
+        }
+      } else if (itemType === 'double_gate' || itemName.toLowerCase().includes('brama dwuskrzydłowa') || itemName.toLowerCase().includes('brama dwuskrzydlowa')) {
+        // Brama dwuskrzydłowa
+        for (let i = 0; i < qty; i++) {
+          nameCounters['brama'] = (nameCounters['brama'] || 0) + 1;
+          const currentNr = nameCounters['brama'];
+
+          units.push({
+            type: 'double_gate',
+            title: `${itemName} nr ${currentNr}`,
+            subtitle: 'lewe skrzydło',
+            bottomDim: ''
+          });
+          units.push({
+            type: 'double_gate',
+            title: `${itemName} nr ${currentNr}`,
+            subtitle: 'prawe skrzydło',
+            bottomDim: ''
+          });
+        }
+      } else if (isPostItem(item)) {
+        // Słupki - pobieramy z uporządkowanej listy individualPosts
+        for (let i = 0; i < qty; i++) {
+          const postObj = individualPosts[postCursor] || { name: itemName, profile: customParam, customDim: '' };
+          const postNr = postCursor + 1;
+          const profileText = postObj.profile ? ` ${postObj.profile}` : (customParam ? ` ${customParam}` : '');
+
+          units.push({
+            type: 'post',
+            postIndex: postCursor,
+            title: `${postObj.name}${profileText} nr ${postNr}`,
+            subtitle: '',
+            // Przy słupkach wymiar w dolnym prostokącie pochodzi z sekcji słupków
+            bottomDim: postObj.customDim || ''
+          });
+          postCursor++;
+        }
+      } else {
+        // Inne pozycje
+        for (let i = 0; i < qty; i++) {
+          nameCounters[itemName] = (nameCounters[itemName] || 0) + 1;
+          const currentNr = nameCounters[itemName];
+
+          units.push({
+            type: 'standard',
+            title: `${itemName} nr ${currentNr}`,
+            subtitle: '',
+            bottomDim: ''
+          });
+        }
+      }
+    });
+
+    return units;
+  }
+
+  function handleLabelDimChange(unitIndex, value, unitObj) {
+    if (unitObj && unitObj.type === 'post' && unitObj.postIndex !== undefined) {
+      if (individualPosts[unitObj.postIndex]) {
+        individualPosts[unitObj.postIndex].customDim = value;
+        renderPostsManager();
+      }
+    } else {
+      labelCustomBottomDims[unitIndex] = value;
+    }
+  }
+
+  // --- RENDEROWANIE CAŁOŚCI ---
+  function renderAll() {
+    const orderNum = document.getElementById('orderNumber').value || '$';
+    const rawOrderDate = document.getElementById('orderDate').value;
+    const formattedOrderDate = formatDatePL(rawOrderDate);
+    const worker = document.getElementById('workerNameInput').value || currentWorker;
+    const clientData = document.getElementById('clientData').value || '&';
+    const model = document.getElementById('orderModel').value || '^';
+    const color = document.getElementById('orderColor').value || '#';
+    const rawBoxDate = document.getElementById('boxDate').value;
+    const formattedBoxDate = formatDatePL(rawBoxDate);
+    const isBoldDate = document.getElementById('boldDateCheck').checked;
+    const isPickup = document.getElementById('pickupCheck').checked;
+    const remarks = document.getElementById('remarksText').value;
+
+    // Karta Główna
+    document.getElementById('viewOrderNum').textContent = orderNum;
+    document.getElementById('viewDate').textContent = formattedOrderDate;
+    document.getElementById('viewWorker').textContent = worker;
+    document.getElementById('viewClient').textContent = clientData;
+    document.getElementById('viewModel').textContent = model;
+    document.getElementById('viewColor').textContent = color;
+
+    // Lista pozycji na karcie głównej
+    const itemsListEl = document.getElementById('viewItemsList');
+    itemsListEl.innerHTML = '';
+    orderItems.forEach(item => {
+      if (!item.name) return;
+      const line = document.createElement('div');
+      let paramStr = item.customParam ? ` ${item.customParam}` : '';
+      line.textContent = `${item.qty} x ${item.name}${paramStr}`;
+      itemsListEl.appendChild(line);
+    });
+
+    // Prawy prostokąt i uwagi
+    const boxDateEl = document.getElementById('viewBoxDate');
+    boxDateEl.textContent = formattedBoxDate;
+    if (isBoldDate) {
+      boxDateEl.classList.add('bold-date');
+    } else {
+      boxDateEl.classList.remove('bold-date');
+    }
+
+    // Komunikat Odbiór osobisty nad prostokątem
+    const pickupNoticeEl = document.getElementById('viewPickupNotice');
+    if (isPickup) {
+      pickupNoticeEl.style.display = 'block';
+    } else {
+      pickupNoticeEl.style.display = 'none';
+    }
+
+    document.getElementById('viewRemarks').textContent = remarks;
+
+    // Renderowanie etykiet
+    renderLabelsView(orderNum, clientData, model, color);
+  }
+
+  function renderLabelsView(orderNum, clientData, model, color) {
+    const container = document.getElementById('labelsA4Pages');
+    container.innerHTML = '';
+
+    const labelUnits = generateLabelUnits();
+    const pageSize = 4;
+    const pageCount = Math.ceil(labelUnits.length / pageSize) || 1;
+
+    for (let p = 0; p < pageCount; p++) {
+      const pageEl = document.createElement('div');
+      pageEl.className = 'sheet-a4';
+      pageEl.style.marginBottom = '25px';
+
+      const gridEl = document.createElement('div');
+      gridEl.className = 'labels-grid';
+
+      for (let i = 0; i < 4; i++) {
+        const uIdx = p * pageSize + i;
+        const unit = labelUnits[uIdx];
+
+        if (unit) {
+          const card = document.createElement('div');
+          card.className = 'label-card';
+
+          let currentVal = '';
+          if (unit.type === 'post') {
+            currentVal = unit.bottomDim || '';
+          } else {
+            currentVal = labelCustomBottomDims[uIdx] !== undefined ? labelCustomBottomDims[uIdx] : (unit.bottomDim || '');
+          }
+
+          card.innerHTML = `
+            <!-- Strzałka w prawym górnym rogu -->
+            <div class="label-arrow-box">
+              <div class="label-arrow-head"></div>
+              <div class="label-arrow-stem"></div>
+              <div class="label-arrow-base"></div>
+            </div>
+
+            <!-- Dane klienta & -->
+            <div class="label-header-client">
+              ${clientData}
+            </div>
+
+            <!-- Tabela danych etykiety -->
+            <div class="label-table-row">
+              <div class="label-cell-left">Zamównienie nr</div>
+              <div class="label-cell-right">${orderNum}</div>
+            </div>
+
+            <div class="label-table-row">
+              <div class="label-cell-left">Model</div>
+              <div class="label-cell-right">${model}</div>
+            </div>
+
+            <div class="label-table-row">
+              <div class="label-cell-left">Kolor</div>
+              <div class="label-cell-right">${color}</div>
+            </div>
+
+            <div class="label-item-highlight">
+              <div>
+                <div>${unit.title}</div>
+                ${unit.subtitle ? `<div style="font-size: 14px; font-weight: normal; margin-top: 4px;">(${unit.subtitle})</div>` : ''}
+              </div>
+            </div>
+
+            <!-- Dolny prostokąt z możliwością dopisania wymiaru (przy słupkach domyślnie pusty / powiązany z listą słupków) -->
+            <div class="label-bottom-dim-box">
+              <input type="text" class="label-bottom-input" placeholder="Wpisz wymiar..." value="${currentVal}" 
+                     oninput="handleLabelDimChange(${uIdx}, this.value, labelUnits[${uIdx}])">
+            </div>
+          `;
+          gridEl.appendChild(card);
+        } else {
+          const emptyCard = document.createElement('div');
+          emptyCard.style.border = '1px dashed #cbd5e1';
+          emptyCard.style.borderRadius = '6px';
+          emptyCard.style.display = 'flex';
+          emptyCard.style.alignItems = 'center';
+          emptyCard.style.justifyContent = 'center';
+          emptyCard.style.color = '#94a3b8';
+          emptyCard.style.fontSize = '14px';
+          emptyCard.textContent = 'Puste pole etykiety';
+          gridEl.appendChild(emptyCard);
+        }
+      }
+
+      pageEl.appendChild(gridEl);
+      container.appendChild(pageEl);
+    }
+  }
+
+  // Inicjalizacja
+  initDates();
+  renderWorkerList();
+  updateWarehouseDatalist();
+  renderItemFormRows();
+  syncIndividualPosts();
+  renderAll();
+</script>
+
+</body>
+</html>
