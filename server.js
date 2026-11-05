@@ -253,14 +253,20 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // --- API MAGAZYN ZAMÓWIEŃ ---
+  // --- API MAGAZYN ZAMÓWIEŃ (WSPÓŁDZIELONY DLA WSZYSTKICH) ---
   if (url.pathname === '/api/orders') {
     if (req.method === 'GET') {
       try {
+        if (!pool) {
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify([]));
+          return;
+        }
         const result = await pool.query('SELECT data FROM etykiety_orders ORDER BY updated_at DESC');
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify(result.rows.map(r => r.data)));
       } catch (e) {
+        console.error('Błąd pobierania zamówień:', e);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify([]));
       }
@@ -280,20 +286,44 @@ const server = http.createServer(async (req, res) => {
             return;
           }
 
-          await pool.query(`
-            INSERT INTO etykiety_orders (order_number, data, updated_at)
-            VALUES ($1, $2, CURRENT_TIMESTAMP)
-            ON CONFLICT (order_number)
-            DO UPDATE SET data = EXCLUDED.data, updated_at = CURRENT_TIMESTAMP
-          `, [cleanNum, JSON.stringify(order)]);
+          if (pool) {
+            await pool.query(`
+              INSERT INTO etykiety_orders (order_number, data, updated_at)
+              VALUES ($1, $2, CURRENT_TIMESTAMP)
+              ON CONFLICT (order_number)
+              DO UPDATE SET data = EXCLUDED.data, updated_at = CURRENT_TIMESTAMP
+            `, [cleanNum, JSON.stringify(order)]);
+          }
 
           res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
           res.end(JSON.stringify({ success: true }));
         } catch (e) {
+          console.error('Błąd zapisu zamówienia:', e);
           res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Błąd zapisu zamówienia' }));
+          res.end(JSON.stringify({ error: 'Błąd zapisu zamówienia w bazie' }));
         }
       });
+      return;
+    }
+
+    if (req.method === 'DELETE') {
+      const orderNum = url.searchParams.get('orderNumber');
+      if (!orderNum) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Brak numeru zamówienia' }));
+        return;
+      }
+      try {
+        if (pool) {
+          await pool.query('DELETE FROM etykiety_orders WHERE LOWER(order_number) = LOWER($1)', [orderNum.trim()]);
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: true }));
+      } catch (e) {
+        console.error('Błąd usuwania zamówienia:', e);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Błąd usuwania zamówienia' }));
+      }
       return;
     }
   }
