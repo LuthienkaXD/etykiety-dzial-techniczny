@@ -7,14 +7,12 @@ let pg = null;
 try {
   pg = require('pg');
 } catch (e) {
-  console.log('Pakiet pg nie jest jeszcze zainstalowany lokalnie, używam trybu zgodności');
+  console.log('Pakiet pg nie zainstalowany');
 }
 
 const PORT = process.env.PORT || 3000;
-const DATA_FILE = path.join(__dirname, 'cloud_data.json');
 const DATABASE_URL = process.env.DATABASE_URL;
 
-// Haszowanie haseł
 function hashPassword(pass) {
   return crypto.createHash('sha256').update(pass + '_salt_salt').digest('hex');
 }
@@ -26,12 +24,12 @@ if (DATABASE_URL && pg) {
     ssl: { rejectUnauthorized: false }
   });
 
-  // Tworzenie trwałych tabel w PostgreSQL
   pool.query(`
     CREATE TABLE IF NOT EXISTS etykiety_users (
       id SERIAL PRIMARY KEY,
       username VARCHAR(100) UNIQUE NOT NULL,
       password_hash VARCHAR(255) NOT NULL,
+      is_admin BOOLEAN DEFAULT FALSE,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -49,45 +47,9 @@ if (DATABASE_URL && pg) {
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `).then(() => {
-    console.log('Trwałe tabele PostgreSQL (Supabase) gotowe!');
-  }).catch(err => {
-    console.error('Błąd inicjalizacji PostgreSQL:', err);
-  });
+    console.log('Tabele w PostgreSQL gotowe!');
+  }).catch(console.error);
 }
-
-// Fallback do pliku JSON jeśli brak bazy SQL
-function loadLocalData() {
-  const defaultData = {
-    workers: [],
-    orders: [],
-    warehouse: [
-      { name: 'Pudełko z małymi częściami', type: 'box', defaultParam: '' },
-      { name: 'Brama dwuskrzydłowa', type: 'double_gate', defaultParam: '' },
-      { name: 'Słupek', type: 'post', defaultParam: '120x120' },
-      { name: 'Furtka wejściowa', type: 'standard', defaultParam: '1000x1500' },
-      { name: 'Przęsło ogrodzeniowe', type: 'standard', defaultParam: '2000x1200' },
-      { name: 'Brama przesuwna', type: 'standard', defaultParam: '4000x1500' }
-    ]
-  };
-
-  try {
-    if (fs.existsSync(DATA_FILE)) {
-      const read = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-      if (!Array.isArray(read.orders)) read.orders = [];
-      if (!Array.isArray(read.workers)) read.workers = [];
-      return read;
-    }
-  } catch (e) {}
-  return defaultData;
-}
-
-function saveLocalData(data) {
-  try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
-  } catch (e) {}
-}
-
-let localDb = loadLocalData();
 
 const server = http.createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -133,36 +95,35 @@ const server = http.createServer(async (req, res) => {
         const cleanUser = username.trim();
         const pwdHash = hashPassword(password);
 
-        if (pool) {
-          const result = await pool.query('SELECT * FROM etykiety_users WHERE LOWER(username) = LOWER($1)', [cleanUser]);
-          if (result.rows.length === 0 || result.rows[0].password_hash !== pwdHash) {
-            res.writeHead(401, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Nieprawidłowy login lub hasło' }));
-            return;
-          }
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ success: true, username: result.rows[0].username }));
+        if (!pool) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Brak połączenia z bazą danych' }));
           return;
         }
 
-        // Fallback lokalny
-        const found = localDb.workers.find(w => w.username.toLowerCase() === cleanUser.toLowerCase());
-        if (!found || found.passwordHash !== pwdHash) {
+        const result = await pool.query('SELECT id, username, password_hash, is_admin FROM etykiety_users WHERE LOWER(username) = LOWER($1)', [cleanUser]);
+        if (result.rows.length === 0 || result.rows[0].password_hash !== pwdHash) {
           res.writeHead(401, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Nieprawidłowy login lub hasło' }));
           return;
         }
+
+        const user = result.rows[0];
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true, username: found.username }));
+        res.end(JSON.stringify({
+          success: true,
+          username: user.username,
+          isAdmin: !!user.is_admin
+        }));
       } catch (e) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Błąd logowania' }));
+        res.end(JSON.stringify({ error: 'Błąd przetwarzania logowania' }));
       }
     });
     return;
   }
 
-  // --- API REJESTRACJA ---
+  // --- API REJESTRACJA (dla nowych pracowników) ---
   if (url.pathname === '/api/register' && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => body += chunk);
@@ -179,32 +140,20 @@ const server = http.createServer(async (req, res) => {
 
         const pwdHash = hashPassword(password);
 
-        if (pool) {
-          const check = await pool.query('SELECT id FROM etykiety_users WHERE LOWER(username) = LOWER($1)', [cleanUser]);
-          if (check.rows.length > 0) {
-            res.writeHead(409, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Pracownik o takim loginie już istnieje!' }));
-            return;
-          }
-
-          await pool.query('INSERT INTO etykiety_users (username, password_hash) VALUES ($1, $2)', [cleanUser, pwdHash]);
-          res.writeHead(201, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ success: true, username: cleanUser }));
-          return;
-        }
-
-        // Fallback lokalny
-        const exists = localDb.workers.some(w => w.username.toLowerCase() === cleanUser.toLowerCase());
-        if (exists) {
+        const check = await pool.query('SELECT id FROM etykiety_users WHERE LOWER(username) = LOWER($1)', [cleanUser]);
+        if (check.rows.length > 0) {
           res.writeHead(409, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Pracownik o takim loginie już istnieje!' }));
           return;
         }
 
-        localDb.workers.push({ username: cleanUser, passwordHash: pwdHash });
-        saveLocalData(localDb);
+        await pool.query(
+          'INSERT INTO etykiety_users (username, password_hash, is_admin) VALUES ($1, $2, $3)',
+          [cleanUser, pwdHash, false]
+        );
+
         res.writeHead(201, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true, username: cleanUser }));
+        res.end(JSON.stringify({ success: true, username: cleanUser, isAdmin: false }));
       } catch (e) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Błąd rejestracji' }));
@@ -213,34 +162,107 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // --- API PRACOWNICY ---
-  if (url.pathname === '/api/workers' && req.method === 'GET') {
-    if (pool) {
-      try {
-        const result = await pool.query('SELECT username FROM etykiety_users ORDER BY username ASC');
-        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify(result.rows.map(r => r.username)));
-        return;
-      } catch (e) {}
+  // --- API ADMIN: POBIERANIE WSZYSTKICH PRACOWNIKÓW ---
+  if (url.pathname === '/api/admin/users' && req.method === 'GET') {
+    try {
+      const result = await pool.query('SELECT id, username, is_admin, to_char(created_at, \'YYYY-MM-DD HH24:MI\') as created_at FROM etykiety_users ORDER BY id ASC');
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify(result.rows));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Błąd pobierania użytkowników' }));
     }
-    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify(localDb.workers.map(w => w.username)));
+    return;
+  }
+
+  // --- API ADMIN: EDYCJA PRACOWNIKA (zmiana loginu lub reset hasła) ---
+  if (url.pathname === '/api/admin/users/update' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        const { id, username, newPassword } = JSON.parse(body);
+        if (!id || !username) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Brak id lub loginu' }));
+          return;
+        }
+
+        const cleanUser = username.trim();
+
+        if (newPassword && newPassword.trim().length >= 3) {
+          const hash = hashPassword(newPassword.trim());
+          await pool.query('UPDATE etykiety_users SET username = $1, password_hash = $2 WHERE id = $3', [cleanUser, hash, id]);
+        } else {
+          await pool.query('UPDATE etykiety_users SET username = $1 WHERE id = $2', [cleanUser, id]);
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Błąd aktualizacji pracownika (może login jest już zajęty)' }));
+      }
+    });
+    return;
+  }
+
+  // --- API ADMIN: USUNIĘCIE PRACOWNIKA ---
+  if (url.pathname === '/api/admin/users/delete' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        const { id } = JSON.parse(body);
+        if (!id) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Brak ID' }));
+          return;
+        }
+
+        // Zabezpieczenie przed usunięciem konta głównego Dominika
+        const check = await pool.query('SELECT username FROM etykiety_users WHERE id = $1', [id]);
+        if (check.rows.length > 0 && check.rows[0].username.toLowerCase() === 'dominika') {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Nie można usunąć głównego konta administratora!' }));
+          return;
+        }
+
+        await pool.query('DELETE FROM etykiety_users WHERE id = $1', [id]);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Błąd usuwania użytkownika' }));
+      }
+    });
+    return;
+  }
+
+  // --- API LISTA LOGINÓW (PUBLICZNA DLA WYBORU PRACOWNIKA) ---
+  if (url.pathname === '/api/workers' && req.method === 'GET') {
+    try {
+      const result = await pool.query('SELECT username FROM etykiety_users ORDER BY username ASC');
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify(result.rows.map(r => r.username)));
+    } catch (e) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify([]));
+    }
     return;
   }
 
   // --- API MAGAZYN ZAMÓWIEŃ ---
   if (url.pathname === '/api/orders') {
     if (req.method === 'GET') {
-      if (pool) {
-        try {
-          const result = await pool.query('SELECT data FROM etykiety_orders ORDER BY updated_at DESC');
-          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify(result.rows.map(r => r.data)));
-          return;
-        } catch (e) {}
+      try {
+        const result = await pool.query('SELECT data FROM etykiety_orders ORDER BY updated_at DESC');
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify(result.rows.map(r => r.data)));
+      } catch (e) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify([]));
       }
-      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify(localDb.orders || []));
       return;
     }
 
@@ -257,27 +279,15 @@ const server = http.createServer(async (req, res) => {
             return;
           }
 
-          if (pool) {
-            await pool.query(`
-              INSERT INTO etykiety_orders (order_number, data, updated_at)
-              VALUES ($1, $2, CURRENT_TIMESTAMP)
-              ON CONFLICT (order_number)
-              DO UPDATE SET data = EXCLUDED.data, updated_at = CURRENT_TIMESTAMP
-            `, [cleanNum, JSON.stringify(order)]);
-
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify({ success: true }));
-            return;
-          }
-
-          // Fallback lokalny
-          const existingIdx = localDb.orders.findIndex(o => (o.orderNumber || '').trim().toLowerCase() === cleanNum.toLowerCase());
-          if (existingIdx >= 0) localDb.orders[existingIdx] = order;
-          else localDb.orders.unshift(order);
-          saveLocalData(localDb);
+          await pool.query(`
+            INSERT INTO etykiety_orders (order_number, data, updated_at)
+            VALUES ($1, $2, CURRENT_TIMESTAMP)
+            ON CONFLICT (order_number)
+            DO UPDATE SET data = EXCLUDED.data, updated_at = CURRENT_TIMESTAMP
+          `, [cleanNum, JSON.stringify(order)]);
 
           res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify({ success: true, orders: localDb.orders }));
+          res.end(JSON.stringify({ success: true }));
         } catch (e) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Błąd zapisu zamówienia' }));
@@ -291,27 +301,13 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/api/warehouse') {
     if (req.method === 'GET') {
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify(localDb.warehouse || []));
+      res.end(JSON.stringify([]));
       return;
     }
 
     if (req.method === 'POST') {
-      let body = '';
-      req.on('data', chunk => body += chunk);
-      req.on('end', () => {
-        try {
-          const items = JSON.parse(body);
-          if (Array.isArray(items)) {
-            localDb.warehouse = items;
-            saveLocalData(localDb);
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify({ success: true, warehouse: localDb.warehouse }));
-          }
-        } catch (e) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Błędny JSON' }));
-        }
-      });
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: true }));
       return;
     }
   }
@@ -321,5 +317,5 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Serwer działa na porcie ${PORT}`);
+  console.log(`Serwer etykiet działa na porcie ${PORT}`);
 });
