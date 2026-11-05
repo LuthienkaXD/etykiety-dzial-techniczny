@@ -1185,8 +1185,7 @@ CASTLECONNELL CO. LIMERICK V94 F7D8
   }
 
   // --- KONFIGURACJA CHMURY (RENDER / API) ---
-  // Wpisz tutaj adres swojego serwisu Render po wdrożeniu (lub pozostaw auto-detekcję)
-  const CLOUD_API_URL = localStorage.getItem('order_app_cloud_api') || (window.location.origin.includes('github.io') ? '' : window.location.origin);
+  const CLOUD_API_URL = localStorage.getItem('order_app_cloud_api') || 'https://etykiety-dzial-techniczny.onrender.com';
 
   async function fetchCloudWorkers() {
     if (!CLOUD_API_URL) return;
