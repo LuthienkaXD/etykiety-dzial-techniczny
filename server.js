@@ -11,10 +11,11 @@ function hashPassword(pass) {
   return crypto.createHash('sha256').update(pass + '_salt_salt').digest('hex');
 }
 
-// Inicjalizacja danych - BEZ domyślnych pracowników
+// Inicjalizacja danych
 function loadData() {
   const defaultData = {
-    workers: [], // Pusta lista użytkowników na start
+    workers: [],
+    orders: [], // Magazyn zapisanych zamówień
     warehouse: [
       { name: 'Pudełko z małymi częściami', type: 'box', defaultParam: '' },
       { name: 'Brama dwuskrzydłowa', type: 'double_gate', defaultParam: '' },
@@ -28,11 +29,8 @@ function loadData() {
   try {
     if (fs.existsSync(DATA_FILE)) {
       const read = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-      // Wymuszamy wyczyszczenie starych przykładowych pracowników jeśli są w pliku
-      if (Array.isArray(read.workers) && read.workers.length > 0 && typeof read.workers[0] === 'string') {
-        read.workers = [];
-        saveData(read);
-      }
+      if (!Array.isArray(read.orders)) read.orders = [];
+      if (!Array.isArray(read.workers)) read.workers = [];
       return read;
     }
   } catch (e) {
@@ -164,7 +162,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // --- API POBIERANIE LISTY PRACOWNIKÓW (SAME LOGINKI BEZ HASEŁ) ---
+  // --- API POBIERANIE LISTY PRACOWNIKÓW ---
   if (url.pathname === '/api/workers' && req.method === 'GET') {
     const list = db.workers.map(w => w.username);
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -172,7 +170,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // --- API MAGAZYN ---
+  // --- API MAGAZYN POZYCJI ---
   if (url.pathname === '/api/warehouse') {
     if (req.method === 'GET') {
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -195,6 +193,53 @@ const server = http.createServer((req, res) => {
             res.writeHead(400, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'Oczekiwano tablicy pozycji' }));
           }
+        } catch (e) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Błędny JSON' }));
+        }
+      });
+      return;
+    }
+  }
+
+  // --- API MAGAZYN ZAMÓWIEŃ (Zapis / Nadpisywanie po orderNumber) ---
+  if (url.pathname === '/api/orders') {
+    if (req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify(db.orders || []));
+      return;
+    }
+
+    if (req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => body += chunk);
+      req.on('end', () => {
+        try {
+          const order = JSON.parse(body);
+          if (!order.orderNumber) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Brak numeru zamówienia' }));
+            return;
+          }
+
+          if (!Array.isArray(db.orders)) db.orders = [];
+
+          // Szukamy czy zamówienie o tym numerze już istnieje (nadpisywanie)
+          const cleanNum = order.orderNumber.trim();
+          const existingIdx = db.orders.findIndex(o => (o.orderNumber || '').trim().toLowerCase() === cleanNum.toLowerCase());
+
+          order.updatedAt = new Date().toISOString();
+
+          if (existingIdx >= 0) {
+            db.orders[existingIdx] = order;
+          } else {
+            order.createdAt = new Date().toISOString();
+            db.orders.unshift(order);
+          }
+
+          saveData(db);
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: true, orders: db.orders }));
         } catch (e) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Błędny JSON' }));
