@@ -37,7 +37,8 @@ if (DATABASE_URL && pg) {
       id SERIAL PRIMARY KEY,
       name VARCHAR(255) NOT NULL,
       type VARCHAR(50) NOT NULL,
-      default_param VARCHAR(100)
+      default_param VARCHAR(100),
+      created_at BIGINT
     );
 
     CREATE TABLE IF NOT EXISTS etykiety_orders (
@@ -297,17 +298,67 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  // --- API MAGAZYN POZYCJI ---
+  // --- API MAGAZYN POZYCJI (WSPÓŁDZIELONY DLA WSZYSTKICH) ---
   if (url.pathname === '/api/warehouse') {
     if (req.method === 'GET') {
-      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify([]));
+      try {
+        if (!pool) {
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify([]));
+          return;
+        }
+        const result = await pool.query('SELECT name, type, default_param as "defaultParam", created_at as "createdAt" FROM etykiety_warehouse ORDER BY id ASC');
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify(result.rows));
+      } catch (err) {
+        console.error('Błąd pobierania magazynu:', err);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify([]));
+      }
       return;
     }
 
     if (req.method === 'POST') {
-      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ success: true }));
+      let body = '';
+      req.on('data', chunk => body += chunk);
+      req.on('end', async () => {
+        try {
+          const items = JSON.parse(body);
+          if (!Array.isArray(items)) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Dane muszą być tablicą' }));
+            return;
+          }
+
+          if (pool) {
+            const client = await pool.connect();
+            try {
+              await client.query('BEGIN');
+              await client.query('DELETE FROM etykiety_warehouse');
+              for (const item of items) {
+                if (!item.name) continue;
+                await client.query(
+                  'INSERT INTO etykiety_warehouse (name, type, default_param, created_at) VALUES ($1, $2, $3, $4)',
+                  [item.name.trim(), item.type || 'standard', item.defaultParam || '', item.createdAt || Date.now()]
+                );
+              }
+              await client.query('COMMIT');
+            } catch (txErr) {
+              await client.query('ROLLBACK');
+              throw txErr;
+            } finally {
+              client.release();
+            }
+          }
+
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: true, count: items.length }));
+        } catch (e) {
+          console.error('Błąd zapisu magazynu:', e);
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Błąd zapisu magazynu w chmurze' }));
+        }
+      });
       return;
     }
   }
