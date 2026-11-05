@@ -835,10 +835,16 @@
         <textarea id="clientData" class="form-control" rows="3" placeholder="Imię, nazwisko, adres, telefon..." oninput="renderAll()"></textarea>
       </div>
 
+      <!-- Modele (możliwość wielu modeli +) i Kolor -->
       <div class="row-2">
         <div class="form-group">
-          <label for="orderModel">Model (^):</label>
-          <input type="text" id="orderModel" class="form-control" placeholder="np. Nu" value="" oninput="renderAll()">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+            <label style="margin-bottom: 0;">Model (^):</label>
+            <button type="button" class="btn-secondary" onclick="addModelField()" style="padding: 2px 8px; font-size: 13px; font-weight: bold; background: #e0f2fe; color: #0369a1;" title="Dodaj kolejny model">+</button>
+          </div>
+          <div id="modelsInputsContainer" style="display: flex; flex-direction: column; gap: 6px;">
+            <!-- Dynamiczne pola modeli -->
+          </div>
         </div>
         <div class="form-group">
           <label for="orderColor">Kolor (#):</label>
@@ -1196,6 +1202,9 @@
   let workers = JSON.parse(localStorage.getItem('order_app_workers')) || [];
   let currentWorker = localStorage.getItem('order_app_current_worker') || '';
 
+  // Lista modeli w zamówieniu (domyślnie 1 pusty)
+  let orderModels = [''];
+
   // Pozycje bieżącego zamówienia (puste na start)
   let orderItems = [];
 
@@ -1475,12 +1484,12 @@
       return;
     }
 
-    const orderConfig = {
+    orderConfig = {
       orderNumber: orderNum,
       orderDate: document.getElementById('orderDate').value,
       workerName: document.getElementById('workerNameInput').value,
       clientData: document.getElementById('clientData').value,
-      model: document.getElementById('orderModel').value,
+      orderModels: JSON.parse(JSON.stringify(orderModels)),
       color: document.getElementById('orderColor').value,
       boxDate: document.getElementById('boxDate').value,
       boldDate: document.getElementById('boldDateCheck').checked,
@@ -1563,7 +1572,16 @@
     document.getElementById('orderDate').value = ord.orderDate || '';
     document.getElementById('workerNameInput').value = ord.workerName || '';
     document.getElementById('clientData').value = ord.clientData || '';
-    document.getElementById('orderModel').value = ord.model || '';
+    
+    if (Array.isArray(ord.orderModels) && ord.orderModels.length > 0) {
+      orderModels = JSON.parse(JSON.stringify(ord.orderModels));
+    } else if (ord.model) {
+      orderModels = [ord.model];
+    } else {
+      orderModels = [''];
+    }
+    renderModelsInputs();
+
     document.getElementById('orderColor').value = ord.color || '';
     document.getElementById('boxDate').value = ord.boxDate || '';
     document.getElementById('boldDateCheck').checked = !!ord.boldDate;
@@ -1597,7 +1615,8 @@
     const orderDate = document.getElementById('orderDate').value;
     const worker = document.getElementById('workerNameInput').value;
     const client = document.getElementById('clientData').value || '';
-    const model = document.getElementById('orderModel').value || '';
+    const validModels = orderModels.map(m => m.trim()).filter(m => m.length > 0);
+    const model = validModels.join(' / ');
     const color = document.getElementById('orderColor').value || '';
     const boxDate = document.getElementById('boxDate').value;
     const isBoldDate = document.getElementById('boldDateCheck').checked;
@@ -1609,7 +1628,8 @@
     orderItems.forEach(item => {
       if (!item.name) return;
       let paramStr = item.customParam ? ` ${item.customParam}` : '';
-      itemsHtml += `<div style="font-size: 15pt; line-height: 1.8; font-family: Arial, sans-serif;">${item.qty} x ${item.name}${paramStr}</div>`;
+      const displayName = getItemDisplayName(item);
+      itemsHtml += `<div style="font-size: 15pt; line-height: 1.8; font-family: Arial, sans-serif;">${item.qty} x ${displayName}${paramStr}</div>`;
     });
 
     // Generowanie arkuszy etykiet (4 na arkusz A4)
@@ -1648,7 +1668,7 @@
               </tr>
               <tr style="height: 38px;">
                 <td style="border-right: 3.5pt solid #000000; border-bottom: 3.5pt solid #000000; padding: 6px 10px; font-size: 13pt; font-weight: bold;">Model</td>
-                <td style="border-bottom: 3.5pt solid #000000; padding: 6px 10px; font-size: 13pt; text-align: center;">${model}</td>
+                <td style="border-bottom: 3.5pt solid #000000; padding: 6px 10px; font-size: 13pt; text-align: center;">${unit.modelText || model}</td>
               </tr>
               <tr style="height: 38px;">
                 <td style="border-right: 3.5pt solid #000000; border-bottom: 3.5pt solid #000000; padding: 6px 10px; font-size: 13pt; font-weight: bold;">Kolor</td>
@@ -2151,6 +2171,55 @@
     renderAll();
   }
 
+  // --- ZARZĄDZANIE MODELAMI (DODAWANIE WIĘCEJ NIŻ 1 MODELU +) ---
+  function renderModelsInputs() {
+    const container = document.getElementById('modelsInputsContainer');
+    container.innerHTML = '';
+
+    orderModels.forEach((modVal, mIdx) => {
+      const row = document.createElement('div');
+      row.style.display = 'flex';
+      row.style.gap = '6px';
+      row.style.alignItems = 'center';
+
+      row.innerHTML = `
+        <input type="text" class="form-control" placeholder="Model ${mIdx + 1}" value="${modVal}" 
+               oninput="updateModelValue(${mIdx}, this.value)" style="flex: 1;">
+        ${orderModels.length > 1 ? `
+          <button type="button" class="btn-danger" style="padding: 5px 8px; font-size: 11px;" onclick="removeModelField(${mIdx})">✕</button>
+        ` : ''}
+      `;
+      container.appendChild(row);
+    });
+  }
+
+  function addModelField() {
+    orderModels.push('');
+    renderModelsInputs();
+    renderItemFormRows();
+    renderAll();
+  }
+
+  function removeModelField(mIdx) {
+    if (orderModels.length > 1) {
+      orderModels.splice(mIdx, 1);
+      // Czyszczenie powiązań w pozycjach, jeśli dany model został usunięty
+      orderItems.forEach(item => {
+        if (item.assignedModelIndex === mIdx) item.assignedModelIndex = -1;
+        else if (item.assignedModelIndex > mIdx) item.assignedModelIndex--;
+      });
+      renderModelsInputs();
+      renderItemFormRows();
+      renderAll();
+    }
+  }
+
+  function updateModelValue(mIdx, val) {
+    orderModels[mIdx] = val;
+    renderItemFormRows();
+    renderAll();
+  }
+
   // --- ZARZĄDZANIE POZYCJAMI ZAMÓWIENIA ---
   function isPostItem(item) {
     if (!item) return false;
@@ -2162,9 +2231,25 @@
     const container = document.getElementById('itemsListContainer');
     container.innerHTML = '';
 
+    const validModels = orderModels.map((m, idx) => ({ name: m.trim(), idx })).filter(m => m.name.length > 0);
+    const hasMultipleModels = validModels.length > 1;
+
     orderItems.forEach((item, index) => {
       const row = document.createElement('div');
       row.className = 'item-row';
+
+      // Opcje wyboru modelu dla pozycji
+      let modelSelectHtml = '';
+      if (hasMultipleModels) {
+        modelSelectHtml = `
+          <select style="width: 130px; font-size: 12px; font-weight: bold; padding: 5px;" onchange="updateItemModel(${index}, this.value)">
+            <option value="-1" ${item.assignedModelIndex === -1 || item.assignedModelIndex === undefined ? 'selected' : ''}>Bez modelu</option>
+            ${validModels.map(m => `
+              <option value="${m.idx}" ${item.assignedModelIndex === m.idx ? 'selected' : ''}>Do [${m.name}]</option>
+            `).join('')}
+          </select>
+        `;
+      }
 
       row.innerHTML = `
         <input type="number" min="1" max="50" value="${item.qty}" style="width: 50px;" onchange="updateItemQty(${index}, this.value)" title="Ilość">
@@ -2174,11 +2259,17 @@
                  oninput="handleItemInputTyping(${index}, this.value)" 
                  onkeydown="handleItemInputKeydown(${index}, event)">
         </div>
+        ${modelSelectHtml}
         <input type="text" placeholder="Profil / wymiary" value="${item.customParam || ''}" style="width: 120px;" oninput="updateItemParam(${index}, this.value)">
         <button type="button" class="btn-danger" onclick="removeItemRow(${index})">✕</button>
       `;
       container.appendChild(row);
     });
+  }
+
+  function updateItemModel(itemIndex, modelIdxVal) {
+    orderItems[itemIndex].assignedModelIndex = parseInt(modelIdxVal);
+    renderAll();
   }
 
   // Obsługa ghost text i klawisza Enter
@@ -2419,6 +2510,30 @@
     }
   }
 
+  // Pomocnicza funkcja formatowania nazwy pozycji z modelem
+  function getItemDisplayName(item) {
+    let name = item.name || '';
+    if (item.assignedModelIndex !== undefined && item.assignedModelIndex >= 0) {
+      const assignedModelName = orderModels[item.assignedModelIndex];
+      if (assignedModelName && assignedModelName.trim().length > 0) {
+        name += ` [${assignedModelName.trim()}]`;
+      }
+    }
+    return name;
+  }
+
+  // Pomocnicza funkcja zwracająca model dla etykiety danej pozycji
+  function getItemModelForLabel(item) {
+    if (item.assignedModelIndex !== undefined && item.assignedModelIndex >= 0) {
+      const assignedModelName = orderModels[item.assignedModelIndex];
+      if (assignedModelName && assignedModelName.trim().length > 0) {
+        return assignedModelName.trim();
+      }
+    }
+    const valid = orderModels.map(m => m.trim()).filter(m => m.length > 0);
+    return valid.join(' / ');
+  }
+
   // --- GENEROWANIE ETYKIET ---
   function generateLabelUnits() {
     const units = [];
@@ -2428,7 +2543,8 @@
 
     orderItems.forEach(item => {
       const qty = parseInt(item.qty) || 1;
-      const itemName = item.name.trim() || 'Pozycja';
+      const itemName = getItemDisplayName(item).trim() || 'Pozycja';
+      const itemModel = getItemModelForLabel(item);
       const itemType = item.type;
       const customParam = item.customParam ? item.customParam.trim() : '';
 
@@ -2439,7 +2555,8 @@
             type: 'box',
             title: itemName,
             subtitle: '',
-            bottomDim: '' // Puste do uzupełnienia
+            modelText: itemModel,
+            bottomDim: ''
           });
         }
       } else if (itemType === 'double_gate' || itemName.toLowerCase().includes('brama dwuskrzydłowa') || itemName.toLowerCase().includes('brama dwuskrzydlowa')) {
@@ -2452,28 +2569,35 @@
             type: 'double_gate',
             title: `${itemName} nr ${currentNr}`,
             subtitle: 'lewe skrzydło',
+            modelText: itemModel,
             bottomDim: ''
           });
           units.push({
             type: 'double_gate',
             title: `${itemName} nr ${currentNr}`,
             subtitle: 'prawe skrzydło',
+            modelText: itemModel,
             bottomDim: ''
           });
         }
       } else if (isPostItem(item)) {
-        // Słupki - pobieramy z uporządkowanej listy individualPosts
+        // Słupki
         for (let i = 0; i < qty; i++) {
-          const postObj = individualPosts[postCursor] || { name: itemName, profile: customParam, customDim: '' };
+          const postObj = individualPosts[postCursor] || { name: item.name, profile: customParam, customDim: '' };
           const postNr = postCursor + 1;
           const profileText = postObj.profile ? ` ${postObj.profile}` : (customParam ? ` ${customParam}` : '');
+          let fullPostName = `${postObj.name}${profileText}`;
+          if (item.assignedModelIndex !== undefined && item.assignedModelIndex >= 0) {
+            const mName = orderModels[item.assignedModelIndex];
+            if (mName && mName.trim()) fullPostName += ` [${mName.trim()}]`;
+          }
 
           units.push({
             type: 'post',
             postIndex: postCursor,
-            title: `${postObj.name}${profileText} nr ${postNr}`,
+            title: `${fullPostName} nr ${postNr}`,
             subtitle: '',
-            // Przy słupkach wymiar w dolnym prostokącie pochodzi z sekcji słupków
+            modelText: itemModel,
             bottomDim: postObj.customDim || ''
           });
           postCursor++;
@@ -2488,6 +2612,7 @@
             type: 'standard',
             title: `${itemName} nr ${currentNr}`,
             subtitle: '',
+            modelText: itemModel,
             bottomDim: ''
           });
         }
@@ -2515,7 +2640,11 @@
     const formattedOrderDate = formatDatePL(rawOrderDate);
     const worker = document.getElementById('workerNameInput').value || currentWorker;
     const clientData = document.getElementById('clientData').value || '';
-    const model = document.getElementById('orderModel').value || '';
+    
+    // Pobranie modeli
+    const validModels = orderModels.map(m => m.trim()).filter(m => m.length > 0);
+    const modelDisplay = validModels.join(' / ');
+
     const color = document.getElementById('orderColor').value || '';
     const rawBoxDate = document.getElementById('boxDate').value;
     const formattedBoxDate = formatDatePL(rawBoxDate);
@@ -2528,17 +2657,18 @@
     document.getElementById('viewDate').textContent = formattedOrderDate;
     document.getElementById('viewWorker').textContent = worker;
     document.getElementById('viewClient').textContent = clientData;
-    document.getElementById('viewModel').textContent = model;
+    document.getElementById('viewModel').textContent = modelDisplay;
     document.getElementById('viewColor').textContent = color;
 
-    // Lista pozycji na karcie głównej
+    // Lista pozycji na karcie głównej (z dopiskiem [Model] jeśli przypisany)
     const itemsListEl = document.getElementById('viewItemsList');
     itemsListEl.innerHTML = '';
     orderItems.forEach(item => {
       if (!item.name) return;
       const line = document.createElement('div');
       let paramStr = item.customParam ? ` ${item.customParam}` : '';
-      line.textContent = `${item.qty} x ${item.name}${paramStr}`;
+      const displayName = getItemDisplayName(item);
+      line.textContent = `${item.qty} x ${displayName}${paramStr}`;
       itemsListEl.appendChild(line);
     });
 
@@ -2562,7 +2692,7 @@
     document.getElementById('viewRemarks').textContent = remarks;
 
     // Renderowanie etykiet
-    renderLabelsView(orderNum, clientData, model, color);
+    renderLabelsView(orderNum, clientData, modelDisplay, color);
   }
 
   function renderLabelsView(orderNum, clientData, model, color) {
@@ -2617,7 +2747,7 @@
 
             <div class="label-table-row">
               <div class="label-cell-left">Model</div>
-              <div class="label-cell-right">${model}</div>
+              <div class="label-cell-right">${unit.modelText || model}</div>
             </div>
 
             <div class="label-table-row">
@@ -2660,6 +2790,7 @@
 
   // Inicjalizacja
   initDates();
+  renderModelsInputs();
   updateWorkerDisplay();
   checkAdminButton();
   updateWarehouseDatalist();
