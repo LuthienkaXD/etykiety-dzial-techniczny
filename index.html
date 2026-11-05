@@ -414,8 +414,8 @@
     }
 
     .client-zone {
-      padding: 15px 30px 10px 30px;
-      text-align: center;
+      padding: 15px 30px 10px 40px;
+      text-align: left;
       font-size: 16px;
       line-height: 1.45;
       white-space: pre-line;
@@ -437,13 +437,13 @@
     }
 
     .spec-label {
-      width: 180px;
+      width: 140px;
       font-weight: 400;
     }
 
     .spec-value {
       flex: 1;
-      text-align: center;
+      text-align: left;
       font-weight: 400;
     }
 
@@ -490,7 +490,7 @@
       font-size: 16px;
       font-weight: 500;
       box-sizing: border-box;
-      /* Brak górnej krawędzi bezpośrednio nad napisem Uwagi, zmiany */
+      /* Brak górnej krawędzi bezpośrednio nad napisem Uwagi */
     }
 
     .prostokat-prawy-box {
@@ -764,6 +764,9 @@
         <p style="font-size: 12px; color: #64748b; margin-top: 2px;">Generator Kart Zamówień i Etykiet</p>
       </div>
       <div class="nav-links">
+        <button class="btn-nav" onclick="openOrdersModal()">
+          📁 Magazyn zamówień
+        </button>
         <button class="btn-nav" onclick="openWarehouseModal()">
           📦 Magazyn pozycji
         </button>
@@ -843,7 +846,7 @@
       </div>
 
       <div class="form-group">
-        <label for="remarksText">Uwagi, zmiany:</label>
+        <label for="remarksText">Uwagi:</label>
         <textarea id="remarksText" class="form-control" rows="3" placeholder="Wpisz uwagi lub dodatkowe instrukcje produkcyjne..." oninput="renderAll()"></textarea>
       </div>
 
@@ -862,6 +865,14 @@
       <div style="display: flex; gap: 10px; margin-top: 15px;">
         <button class="btn-primary" onclick="window.print()" style="flex: 1; padding: 12px; font-size: 15px;">
           🖨️ Drukuj / Zapisz PDF
+        </button>
+        <button class="btn-secondary" onclick="exportToExcel()" style="padding: 12px 16px; font-size: 14px; background: #0284c7; color: white;" title="Eksportuj do pliku Excel">
+          📊 Eksport Excel
+        </button>
+      </div>
+      <div style="margin-top: 8px;">
+        <button class="btn-success" onclick="saveOrderToWarehouse()" style="width: 100%; padding: 12px; font-size: 15px; font-weight: bold;">
+          💾 Zapisz konfigurację w Magazynie Zamówień
         </button>
       </div>
     </div>
@@ -922,7 +933,7 @@
 
               <div class="middle-strip">
                 <div class="uwagi-label-box">
-                  Uwagi, zmiany
+                  Uwagi
                 </div>
                 <div class="prostokat-prawy-box" id="viewBoxDate">
                   09.03.2026
@@ -943,6 +954,41 @@
         </div>
       </div>
 
+    </div>
+  </div>
+</div>
+
+<!-- Modal Magazynu Zamówień -->
+<div class="modal-overlay" id="ordersModal">
+  <div class="modal-box" style="width: 750px;">
+    <h3>📁 Magazyn zamówień</h3>
+    <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">
+      Lista zapisanych zamówień. Kliknij na dowolne zamówienie, aby wczytać je do ponownej edycji. Kolejny zapis nadpisze dane tego zamówienia.
+    </p>
+
+    <div style="margin-bottom: 12px; display: flex; gap: 10px;">
+      <input type="text" id="searchOrderInput" class="form-control" placeholder="🔍 Szukaj po numerze lub kliencie..." oninput="renderOrdersTable()">
+    </div>
+
+    <div style="max-height: 320px; overflow-y: auto;">
+      <table class="warehouse-table">
+        <thead>
+          <tr>
+            <th>Nr zamówienia</th>
+            <th>Klient</th>
+            <th>Model / Kolor</th>
+            <th>Data</th>
+            <th style="width: 140px; text-align: center;">Akcja</th>
+          </tr>
+        </thead>
+        <tbody id="ordersTableBody">
+          <!-- Wiersze zamówień -->
+        </tbody>
+      </table>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px;">
+      <button class="btn-secondary" onclick="closeOrdersModal()">Zamknij</button>
     </div>
   </div>
 </div>
@@ -1063,6 +1109,9 @@
 
   // Pozycje bieżącego zamówienia (puste na start)
   let orderItems = [];
+
+  // Magazyn zapisanych zamówień
+  let savedOrders = JSON.parse(localStorage.getItem('order_app_saved_orders')) || [];
 
   // Tablica pojedynczych słupków do sekcji Drag & Drop:
   // Każdy obiekt: { id: string, name: string, profile: string, customDim: string }
@@ -1265,14 +1314,234 @@
     }
   }
 
-  function setCloudApiUrlPrompt() {
-    const current = localStorage.getItem('order_app_cloud_api') || '';
-    const newUrl = prompt('Podaj adres backendu na Render (np. https://etykiety-dzial-techniczny.onrender.com):', current);
-    if (newUrl !== null) {
-      localStorage.setItem('order_app_cloud_api', newUrl.trim());
-      alert('Zapisano adres chmury! Odśwież stronę, aby pobrać dane.');
-      location.reload();
+  async function fetchCloudOrders() {
+    if (!CLOUD_API_URL) return;
+    try {
+      const res = await fetch(`${CLOUD_API_URL}/api/orders`);
+      if (res.ok) {
+        const cloudOrders = await res.json();
+        if (Array.isArray(cloudOrders)) {
+          savedOrders = cloudOrders;
+          localStorage.setItem('order_app_saved_orders', JSON.stringify(savedOrders));
+        }
+      }
+    } catch (e) {
+      console.warn('Brak połączenia z chmurą dla zamówień:', e);
     }
+  }
+
+  async function syncOrderWithCloud(orderObj) {
+    if (!CLOUD_API_URL) return;
+    try {
+      await fetch(`${CLOUD_API_URL}/api/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderObj)
+      });
+    } catch (e) {
+      console.warn('Nie udało się zapisać zamówienia w chmurze:', e);
+    }
+  }
+
+  // --- MAGAZYN ZAMÓWIEŃ (Zapisywanie, Nadpisywanie i Wczytywanie) ---
+  function openOrdersModal() {
+    renderOrdersTable();
+    document.getElementById('ordersModal').style.display = 'flex';
+  }
+
+  function closeOrdersModal() {
+    document.getElementById('ordersModal').style.display = 'none';
+  }
+
+  function saveOrderToWarehouse() {
+    const orderNum = document.getElementById('orderNumber').value.trim();
+    if (!orderNum) {
+      alert('Wpisz numer zamówienia ($) przed zapisaniem!');
+      document.getElementById('orderNumber').focus();
+      return;
+    }
+
+    const orderConfig = {
+      orderNumber: orderNum,
+      orderDate: document.getElementById('orderDate').value,
+      workerName: document.getElementById('workerNameInput').value,
+      clientData: document.getElementById('clientData').value,
+      model: document.getElementById('orderModel').value,
+      color: document.getElementById('orderColor').value,
+      boxDate: document.getElementById('boxDate').value,
+      boldDate: document.getElementById('boldDateCheck').checked,
+      pickup: document.getElementById('pickupCheck').checked,
+      remarks: document.getElementById('remarksText').value,
+      orderItems: JSON.parse(JSON.stringify(orderItems)),
+      individualPosts: JSON.parse(JSON.stringify(individualPosts)),
+      labelCustomBottomDims: JSON.parse(JSON.stringify(labelCustomBottomDims)),
+      savedAt: new Date().toLocaleString('pl-PL')
+    };
+
+    // Sprawdzamy czy zamówienie o tym numerze już istnieje
+    const existingIndex = savedOrders.findIndex(o => (o.orderNumber || '').trim().toLowerCase() === orderNum.toLowerCase());
+
+    if (existingIndex >= 0) {
+      savedOrders[existingIndex] = orderConfig;
+      alert(`Zamówienie nr ${orderNum} zostało zaktualizowane (nadpisane) w magazynie zamówień!`);
+    } else {
+      savedOrders.unshift(orderConfig);
+      alert(`Nowe zamówienie nr ${orderNum} zostało pomyślnie zapisane w magazynie zamówień!`);
+    }
+
+    localStorage.setItem('order_app_saved_orders', JSON.stringify(savedOrders));
+    syncOrderWithCloud(orderConfig);
+  }
+
+  function renderOrdersTable() {
+    const tbody = document.getElementById('ordersTableBody');
+    tbody.innerHTML = '';
+
+    const query = (document.getElementById('searchOrderInput').value || '').toLowerCase().trim();
+
+    const filtered = savedOrders.filter(o => {
+      const numMatch = (o.orderNumber || '').toLowerCase().includes(query);
+      const clientMatch = (o.clientData || '').toLowerCase().includes(query);
+      const modelMatch = (o.model || '').toLowerCase().includes(query);
+      return numMatch || clientMatch || modelMatch;
+    });
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 20px;">Brak zapisanych zamówień</td></tr>';
+      return;
+    }
+
+    filtered.forEach((ord) => {
+      const tr = document.createElement('tr');
+      const firstLineClient = (ord.clientData || '-').split('\n')[0].substring(0, 30);
+      const itemsCount = ord.orderItems ? ord.orderItems.length : 0;
+
+      tr.innerHTML = `
+        <td><strong>${ord.orderNumber}</strong></td>
+        <td>${firstLineClient}</td>
+        <td>${ord.model || '-'} / ${ord.color || '-'}</td>
+        <td>${ord.savedAt || ord.orderDate || '-'}</td>
+        <td style="text-align: center;">
+          <button class="btn-primary" style="padding: 4px 10px; font-size: 12px; margin-right: 4px;" onclick="loadOrderForEdit('${ord.orderNumber}')">Wczytaj</button>
+          <button class="btn-danger" style="padding: 4px 8px; font-size: 11px;" onclick="deleteOrder('${ord.orderNumber}')">✕</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function loadOrderForEdit(orderNum) {
+    const ord = savedOrders.find(o => o.orderNumber === orderNum);
+    if (!ord) return;
+
+    document.getElementById('orderNumber').value = ord.orderNumber || '';
+    document.getElementById('orderDate').value = ord.orderDate || '';
+    document.getElementById('workerNameInput').value = ord.workerName || '';
+    document.getElementById('clientData').value = ord.clientData || '';
+    document.getElementById('orderModel').value = ord.model || '';
+    document.getElementById('orderColor').value = ord.color || '';
+    document.getElementById('boxDate').value = ord.boxDate || '';
+    document.getElementById('boldDateCheck').checked = !!ord.boldDate;
+    document.getElementById('pickupCheck').checked = !!ord.pickup;
+    document.getElementById('remarksText').value = ord.remarks || '';
+
+    orderItems = ord.orderItems ? JSON.parse(JSON.stringify(ord.orderItems)) : [];
+    individualPosts = ord.individualPosts ? JSON.parse(JSON.stringify(ord.individualPosts)) : [];
+    labelCustomBottomDims = ord.labelCustomBottomDims ? JSON.parse(JSON.stringify(ord.labelCustomBottomDims)) : {};
+
+    currentWorker = ord.workerName || currentWorker;
+    updateWorkerDisplay();
+
+    renderItemFormRows();
+    renderPostsManager();
+    renderAll();
+    closeOrdersModal();
+  }
+
+  function deleteOrder(orderNum) {
+    if (confirm(`Czy na pewno usunąć zamówienie nr "${orderNum}" z magazynu zamówień?`)) {
+      savedOrders = savedOrders.filter(o => o.orderNumber !== orderNum);
+      localStorage.setItem('order_app_saved_orders', JSON.stringify(savedOrders));
+      renderOrdersTable();
+    }
+  }
+
+  // --- EKSPORT DO EXCELA (HTML Spreadsheet / XML) ---
+  function exportToExcel() {
+    const orderNum = document.getElementById('orderNumber').value || 'zamowienie';
+    const orderDate = document.getElementById('orderDate').value;
+    const worker = document.getElementById('workerNameInput').value;
+    const client = document.getElementById('clientData').value;
+    const model = document.getElementById('orderModel').value;
+    const color = document.getElementById('orderColor').value;
+    const boxDate = document.getElementById('boxDate').value;
+    const pickup = document.getElementById('pickupCheck').checked ? 'TAK (Odbiór osobisty)' : 'NIE';
+    const remarks = document.getElementById('remarksText').value;
+
+    let itemsRows = '';
+    orderItems.forEach(item => {
+      itemsRows += `
+        <tr>
+          <td>${item.qty}</td>
+          <td>${item.name || ''}</td>
+          <td>${item.customParam || ''}</td>
+        </tr>
+      `;
+    });
+
+    const excelTemplate = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <!--[if gte mso 9]>
+        <xml>
+          <x:ExcelWorkbook>
+            <x:ExcelWorksheets>
+              <x:ExcelWorksheet>
+                <x:Name>Zamówienie ${orderNum}</x:Name>
+                <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+              </x:ExcelWorksheet>
+            </x:ExcelWorksheets>
+          </x:ExcelWorkbook>
+        </xml>
+        <![endif]-->
+        <style>
+          th { background-color: #1e3a8a; color: #ffffff; font-weight: bold; border: 1px solid #000; padding: 6px; }
+          td { border: 1px solid #ccc; padding: 6px; }
+          .header-title { font-size: 16pt; font-weight: bold; color: #1e3a8a; }
+          .bold { font-weight: bold; background-color: #f1f5f9; }
+        </style>
+      </head>
+      <body>
+        <table>
+          <tr><td colspan="3" class="header-title">KARTA ZAMÓWIENIA NR ${orderNum}</td></tr>
+          <tr><td class="bold">Data zamówienia:</td><td colspan="2">${formatDatePL(orderDate)}</td></tr>
+          <tr><td class="bold">Pracownik:</td><td colspan="2">${worker}</td></tr>
+          <tr><td class="bold">Klient / Adres:</td><td colspan="2">${client.replace(/\n/g, '<br>')}</td></tr>
+          <tr><td class="bold">Model:</td><td colspan="2">${model}</td></tr>
+          <tr><td class="bold">Kolor:</td><td colspan="2">${color}</td></tr>
+          <tr><td class="bold">Data wysyłki:</td><td colspan="2">${formatDatePL(boxDate)}</td></tr>
+          <tr><td class="bold">Odbiór osobisty:</td><td colspan="2">${pickup}</td></tr>
+          <tr><td class="bold">Uwagi:</td><td colspan="2">${remarks.replace(/\n/g, '<br>')}</td></tr>
+          <tr><td colspan="3"></td></tr>
+          <tr>
+            <th>Ilość (szt.)</th>
+            <th>Nazwa pozycji</th>
+            <th>Wymiary / Parametr</th>
+          </tr>
+          ${itemsRows}
+        </table>
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob([excelTemplate], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `Zamowienie_${orderNum}_${formatDatePL(orderDate)}.xls`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
   // --- LOGOWANIE I REJESTRACJA PRACOWNIKÓW ---
   function switchAuthTab(tab) {
@@ -1875,6 +2144,7 @@
   // Pobranie danych z chmury (Render)
   fetchCloudWorkers();
   fetchCloudWarehouse();
+  fetchCloudOrders();
 </script>
 
 </body>
