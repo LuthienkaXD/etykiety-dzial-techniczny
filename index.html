@@ -996,23 +996,50 @@
   </div>
 </div>
 
-<!-- Modal zmiany pracownika / rejestracji -->
+<!-- Modal logowania / rejestracji pracownika z hasłem -->
 <div class="modal-overlay" id="workerModal">
-  <div class="modal-box">
-    <h3>Zaloguj lub zarejestruj pracownika</h3>
-    <div class="form-group">
-      <label for="newWorkerInput">Imię pracownika (login):</label>
-      <input type="text" id="newWorkerInput" class="form-control" placeholder="Wpisz swoje imię...">
+  <div class="modal-box" style="width: 420px;">
+    <div style="display: flex; gap: 10px; margin-bottom: 16px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">
+      <button type="button" id="tabAuthLoginBtn" class="tab-btn active" style="flex: 1; padding: 8px;" onclick="switchAuthTab('login')">Logowanie</button>
+      <button type="button" id="tabAuthRegisterBtn" class="tab-btn" style="flex: 1; padding: 8px;" onclick="switchAuthTab('register')">Rejestracja</button>
     </div>
-    <div class="form-group">
-      <label>Zapisani pracownicy:</label>
-      <select id="savedWorkersSelect" class="form-control" onchange="selectSavedWorker(this.value)">
-        <!-- opcje -->
-      </select>
+
+    <!-- Zakładka LOGOWANIE -->
+    <div id="authLoginSection">
+      <div class="form-group">
+        <label for="loginUserInput">Login pracownika:</label>
+        <input type="text" id="loginUserInput" class="form-control" placeholder="Wpisz login...">
+      </div>
+      <div class="form-group">
+        <label for="loginPasswordInput">Hasło:</label>
+        <input type="password" id="loginPasswordInput" class="form-control" placeholder="Wpisz hasło...">
+      </div>
+      <div id="loginErrorMsg" style="color: #ef4444; font-size: 13px; margin-bottom: 10px; display: none;"></div>
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px;">
+        <button class="btn-secondary" onclick="closeWorkerModal()">Anuluj</button>
+        <button class="btn-primary" onclick="submitLogin()">Zaloguj się</button>
+      </div>
     </div>
-    <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px;">
-      <button class="btn-secondary" onclick="closeWorkerModal()">Anuluj</button>
-      <button class="btn-primary" onclick="saveNewWorker()">Zapisz i ustaw</button>
+
+    <!-- Zakładka REJESTRACJA -->
+    <div id="authRegisterSection" style="display: none;">
+      <div class="form-group">
+        <label for="regUserInput">Nowy login pracownika:</label>
+        <input type="text" id="regUserInput" class="form-control" placeholder="np. Marek">
+      </div>
+      <div class="form-group">
+        <label for="regPasswordInput">Hasło:</label>
+        <input type="password" id="regPasswordInput" class="form-control" placeholder="Utwórz hasło...">
+      </div>
+      <div class="form-group">
+        <label for="regPasswordConfirmInput">Powtórz hasło:</label>
+        <input type="password" id="regPasswordConfirmInput" class="form-control" placeholder="Powtórz hasło...">
+      </div>
+      <div id="regErrorMsg" style="color: #ef4444; font-size: 13px; margin-bottom: 10px; display: none;"></div>
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px;">
+        <button class="btn-secondary" onclick="closeWorkerModal()">Anuluj</button>
+        <button class="btn-success" onclick="submitRegister()">Zarejestruj konto</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1030,8 +1057,8 @@
 
   let warehouse = JSON.parse(localStorage.getItem('order_app_warehouse')) || defaultWarehouse;
 
-  // Domyślna lista pracowników z pamięci lokalnej
-  let workers = JSON.parse(localStorage.getItem('order_app_workers')) || ['Dominika', 'Jan', 'Marek', 'Anna'];
+  // Domyślna lista pracowników z pamięci lokalnej - pusta na start
+  let workers = JSON.parse(localStorage.getItem('order_app_workers')) || [];
   let currentWorker = localStorage.getItem('order_app_current_worker') || '';
 
   // Pozycje bieżącego zamówienia (puste na start)
@@ -1247,24 +1274,36 @@
       location.reload();
     }
   }
-  function renderWorkerList() {
-    const select = document.getElementById('savedWorkersSelect');
-    select.innerHTML = '<option value="">-- Wybierz z listy --</option>';
-    workers.forEach(w => {
-      const opt = document.createElement('option');
-      opt.value = w;
-      opt.textContent = w;
-      if (w === currentWorker) opt.selected = true;
-      select.appendChild(opt);
-    });
+  // --- LOGOWANIE I REJESTRACJA PRACOWNIKÓW ---
+  function switchAuthTab(tab) {
+    const loginSec = document.getElementById('authLoginSection');
+    const regSec = document.getElementById('authRegisterSection');
+    const btnLogin = document.getElementById('tabAuthLoginBtn');
+    const btnReg = document.getElementById('tabAuthRegisterBtn');
 
-    document.getElementById('currentWorkerDisplay').textContent = currentWorker;
-    document.getElementById('workerNameInput').value = currentWorker;
+    document.getElementById('loginErrorMsg').style.display = 'none';
+    document.getElementById('regErrorMsg').style.display = 'none';
+
+    if (tab === 'login') {
+      loginSec.style.display = 'block';
+      regSec.style.display = 'none';
+      btnLogin.classList.add('active');
+      btnReg.classList.remove('active');
+    } else {
+      loginSec.style.display = 'none';
+      regSec.style.display = 'block';
+      btnLogin.classList.remove('active');
+      btnReg.classList.add('active');
+    }
   }
 
   function openWorkerModal() {
-    document.getElementById('newWorkerInput').value = currentWorker;
-    renderWorkerList();
+    switchAuthTab('login');
+    document.getElementById('loginUserInput').value = currentWorker || '';
+    document.getElementById('loginPasswordInput').value = '';
+    document.getElementById('regUserInput').value = '';
+    document.getElementById('regPasswordInput').value = '';
+    document.getElementById('regPasswordConfirmInput').value = '';
     document.getElementById('workerModal').style.display = 'flex';
   }
 
@@ -1272,31 +1311,99 @@
     document.getElementById('workerModal').style.display = 'none';
   }
 
-  function selectSavedWorker(val) {
-    if (val) {
-      document.getElementById('newWorkerInput').value = val;
+  async function submitLogin() {
+    const username = document.getElementById('loginUserInput').value.trim();
+    const password = document.getElementById('loginPasswordInput').value;
+    const errBox = document.getElementById('loginErrorMsg');
+
+    if (!username || !password) {
+      errBox.textContent = 'Wypełnij login i hasło!';
+      errBox.style.display = 'block';
+      return;
+    }
+
+    try {
+      const res = await fetch(`${CLOUD_API_URL}/api/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        errBox.textContent = data.error || 'Błąd logowania';
+        errBox.style.display = 'block';
+        return;
+      }
+
+      currentWorker = data.username;
+      localStorage.setItem('order_app_current_worker', currentWorker);
+      if (!workers.includes(currentWorker)) workers.push(currentWorker);
+      localStorage.setItem('order_app_workers', JSON.stringify(workers));
+
+      updateWorkerDisplay();
+      closeWorkerModal();
+      renderAll();
+    } catch (e) {
+      // Fallback lokalny w razie braku sieci
+      currentWorker = username;
+      localStorage.setItem('order_app_current_worker', currentWorker);
+      updateWorkerDisplay();
+      closeWorkerModal();
+      renderAll();
     }
   }
 
-  function saveNewWorker() {
-    const val = document.getElementById('newWorkerInput').value.trim();
-    if (val) {
-      if (!workers.includes(val)) {
-        workers.push(val);
-        localStorage.setItem('order_app_workers', JSON.stringify(workers));
-        saveWorkerToCloud(val);
-      }
-      currentWorker = val;
-      localStorage.setItem('order_app_current_worker', currentWorker);
-      renderWorkerList();
-      renderAll();
+  async function submitRegister() {
+    const username = document.getElementById('regUserInput').value.trim();
+    const password = document.getElementById('regPasswordInput').value;
+    const confirm = document.getElementById('regPasswordConfirmInput').value;
+    const errBox = document.getElementById('regErrorMsg');
+
+    if (!username || !password) {
+      errBox.textContent = 'Wypełnij wszystkie pola!';
+      errBox.style.display = 'block';
+      return;
     }
-    closeWorkerModal();
+
+    if (password !== confirm) {
+      errBox.textContent = 'Hasła nie są identyczne!';
+      errBox.style.display = 'block';
+      return;
+    }
+
+    try {
+      const res = await fetch(`${CLOUD_API_URL}/api/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        errBox.textContent = data.error || 'Błąd rejestracji';
+        errBox.style.display = 'block';
+        return;
+      }
+
+      alert('Konto zostało zarejestrowane w chmurze! Możesz się teraz zalogować.');
+      switchAuthTab('login');
+      document.getElementById('loginUserInput').value = username;
+      document.getElementById('loginPasswordInput').value = password;
+    } catch (e) {
+      errBox.textContent = 'Błąd połączenia z serwerem Render.';
+      errBox.style.display = 'block';
+    }
+  }
+
+  function updateWorkerDisplay() {
+    document.getElementById('currentWorkerDisplay').textContent = currentWorker || '-';
+    document.getElementById('workerNameInput').value = currentWorker || '';
   }
 
   function updateWorkerFromInput() {
     currentWorker = document.getElementById('workerNameInput').value;
-    document.getElementById('currentWorkerDisplay').textContent = currentWorker;
+    document.getElementById('currentWorkerDisplay').textContent = currentWorker || '-';
     renderAll();
   }
 
