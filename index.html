@@ -222,11 +222,37 @@
       border: 1px solid #e2e8f0;
     }
 
+    /* Kontener dla pola wpisywania z podpowiedzią ghost text */
+    .autocomplete-wrapper {
+      position: relative;
+      flex: 1;
+      display: flex;
+      align-items: center;
+    }
+
+    .ghost-input-hint {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 13px;
+      color: rgba(148, 163, 184, 0.65);
+      pointer-events: none;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      user-select: none;
+      z-index: 1;
+    }
+
     .item-row input {
       padding: 6px 8px;
       font-size: 13px;
       border: 1px solid #cbd5e1;
       border-radius: 4px;
+      position: relative;
+      z-index: 2;
+      background: transparent;
     }
 
     /* SEKCJA DRAG AND DROP DLA SŁUPKÓW */
@@ -969,8 +995,14 @@
       Lista zapisanych zamówień. Kliknij na dowolne zamówienie, aby wczytać je do ponownej edycji. Kolejny zapis nadpisze dane tego zamówienia.
     </p>
 
-    <div style="margin-bottom: 12px; display: flex; gap: 10px;">
-      <input type="text" id="searchOrderInput" class="form-control" placeholder="🔍 Szukaj po numerze lub kliencie..." oninput="renderOrdersTable()">
+    <div style="margin-bottom: 12px; display: flex; gap: 10px; align-items: center;">
+      <input type="text" id="searchOrderInput" class="form-control" placeholder="🔍 Szukaj po numerze lub kliencie..." oninput="renderOrdersTable()" style="flex: 1;">
+      <select id="sortOrdersSelect" class="form-control" style="width: 230px;" onchange="renderOrdersTable()">
+        <option value="newest">📅 Od najnowszego do najstarszego</option>
+        <option value="oldest">📅 Od najstarszego do najnowszego</option>
+        <option value="alpha_asc">🔤 Alfabetycznie (A - Z)</option>
+        <option value="alpha_desc">🔤 Alfabetycznie (Z - A)</option>
+      </select>
     </div>
 
     <div style="max-height: 320px; overflow-y: auto;">
@@ -1054,11 +1086,9 @@
       <input type="hidden" id="editWhIndex" value="-1">
       <div style="display: flex; gap: 8px; margin-bottom: 8px;">
         <input type="text" id="newWhName" class="form-control" placeholder="Nazwa np. Furtka wejściowa">
-        <select id="newWhType" class="form-control" style="width: 190px;">
-          <option value="standard">Standardowy (numerowany)</option>
-          <option value="box">Pudełko z małymi częściami</option>
-          <option value="double_gate">Brama dwuskrzydłowa (L/P)</option>
-          <option value="post">Słupek</option>
+        <select id="newWhType" class="form-control" style="width: 250px;">
+          <option value="standard">Standardowy</option>
+          <option value="double_gate">Brama dwuskrzydłowa (dzieli na dwie etykiety lewą i prawą)</option>
         </select>
       </div>
       <div style="display: flex; gap: 8px;">
@@ -1066,6 +1096,17 @@
         <button class="btn-success" id="saveWhBtn" onclick="saveWarehouseItem()">Dodaj</button>
         <button class="btn-secondary" id="cancelEditWhBtn" onclick="cancelEditWarehouse()" style="display: none;">Anuluj edycję</button>
       </div>
+    </div>
+
+    <!-- Pasek sortowania i szukania w magazynie pozycji -->
+    <div style="margin-bottom: 10px; display: flex; gap: 10px; align-items: center;">
+      <input type="text" id="searchWarehouseInput" class="form-control" placeholder="🔍 Szukaj w pozycjach..." oninput="renderWarehouseTable()" style="flex: 1;">
+      <select id="sortWarehouseSelect" class="form-control" style="width: 230px;" onchange="renderWarehouseTable()">
+        <option value="alpha_asc">🔤 Alfabetycznie (A - Z)</option>
+        <option value="alpha_desc">🔤 Alfabetycznie (Z - A)</option>
+        <option value="newest">📅 Od najnowszego do najstarszego</option>
+        <option value="oldest">📅 Od najstarszego do najnowszego</option>
+      </select>
     </div>
 
     <div style="max-height: 250px; overflow-y: auto;">
@@ -1139,14 +1180,14 @@
 </div>
 
 <script>
-  // Domyślny magazyn pozycji
+  // Domyślny magazyn pozycji - tylko typ standardowy oraz brama dwuskrzydłowa
   const defaultWarehouse = [
-    { name: 'Pudełko z małymi częściami', type: 'box', defaultParam: '' },
-    { name: 'Brama dwuskrzydłowa', type: 'double_gate', defaultParam: '' },
-    { name: 'Słupek', type: 'post', defaultParam: '120x120' },
-    { name: 'Furtka wejściowa', type: 'standard', defaultParam: '1000x1500' },
-    { name: 'Przęsło ogrodzeniowe', type: 'standard', defaultParam: '2000x1200' },
-    { name: 'Brama przesuwna', type: 'standard', defaultParam: '4000x1500' }
+    { name: 'Pudełko z małymi częściami', type: 'standard', defaultParam: '', createdAt: 1 },
+    { name: 'Brama dwuskrzydłowa', type: 'double_gate', defaultParam: '', createdAt: 2 },
+    { name: 'Słupek', type: 'standard', defaultParam: '120x120', createdAt: 3 },
+    { name: 'Furtka wejściowa', type: 'standard', defaultParam: '1000x1500', createdAt: 4 },
+    { name: 'Przęsło ogrodzeniowe', type: 'standard', defaultParam: '2000x1200', createdAt: 5 },
+    { name: 'Brama przesuwna', type: 'standard', defaultParam: '4000x1500', createdAt: 6 }
   ];
 
   let warehouse = JSON.parse(localStorage.getItem('order_app_warehouse')) || defaultWarehouse;
@@ -1202,20 +1243,45 @@
   function renderWarehouseTable() {
     const tbody = document.getElementById('warehouseTableBody');
     tbody.innerHTML = '';
-    warehouse.forEach((item, idx) => {
+
+    const query = (document.getElementById('searchWarehouseInput') ? document.getElementById('searchWarehouseInput').value : '').toLowerCase().trim();
+    const sortVal = document.getElementById('sortWarehouseSelect') ? document.getElementById('sortWarehouseSelect').value : 'alpha_asc';
+
+    // Kopiujemy tablicę pozycji z indeksem oryginalnym
+    let listWithIdx = warehouse.map((item, originalIdx) => ({ ...item, originalIdx }));
+
+    // Filtrowanie
+    if (query) {
+      listWithIdx = listWithIdx.filter(item => {
+        return (item.name || '').toLowerCase().includes(query) || (item.defaultParam || '').toLowerCase().includes(query);
+      });
+    }
+
+    // Sortowanie
+    listWithIdx.sort((a, b) => {
+      if (sortVal === 'alpha_asc') return (a.name || '').localeCompare(b.name || '', 'pl');
+      if (sortVal === 'alpha_desc') return (b.name || '').localeCompare(a.name || '', 'pl');
+      if (sortVal === 'newest') return (b.createdAt || b.originalIdx || 0) - (a.createdAt || a.originalIdx || 0);
+      if (sortVal === 'oldest') return (a.createdAt || a.originalIdx || 0) - (b.createdAt || b.originalIdx || 0);
+      return 0;
+    });
+
+    if (listWithIdx.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 15px;">Brak pasujących pozycji</td></tr>';
+      return;
+    }
+
+    listWithIdx.forEach(item => {
       const tr = document.createElement('tr');
-      let typeLabel = 'Standardowy';
-      if (item.type === 'box') typeLabel = 'Pudełko z cz.';
-      if (item.type === 'double_gate') typeLabel = 'Brama dwuskrzydłowa';
-      if (item.type === 'post') typeLabel = 'Słupek';
+      const typeLabel = item.type === 'double_gate' ? 'Brama dwuskrzydłowa' : 'Standardowy';
 
       tr.innerHTML = `
         <td><strong>${item.name}</strong></td>
         <td>${typeLabel}</td>
         <td>${item.defaultParam || '-'}</td>
         <td style="text-align: center;">
-          <button type="button" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px;" onclick="startEditWarehouse(${idx})">✏️</button>
-          <button type="button" class="btn-danger" style="padding: 3px 8px; font-size: 11px;" onclick="deleteWarehouseItem(${idx})">✕</button>
+          <button type="button" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px;" onclick="startEditWarehouse(${item.originalIdx})">✏️</button>
+          <button type="button" class="btn-danger" style="padding: 3px 8px; font-size: 11px;" onclick="deleteWarehouseItem(${item.originalIdx})">✕</button>
         </td>
       `;
       tbody.appendChild(tr);
@@ -1446,12 +1512,24 @@
     tbody.innerHTML = '';
 
     const query = (document.getElementById('searchOrderInput').value || '').toLowerCase().trim();
+    const sortVal = document.getElementById('sortOrdersSelect') ? document.getElementById('sortOrdersSelect').value : 'newest';
 
-    const filtered = savedOrders.filter(o => {
+    let filtered = savedOrders.filter(o => {
       const numMatch = (o.orderNumber || '').toLowerCase().includes(query);
       const clientMatch = (o.clientData || '').toLowerCase().includes(query);
       const modelMatch = (o.model || '').toLowerCase().includes(query);
       return numMatch || clientMatch || modelMatch;
+    });
+
+    // Sortowanie zamówień
+    filtered.sort((a, b) => {
+      if (sortVal === 'alpha_asc') return (a.orderNumber || '').localeCompare(b.orderNumber || '', 'pl');
+      if (sortVal === 'alpha_desc') return (b.orderNumber || '').localeCompare(a.orderNumber || '', 'pl');
+      // Od najnowszego (domyślnie) lub najstarszego
+      const timeA = new Date(a.updatedAt || a.createdAt || a.orderDate || 0).getTime() || 0;
+      const timeB = new Date(b.updatedAt || b.createdAt || b.orderDate || 0).getTime() || 0;
+      if (sortVal === 'oldest') return timeA - timeB;
+      return timeB - timeA;
     });
 
     if (filtered.length === 0) {
@@ -1462,7 +1540,6 @@
     filtered.forEach((ord) => {
       const tr = document.createElement('tr');
       const firstLineClient = (ord.clientData || '-').split('\n')[0].substring(0, 30);
-      const itemsCount = ord.orderItems ? ord.orderItems.length : 0;
 
       tr.innerHTML = `
         <td><strong>${ord.orderNumber}</strong></td>
@@ -1720,7 +1797,12 @@
 
   function checkAdminButton() {
     const btn = document.getElementById('adminPanelNavBtn');
-    if (currentUserIsAdmin || (currentWorker && currentWorker.toLowerCase() === 'dominika')) {
+    if (!btn) return;
+    const workerFromInput = (document.getElementById('workerNameInput') ? document.getElementById('workerNameInput').value : '').trim().toLowerCase();
+    const storedWorker = (currentWorker || localStorage.getItem('order_app_current_worker') || '').trim().toLowerCase();
+    const isAdmin = currentUserIsAdmin || localStorage.getItem('order_app_is_admin') === '1' || workerFromInput === 'dominika' || storedWorker === 'dominika';
+
+    if (isAdmin) {
       btn.style.display = 'inline-block';
     } else {
       btn.style.display = 'none';
@@ -1882,12 +1964,62 @@
 
       row.innerHTML = `
         <input type="number" min="1" max="50" value="${item.qty}" style="width: 50px;" onchange="updateItemQty(${index}, this.value)" title="Ilość">
-        <input type="text" list="warehouseItemsDatalist" value="${item.name || ''}" placeholder="Wpisz lub wybierz pozycję..." style="flex: 1;" oninput="onItemNameChange(${index}, this.value)">
-        <input type="text" placeholder="Profil np. 120x120" value="${item.customParam || ''}" style="width: 120px;" oninput="updateItemParam(${index}, this.value)">
+        <div class="autocomplete-wrapper">
+          <div class="ghost-input-hint" id="ghostHint_${index}"></div>
+          <input type="text" id="itemInput_${index}" value="${item.name || ''}" placeholder="Wpisz pozycję..." style="width: 100%;" 
+                 oninput="handleItemInputTyping(${index}, this.value)" 
+                 onkeydown="handleItemInputKeydown(${index}, event)">
+        </div>
+        <input type="text" placeholder="Profil / wymiary" value="${item.customParam || ''}" style="width: 120px;" oninput="updateItemParam(${index}, this.value)">
         <button type="button" class="btn-danger" onclick="removeItemRow(${index})">✕</button>
       `;
       container.appendChild(row);
     });
+  }
+
+  // Obsługa ghost text i klawisza Enter
+  function handleItemInputTyping(index, text) {
+    orderItems[index].name = text;
+    const ghostEl = document.getElementById(`ghostHint_${index}`);
+
+    if (!text || text.trim().length === 0) {
+      ghostEl.textContent = '';
+      onItemNameChange(index, text);
+      return;
+    }
+
+    const clean = text.toLowerCase();
+    // Szukamy najlepszego dopasowania z magazynu pozycji (zaczynającego się od wpisanego tekstu)
+    const match = warehouse.find(w => (w.name || '').toLowerCase().startsWith(clean));
+
+    if (match && match.name.toLowerCase() !== clean) {
+      // Wyświetlamy resztę tekstu jako półprzezroczysty ghost text
+      const matchedName = match.name;
+      // Dokładne zachowanie wielkości liter wpisanych przez użytkownika + dopełnienie z magazynu
+      const completion = text + matchedName.substring(text.length);
+      ghostEl.textContent = completion;
+      orderItems[index]._bestMatch = matchedName;
+    } else {
+      ghostEl.textContent = '';
+      orderItems[index]._bestMatch = null;
+    }
+
+    onItemNameChange(index, text);
+  }
+
+  function handleItemInputKeydown(index, event) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const ghostEl = document.getElementById(`ghostHint_${index}`);
+      const bestMatch = orderItems[index]._bestMatch;
+
+      if (bestMatch) {
+        document.getElementById(`itemInput_${index}`).value = bestMatch;
+        ghostEl.textContent = '';
+        orderItems[index]._bestMatch = null;
+        onItemNameChange(index, bestMatch);
+      }
+    }
   }
 
   function onItemNameChange(index, value) {
