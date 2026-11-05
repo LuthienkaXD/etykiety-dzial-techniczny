@@ -1384,6 +1384,8 @@
     cancelEditWarehouse();
     renderWarehouseTable();
     document.getElementById('warehouseModal').style.display = 'flex';
+    // Od razu pobierz najświeższe pozycje z chmury
+    fetchCloudWarehouse();
   }
 
   function closeWarehouseModal() {
