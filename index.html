@@ -770,6 +770,9 @@
         <button class="btn-nav" onclick="openWarehouseModal()">
           📦 Magazyn pozycji
         </button>
+        <button class="btn-nav" id="adminPanelNavBtn" onclick="openAdminModal()" style="display: none; background: #fef3c7; color: #92400e; border-color: #fcd34d;">
+          👑 Panel Administratora
+        </button>
       </div>
     </div>
     
@@ -989,6 +992,51 @@
 
     <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px;">
       <button class="btn-secondary" onclick="closeOrdersModal()">Zamknij</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Panel Administratora (dla Dominiki) -->
+<div class="modal-overlay" id="adminModal">
+  <div class="modal-box" style="width: 700px;">
+    <h3>👑 Panel Administratora - Zarządzanie Pracownikami</h3>
+    <p style="font-size: 13px; color: #64748b; margin-bottom: 14px;">
+      Podgląd zarejestrowanych pracowników w chmurze. Możesz edytować ich loginy, resetować hasła oraz usuwać konta.
+    </p>
+
+    <div style="max-height: 280px; overflow-y: auto;">
+      <table class="warehouse-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Login</th>
+            <th>Rola</th>
+            <th>Data rejestracji</th>
+            <th style="width: 140px; text-align: center;">Akcja</th>
+          </tr>
+        </thead>
+        <tbody id="adminUsersTableBody">
+          <!-- Wiersze użytkowników -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Formularz edycji pracownika -->
+    <div id="adminEditUserBox" style="display: none; background: #fefce8; border: 1px solid #fef08a; padding: 12px; border-radius: 6px; margin-top: 14px;">
+      <h4 style="font-size: 13px; margin-bottom: 8px;">Edycja konta pracownika:</h4>
+      <input type="hidden" id="editUserId">
+      <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+        <input type="text" id="editUsernameInput" class="form-control" placeholder="Nowy login...">
+        <input type="password" id="editUserNewPassword" class="form-control" placeholder="Nowe hasło (opcjonalnie)">
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px;">
+        <button class="btn-secondary" onclick="cancelAdminEditUser()">Anuluj</button>
+        <button class="btn-success" onclick="saveAdminEditUser()">Zapisz zmiany w koncie</button>
+      </div>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px;">
+      <button class="btn-secondary" onclick="closeAdminModal()">Zamknij</button>
     </div>
   </div>
 </div>
@@ -1606,18 +1654,21 @@
       }
 
       currentWorker = data.username;
+      currentUserIsAdmin = !!data.isAdmin;
       localStorage.setItem('order_app_current_worker', currentWorker);
-      if (!workers.includes(currentWorker)) workers.push(currentWorker);
-      localStorage.setItem('order_app_workers', JSON.stringify(workers));
+      localStorage.setItem('order_app_is_admin', currentUserIsAdmin ? '1' : '0');
 
       updateWorkerDisplay();
+      checkAdminButton();
       closeWorkerModal();
       renderAll();
     } catch (e) {
-      // Fallback lokalny w razie braku sieci
       currentWorker = username;
+      currentUserIsAdmin = username.toLowerCase() === 'dominika';
       localStorage.setItem('order_app_current_worker', currentWorker);
+      localStorage.setItem('order_app_is_admin', currentUserIsAdmin ? '1' : '0');
       updateWorkerDisplay();
+      checkAdminButton();
       closeWorkerModal();
       renderAll();
     }
@@ -1665,9 +1716,147 @@
     }
   }
 
+  let currentUserIsAdmin = localStorage.getItem('order_app_is_admin') === '1';
+
+  function checkAdminButton() {
+    const btn = document.getElementById('adminPanelNavBtn');
+    if (currentUserIsAdmin || (currentWorker && currentWorker.toLowerCase() === 'dominika')) {
+      btn.style.display = 'inline-block';
+    } else {
+      btn.style.display = 'none';
+    }
+  }
+
+  // --- PANEL ADMINISTRATORA (DOMINIKA) ---
+  let adminUsersList = [];
+
+  async function openAdminModal() {
+    document.getElementById('adminModal').style.display = 'flex';
+    cancelAdminEditUser();
+    await fetchAdminUsers();
+  }
+
+  function closeAdminModal() {
+    document.getElementById('adminModal').style.display = 'none';
+  }
+
+  async function fetchAdminUsers() {
+    const tbody = document.getElementById('adminUsersTableBody');
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 15px;">Ładowanie pracowników z bazy danych...</td></tr>';
+
+    try {
+      const res = await fetch(`${CLOUD_API_URL}/api/admin/users`);
+      if (res.ok) {
+        adminUsersList = await res.json();
+        renderAdminUsersTable();
+      } else {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #ef4444; padding: 15px;">Błąd pobierania listy użytkowników</td></tr>';
+      }
+    } catch (e) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #ef4444; padding: 15px;">Brak połączenia z chmurą</td></tr>';
+    }
+  }
+
+  function renderAdminUsersTable() {
+    const tbody = document.getElementById('adminUsersTableBody');
+    tbody.innerHTML = '';
+
+    if (adminUsersList.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 15px;">Brak pracowników</td></tr>';
+      return;
+    }
+
+    adminUsersList.forEach(u => {
+      const tr = document.createElement('tr');
+      const roleText = u.is_admin ? '<span style="color: #b45309; font-weight: bold;">👑 Administrator</span>' : 'Pracownik';
+      const isMainAdmin = u.username.toLowerCase() === 'dominika';
+
+      tr.innerHTML = `
+        <td>${u.id}</td>
+        <td><strong>${u.username}</strong></td>
+        <td>${roleText}</td>
+        <td>${u.created_at || '-'}</td>
+        <td style="text-align: center;">
+          <button class="btn-secondary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px;" onclick="startAdminEditUser(${u.id}, '${u.username}')">✏️ Edytuj</button>
+          ${!isMainAdmin ? `<button class="btn-danger" style="padding: 3px 8px; font-size: 11px;" onclick="deleteAdminUser(${u.id}, '${u.username}')">✕ Usuń</button>` : '<span style="font-size: 11px; color: #94a3b8;">Główne konto</span>'}
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function startAdminEditUser(id, username) {
+    document.getElementById('editUserId').value = id;
+    document.getElementById('editUsernameInput').value = username;
+    document.getElementById('editUserNewPassword').value = '';
+    document.getElementById('adminEditUserBox').style.display = 'block';
+  }
+
+  function cancelAdminEditUser() {
+    document.getElementById('editUserId').value = '';
+    document.getElementById('editUsernameInput').value = '';
+    document.getElementById('editUserNewPassword').value = '';
+    document.getElementById('adminEditUserBox').style.display = 'none';
+  }
+
+  async function saveAdminEditUser() {
+    const id = document.getElementById('editUserId').value;
+    const username = document.getElementById('editUsernameInput').value.trim();
+    const newPassword = document.getElementById('editUserNewPassword').value;
+
+    if (!username) {
+      alert('Podaj login pracownika!');
+      return;
+    }
+
+    try {
+      const res = await fetch(`${CLOUD_API_URL}/api/admin/users/update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, username, newPassword })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Błąd edycji pracownika');
+        return;
+      }
+
+      alert('Konto pracownika zostało pomyślnie zaktualizowane w chmurze!');
+      cancelAdminEditUser();
+      await fetchAdminUsers();
+    } catch (e) {
+      alert('Błąd połączenia z serwerem');
+    }
+  }
+
+  async function deleteAdminUser(id, username) {
+    if (confirm(`Czy na pewno usunąć konto pracownika "${username}"?`)) {
+      try {
+        const res = await fetch(`${CLOUD_API_URL}/api/admin/users/delete`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.error || 'Błąd usuwania');
+          return;
+        }
+
+        alert(`Konto "${username}" zostało trwale usunięte z bazy.`);
+        await fetchAdminUsers();
+      } catch (e) {
+        alert('Błąd połączenia z serwerem');
+      }
+    }
+  }
+
   function updateWorkerDisplay() {
     document.getElementById('currentWorkerDisplay').textContent = currentWorker || '-';
     document.getElementById('workerNameInput').value = currentWorker || '';
+    checkAdminButton();
   }
 
   function updateWorkerFromInput() {
@@ -2135,7 +2324,8 @@
 
   // Inicjalizacja
   initDates();
-  renderWorkerList();
+  updateWorkerDisplay();
+  checkAdminButton();
   updateWarehouseDatalist();
   renderItemFormRows();
   syncIndividualPosts();
