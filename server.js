@@ -1,14 +1,20 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const PORT = process.env.PORT || 3000;
 const DATA_FILE = path.join(__dirname, 'cloud_data.json');
 
-// Inicjalizacja domyślnych danych
+// Funkcja haszująca hasło
+function hashPassword(pass) {
+  return crypto.createHash('sha256').update(pass + '_salt_salt').digest('hex');
+}
+
+// Inicjalizacja danych - BEZ domyślnych pracowników
 function loadData() {
   const defaultData = {
-    workers: ['Dominika', 'Jan', 'Marek', 'Anna'],
+    workers: [], // Pusta lista użytkowników na start
     warehouse: [
       { name: 'Pudełko z małymi częściami', type: 'box', defaultParam: '' },
       { name: 'Brama dwuskrzydłowa', type: 'double_gate', defaultParam: '' },
@@ -21,7 +27,13 @@ function loadData() {
 
   try {
     if (fs.existsSync(DATA_FILE)) {
-      return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+      const read = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+      // Wymuszamy wyczyszczenie starych przykładowych pracowników jeśli są w pliku
+      if (Array.isArray(read.workers) && read.workers.length > 0 && typeof read.workers[0] === 'string') {
+        read.workers = [];
+        saveData(read);
+      }
+      return read;
     }
   } catch (e) {
     console.error('Błąd odczytu cloud_data.json:', e);
@@ -40,7 +52,6 @@ function saveData(data) {
 let db = loadData();
 
 const server = http.createServer((req, res) => {
-  // Nagłówki CORS, aby frontend na GitHub Pages mógł swobodnie komunikować się z API na Renderze
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -53,7 +64,7 @@ const server = http.createServer((req, res) => {
 
   const url = new URL(req.url, `http://${req.headers.host}`);
 
-  // Serwowanie aplikacji frontendowej (jeśli ktoś wejdzie bezpośrednio na link z Rendera)
+  // Serwowanie aplikacji frontendowej
   if (url.pathname === '/' || url.pathname === '/index.html') {
     const indexPath = path.join(__dirname, 'index.html');
     fs.readFile(indexPath, 'utf8', (err, html) => {
@@ -68,42 +79,100 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // --- API PRACOWNICY ---
-  if (url.pathname === '/api/workers') {
-    if (req.method === 'GET') {
-      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify(db.workers || []));
-      return;
-    }
-
-    if (req.method === 'POST') {
-      let body = '';
-      req.on('data', chunk => body += chunk);
-      req.on('end', () => {
-        try {
-          const { name } = JSON.parse(body);
-          if (name && typeof name === 'string') {
-            const cleanName = name.trim();
-            if (!db.workers.includes(cleanName)) {
-              db.workers.push(cleanName);
-              saveData(db);
-            }
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify({ success: true, workers: db.workers }));
-          } else {
-            res.writeHead(400, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Nieprawidłowe imię pracownika' }));
-          }
-        } catch (e) {
+  // --- API LOGOWANIE PRACOWNIKA ---
+  if (url.pathname === '/api/login' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try {
+        const { username, password } = JSON.parse(body);
+        if (!username || !password) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Błędny JSON' }));
+          res.end(JSON.stringify({ error: 'Podaj login i hasło' }));
+          return;
         }
-      });
-      return;
-    }
+
+        const cleanUser = username.trim();
+        const pwdHash = hashPassword(password);
+
+        const found = db.workers.find(w => w.username.toLowerCase() === cleanUser.toLowerCase());
+        if (!found || found.passwordHash !== pwdHash) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Nieprawidłowy login lub hasło' }));
+          return;
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, username: found.username }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Błąd przetwarzania danych' }));
+      }
+    });
+    return;
   }
 
-  // --- API MAGAZYN (Pobieranie i synchronizacja bazy pozycji) ---
+  // --- API REJESTRACJA PRACOWNIKA ---
+  if (url.pathname === '/api/register' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try {
+        const { username, password } = JSON.parse(body);
+        if (!username || !password) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Wypełnij login i hasło' }));
+          return;
+        }
+
+        const cleanUser = username.trim();
+        if (cleanUser.length < 2) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Login musi mieć min. 2 znaki' }));
+          return;
+        }
+
+        if (password.length < 3) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Hasło musi mieć min. 3 znaki' }));
+          return;
+        }
+
+        const exists = db.workers.some(w => w.username.toLowerCase() === cleanUser.toLowerCase());
+        if (exists) {
+          res.writeHead(409, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Pracownik o takim loginie już istnieje!' }));
+          return;
+        }
+
+        const newWorker = {
+          username: cleanUser,
+          passwordHash: hashPassword(password),
+          createdAt: new Date().toISOString()
+        };
+
+        db.workers.push(newWorker);
+        saveData(db);
+
+        res.writeHead(201, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, username: cleanUser }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Błąd przetwarzania danych' }));
+      }
+    });
+    return;
+  }
+
+  // --- API POBIERANIE LISTY PRACOWNIKÓW (SAME LOGINKI BEZ HASEŁ) ---
+  if (url.pathname === '/api/workers' && req.method === 'GET') {
+    const list = db.workers.map(w => w.username);
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify(list));
+    return;
+  }
+
+  // --- API MAGAZYN ---
   if (url.pathname === '/api/warehouse') {
     if (req.method === 'GET') {
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -140,5 +209,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Serwer chmurowy etykiet działa na porcie ${PORT}`);
+  console.log(`Serwer etykiet działa na porcie ${PORT}`);
 });
