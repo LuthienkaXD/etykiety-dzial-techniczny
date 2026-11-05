@@ -775,7 +775,7 @@
     
     <div class="user-section">
       <span>Zalogowany pracownik:</span>
-      <span class="badge-user" id="currentWorkerDisplay">Dominika</span>
+      <span class="badge-user" id="currentWorkerDisplay">-</span>
       <button class="btn-secondary" onclick="openWorkerModal()">Zmień / Rejestracja</button>
     </div>
   </header>
@@ -787,7 +787,7 @@
 
       <div class="form-group">
         <label for="orderNumber">Numer zamówienia ($):</label>
-        <input type="text" id="orderNumber" class="form-control" placeholder="np. 0870_26" value="0870_26" oninput="renderAll()">
+        <input type="text" id="orderNumber" class="form-control" placeholder="np. 0870_26" value="" oninput="renderAll()">
       </div>
 
       <div class="row-2">
@@ -797,25 +797,23 @@
         </div>
         <div class="form-group">
           <label for="workerNameInput">Imię pracownika (pod datą):</label>
-          <input type="text" id="workerNameInput" class="form-control" value="Dominika" oninput="updateWorkerFromInput()">
+          <input type="text" id="workerNameInput" class="form-control" value="" placeholder="Wpisz imię..." oninput="updateWorkerFromInput()">
         </div>
       </div>
 
       <div class="form-group">
         <label for="clientData">Dane klienta / adres (&):</label>
-        <textarea id="clientData" class="form-control" rows="3" placeholder="Imię, nazwisko, adres, telefon..." oninput="renderAll()">EFI " Colm and Claire Limerick RUAN
-CASTLECONNELL CO. LIMERICK V94 F7D8
-+353 86 368 6300"</textarea>
+        <textarea id="clientData" class="form-control" rows="3" placeholder="Imię, nazwisko, adres, telefon..." oninput="renderAll()"></textarea>
       </div>
 
       <div class="row-2">
         <div class="form-group">
           <label for="orderModel">Model (^):</label>
-          <input type="text" id="orderModel" class="form-control" placeholder="np. Nu" value="Nu" oninput="renderAll()">
+          <input type="text" id="orderModel" class="form-control" placeholder="np. Nu" value="" oninput="renderAll()">
         </div>
         <div class="form-group">
           <label for="orderColor">Kolor (#):</label>
-          <input type="text" id="orderColor" class="form-control" placeholder="np. 581-7016" value="581-7016" oninput="renderAll()">
+          <input type="text" id="orderColor" class="form-control" placeholder="np. 581-7016" value="" oninput="renderAll()">
         </div>
       </div>
 
@@ -888,30 +886,26 @@ CASTLECONNELL CO. LIMERICK V94 F7D8
             <!-- Górna belka: Zamówienie nr $ oraz Data i Pracownik -->
             <div class="header-zone">
               <div class="order-title">
-                Zamówienie nr <span class="order-number-val" id="viewOrderNum">0870_26</span>
+                Zamówienie nr <span class="order-number-val" id="viewOrderNum"></span>
               </div>
               <div class="date-worker-zone">
-                <div class="date-line">Data &nbsp;&nbsp;&nbsp; <span id="viewDate">09.03.2026</span></div>
-                <div class="worker-name-line" id="viewWorker">Dominika</div>
+                <div class="date-line">Data &nbsp;&nbsp;&nbsp; <span id="viewDate"></span></div>
+                <div class="worker-name-line" id="viewWorker"></div>
               </div>
             </div>
 
             <!-- Pole klienta & -->
-            <div class="client-zone" id="viewClient">
-              EFI " Colm and Claire Limerick RUAN
-              CASTLECONNELL CO. LIMERICK V94 F7D8
-              +353 86 368 6300"
-            </div>
+            <div class="client-zone" id="viewClient"></div>
 
             <!-- Model ^ oraz Kolor # -->
             <div class="specs-zone">
               <div class="spec-row">
                 <span class="spec-label">Model</span>
-                <span class="spec-value" id="viewModel">Nu</span>
+                <span class="spec-value" id="viewModel"></span>
               </div>
               <div class="spec-row">
                 <span class="spec-label">Kolor</span>
-                <span class="spec-value" id="viewColor">581-7016</span>
+                <span class="spec-value" id="viewColor"></span>
               </div>
             </div>
 
@@ -1041,14 +1035,10 @@ CASTLECONNELL CO. LIMERICK V94 F7D8
 
   // Domyślna lista pracowników z pamięci lokalnej
   let workers = JSON.parse(localStorage.getItem('order_app_workers')) || ['Dominika', 'Jan', 'Marek', 'Anna'];
-  let currentWorker = localStorage.getItem('order_app_current_worker') || 'Dominika';
+  let currentWorker = localStorage.getItem('order_app_current_worker') || '';
 
-  // Pozycje bieżącego zamówienia
-  let orderItems = [
-    { name: 'Pudełko z małymi częściami', qty: 1, type: 'box', customParam: '' },
-    { name: 'Brama dwuskrzydłowa', qty: 1, type: 'double_gate', customParam: '' },
-    { name: 'Słupek', qty: 2, type: 'post', customParam: '120x120' }
-  ];
+  // Pozycje bieżącego zamówienia (puste na start)
+  let orderItems = [];
 
   // Tablica pojedynczych słupków do sekcji Drag & Drop:
   // Każdy obiekt: { id: string, name: string, profile: string, customDim: string }
@@ -1622,13 +1612,13 @@ CASTLECONNELL CO. LIMERICK V94 F7D8
 
   // --- RENDEROWANIE CAŁOŚCI ---
   function renderAll() {
-    const orderNum = document.getElementById('orderNumber').value || '$';
+    const orderNum = document.getElementById('orderNumber').value || '';
     const rawOrderDate = document.getElementById('orderDate').value;
     const formattedOrderDate = formatDatePL(rawOrderDate);
     const worker = document.getElementById('workerNameInput').value || currentWorker;
-    const clientData = document.getElementById('clientData').value || '&';
-    const model = document.getElementById('orderModel').value || '^';
-    const color = document.getElementById('orderColor').value || '#';
+    const clientData = document.getElementById('clientData').value || '';
+    const model = document.getElementById('orderModel').value || '';
+    const color = document.getElementById('orderColor').value || '';
     const rawBoxDate = document.getElementById('boxDate').value;
     const formattedBoxDate = formatDatePL(rawBoxDate);
     const isBoldDate = document.getElementById('boldDateCheck').checked;
