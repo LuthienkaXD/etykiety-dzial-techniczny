@@ -2235,35 +2235,58 @@
     const hasMultipleModels = validModels.length > 1;
 
     orderItems.forEach((item, index) => {
-      const row = document.createElement('div');
-      row.className = 'item-row';
+      const card = document.createElement('div');
+      card.className = 'item-row';
 
-      // Opcje wyboru modelu dla pozycji
-      let modelSelectHtml = '';
       if (hasMultipleModels) {
-        modelSelectHtml = `
-          <select style="width: 130px; font-size: 12px; font-weight: bold; padding: 5px;" onchange="updateItemModel(${index}, this.value)">
-            <option value="-1" ${item.assignedModelIndex === -1 || item.assignedModelIndex === undefined ? 'selected' : ''}>Bez modelu</option>
-            ${validModels.map(m => `
-              <option value="${m.idx}" ${item.assignedModelIndex === m.idx ? 'selected' : ''}>Do [${m.name}]</option>
-            `).join('')}
-          </select>
+        // Układ DWURZĘDOWY:
+        // Wiersz 1: Ilość, Pozycja (z autouzupełnianiem) oraz przycisk usuwania ✕
+        // Wiersz 2: Model (selektor) oraz Profil / wymiary
+        card.style.flexDirection = 'column';
+        card.style.alignItems = 'stretch';
+        card.style.gap = '6px';
+
+        card.innerHTML = `
+          <div style="display: flex; gap: 8px; align-items: center; width: 100%;">
+            <input type="number" min="1" max="50" value="${item.qty}" style="width: 55px;" onchange="updateItemQty(${index}, this.value)" title="Ilość">
+            <div class="autocomplete-wrapper" style="flex: 1;">
+              <div class="ghost-input-hint" id="ghostHint_${index}"></div>
+              <input type="text" id="itemInput_${index}" value="${item.name || ''}" placeholder="Wpisz pozycję..." style="width: 100%;" 
+                     oninput="handleItemInputTyping(${index}, this.value)" 
+                     onkeydown="handleItemInputKeydown(${index}, event)">
+            </div>
+            <button type="button" class="btn-danger" style="padding: 6px 10px;" onclick="removeItemRow(${index})">✕</button>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center; width: 100%; padding-left: 2px;">
+            <select style="flex: 1; font-size: 13px; font-weight: bold; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 4px; background: #f8fafc;" onchange="updateItemModel(${index}, this.value)">
+              <option value="-1" ${item.assignedModelIndex === -1 || item.assignedModelIndex === undefined ? 'selected' : ''}>Bez modelu</option>
+              ${validModels.map(m => `
+                <option value="${m.idx}" ${item.assignedModelIndex === m.idx ? 'selected' : ''}>Do [${m.name}]</option>
+              `).join('')}
+            </select>
+            <input type="text" placeholder="Profil / wymiary (np. 120x120)" value="${item.customParam || ''}" style="flex: 1; font-size: 13px; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 4px;" oninput="updateItemParam(${index}, this.value)">
+          </div>
+        `;
+      } else {
+        // Układ JEDNORZĘDOWY (gdy jest tylko 1 model lub brak)
+        card.style.flexDirection = 'row';
+        card.style.alignItems = 'center';
+        card.style.gap = '8px';
+
+        card.innerHTML = `
+          <input type="number" min="1" max="50" value="${item.qty}" style="width: 50px;" onchange="updateItemQty(${index}, this.value)" title="Ilość">
+          <div class="autocomplete-wrapper" style="flex: 1;">
+            <div class="ghost-input-hint" id="ghostHint_${index}"></div>
+            <input type="text" id="itemInput_${index}" value="${item.name || ''}" placeholder="Wpisz pozycję..." style="width: 100%;" 
+                   oninput="handleItemInputTyping(${index}, this.value)" 
+                   onkeydown="handleItemInputKeydown(${index}, event)">
+          </div>
+          <input type="text" placeholder="Profil / wymiary" value="${item.customParam || ''}" style="width: 130px;" oninput="updateItemParam(${index}, this.value)">
+          <button type="button" class="btn-danger" onclick="removeItemRow(${index})">✕</button>
         `;
       }
 
-      row.innerHTML = `
-        <input type="number" min="1" max="50" value="${item.qty}" style="width: 50px;" onchange="updateItemQty(${index}, this.value)" title="Ilość">
-        <div class="autocomplete-wrapper">
-          <div class="ghost-input-hint" id="ghostHint_${index}"></div>
-          <input type="text" id="itemInput_${index}" value="${item.name || ''}" placeholder="Wpisz pozycję..." style="width: 100%;" 
-                 oninput="handleItemInputTyping(${index}, this.value)" 
-                 onkeydown="handleItemInputKeydown(${index}, event)">
-        </div>
-        ${modelSelectHtml}
-        <input type="text" placeholder="Profil / wymiary" value="${item.customParam || ''}" style="width: 120px;" oninput="updateItemParam(${index}, this.value)">
-        <button type="button" class="btn-danger" onclick="removeItemRow(${index})">✕</button>
-      `;
-      container.appendChild(row);
+      container.appendChild(card);
     });
   }
 
