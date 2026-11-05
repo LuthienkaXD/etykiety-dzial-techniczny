@@ -2783,7 +2783,6 @@
             const cName = orderColors[item.assignedColorIndex];
             if (cName && cName.trim()) bracketsStr += ` [${cName.trim()}]`;
           }
-          const profileText = postObj.profile ? ` ${postObj.profile}` : (customParam ? ` ${customParam}` : '');
           const fullPostName = `${postObj.name}${profileText}${bracketsStr}`;
 
           units.push({
