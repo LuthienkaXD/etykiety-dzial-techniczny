@@ -748,6 +748,11 @@
         display: block;
       }
 
+      /* Karta główna oraz etykiety łączą się w jeden dokument do druku/PDF */
+      #viewSheet, #viewLabels {
+        display: block !important;
+      }
+
       .pdf-page-container {
         background: none;
         padding: 0;
@@ -1616,7 +1621,7 @@
     const worker = document.getElementById('workerNameInput').value;
     const client = document.getElementById('clientData').value || '';
     const validModels = orderModels.map(m => m.trim()).filter(m => m.length > 0);
-    const model = validModels.join(' / ');
+    const model = validModels.join(', ');
     const color = document.getElementById('orderColor').value || '';
     const boxDate = document.getElementById('boxDate').value;
     const isBoldDate = document.getElementById('boldDateCheck').checked;
@@ -2554,7 +2559,7 @@
       }
     }
     const valid = orderModels.map(m => m.trim()).filter(m => m.length > 0);
-    return valid.join(' / ');
+    return valid.join(', ');
   }
 
   // --- GENEROWANIE ETYKIET ---
@@ -2666,7 +2671,7 @@
     
     // Pobranie modeli
     const validModels = orderModels.map(m => m.trim()).filter(m => m.length > 0);
-    const modelDisplay = validModels.join(' / ');
+    const modelDisplay = validModels.join(', ');
 
     const color = document.getElementById('orderColor').value || '';
     const rawBoxDate = document.getElementById('boxDate').value;
