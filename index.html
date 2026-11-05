@@ -734,10 +734,23 @@
 
     /* Style druku A4 */
     @media print {
-      body {
-        background: none;
-        padding: 0;
-        margin: 0;
+      @page {
+        size: A4 portrait;
+        margin: 6mm 8mm; /* Marginesy drukarki zapobiegające obcinaniu krawędzi */
+      }
+
+      html, body {
+        background: #ffffff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+      }
+
+      .app-container {
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
       }
 
       .top-bar, .panel, .tabs, .actions-bar, .no-print {
@@ -745,36 +758,72 @@
       }
 
       .workspace {
-        display: block;
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
       }
 
       /* Karta główna oraz etykiety łączą się w jeden dokument do druku/PDF */
       #viewSheet, #viewLabels {
         display: block !important;
+        background: transparent !important;
+        padding: 0 !important;
+        margin: 0 !important;
       }
 
       .pdf-page-container {
-        background: none;
-        padding: 0;
+        background: transparent !important;
+        padding: 0 !important;
+        margin: 0 !important;
       }
 
       .sheet-a4 {
-        box-shadow: none;
-        width: 100%;
-        height: 100%;
-        page-break-after: always;
-        break-after: page;
-        padding: 6mm 8mm;
+        box-shadow: none !important;
+        background: #ffffff !important;
+        box-sizing: border-box !important;
+        /* Dokładne wymiary strony A4 z marginesami 6mm góra/dół i 8mm boki */
+        width: 194mm !important;
+        height: 284mm !important;
+        min-height: 284mm !important;
+        max-height: 284mm !important;
+        margin: 0 auto !important;
+        padding: 0 !important;
+        page-break-after: always !important;
+        break-after: page !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        overflow: hidden !important;
+      }
+
+      .sheet-inner-border {
+        box-sizing: border-box !important;
+        width: 100% !important;
+        height: 100% !important;
+      }
+
+      .labels-grid {
+        width: 100% !important;
+        height: 100% !important;
+        padding: 0 !important;
+        gap: 6mm !important;
+        grid-template-rows: repeat(2, 1fr) !important;
+      }
+
+      .label-card {
+        height: auto !important;
+        box-shadow: none !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+
+      .empty-label-card {
+        border-color: #e2e8f0 !important;
+        color: transparent !important;
       }
 
       .label-bottom-input {
         border: none !important;
         background: transparent !important;
-      }
-
-      @page {
-        size: A4 portrait;
-        margin: 0;
       }
     }
   </style>
@@ -2799,6 +2848,7 @@
           gridEl.appendChild(card);
         } else {
           const emptyCard = document.createElement('div');
+          emptyCard.className = 'empty-label-card';
           emptyCard.style.border = '1px dashed #cbd5e1';
           emptyCard.style.borderRadius = '6px';
           emptyCard.style.display = 'flex';
