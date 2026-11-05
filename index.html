@@ -1529,6 +1529,7 @@
         if (Array.isArray(cloudOrders)) {
           savedOrders = cloudOrders;
           localStorage.setItem('order_app_saved_orders', JSON.stringify(savedOrders));
+          renderOrdersTable();
         }
       }
     } catch (e) {
@@ -1553,6 +1554,8 @@
   function openOrdersModal() {
     renderOrdersTable();
     document.getElementById('ordersModal').style.display = 'flex';
+    // Od razu pobierz najświeższe zamówienia z chmury
+    fetchCloudOrders();
   }
 
   function closeOrdersModal() {
@@ -1693,11 +1696,20 @@
     closeOrdersModal();
   }
 
-  function deleteOrder(orderNum) {
+  async function deleteOrder(orderNum) {
     if (confirm(`Czy na pewno usunąć zamówienie nr "${orderNum}" z magazynu zamówień?`)) {
       savedOrders = savedOrders.filter(o => o.orderNumber !== orderNum);
       localStorage.setItem('order_app_saved_orders', JSON.stringify(savedOrders));
       renderOrdersTable();
+      if (CLOUD_API_URL) {
+        try {
+          await fetch(`${CLOUD_API_URL}/api/orders?orderNumber=${encodeURIComponent(orderNum)}`, {
+            method: 'DELETE'
+          });
+        } catch (e) {
+          console.warn('Błąd usuwania zamówienia z chmury:', e);
+        }
+      }
     }
   }
 
