@@ -6,7 +6,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>Etykiety Dział Techniczny</title>
+  <title>Dział Techniczny</title>
   <style>
     :root {
       --primary: #1e3a8a;
@@ -735,6 +735,76 @@
       font-weight: 600;
     }
 
+    
+    /* Główne podstrony aplikacji */
+    .main-nav-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #cbd5e1;
+      padding-bottom: 4px;
+    }
+
+    .main-nav-tab {
+      padding: 10px 22px;
+      font-size: 15px;
+      font-weight: 700;
+      color: #475569;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-bottom: none;
+      border-radius: 8px 8px 0 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .main-nav-tab:hover {
+      background: #f8fafc;
+      color: var(--primary);
+    }
+
+    .main-nav-tab.active {
+      background: var(--primary);
+      color: #ffffff;
+      border-color: var(--primary);
+      box-shadow: 0 -2px 6px rgba(0,0,0,0.06);
+    }
+
+    .subpage-view {
+      display: none;
+    }
+
+    .subpage-view.active {
+      display: block;
+    }
+
+    .subpage-placeholder {
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 60px 40px;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      border: 1px dashed #cbd5e1;
+      margin-top: 10px;
+    }
+
+    .subpage-placeholder h2 {
+      font-size: 24px;
+      color: #1e293b;
+      margin-bottom: 12px;
+    }
+
+    .subpage-placeholder p {
+      color: #64748b;
+      font-size: 15px;
+      max-width: 600px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
     /* Style druku A4 */
     @media print {
       @page {
@@ -754,6 +824,17 @@
         max-width: 100% !important;
         margin: 0 !important;
         padding: 0 !important;
+      }
+
+      
+      .main-nav-bar {
+        display: none !important;
+      }
+      #subpageLabels {
+        display: block !important;
+      }
+      #subpageVerpackung, #subpageMaterials {
+        display: none !important;
       }
 
       .top-bar, .panel, .tabs, .actions-bar, .no-print {
@@ -861,8 +942,8 @@
   <header class="top-bar no-print">
     <div class="brand-section">
       <div>
-        <h1>Etykiety Dział Techniczny</h1>
-        <p style="font-size: 12px; color: #64748b; margin-top: 2px;">Generator Kart Zamówień i Etykiet</p>
+        <h1>Dział Techniczny</h1>
+        <p style="font-size: 12px; color: #64748b; margin-top: 2px;">System Zarządzania i Produkcji</p>
       </div>
       <div class="nav-links">
         <button class="btn-nav" onclick="openOrdersModal()">
@@ -884,7 +965,22 @@
     </div>
   </header>
 
-  <div class="workspace">
+  <!-- Pasek głównych podstron -->
+  <nav class="main-nav-bar no-print">
+    <button class="main-nav-tab active" id="tabNavLabels" onclick="switchMainSubpage('labels')">
+      🏷️ Etykiety
+    </button>
+    <button class="main-nav-tab" id="tabNavVerpackung" onclick="switchMainSubpage('verpackung')">
+      📦 Verpackung
+    </button>
+    <button class="main-nav-tab" id="tabNavMaterials" onclick="switchMainSubpage('materials')">
+      📋 Wykaz materiałów
+    </button>
+  </nav>
+
+  <!-- PODSTRONA 1: Etykiety -->
+  <div id="subpageLabels" class="subpage-view active">
+    <div class="workspace">
     <!-- Panel edycyjny po lewej -->
     <div class="panel no-print">
       <h2>Formularz danych zamówienia</h2>
@@ -1070,6 +1166,25 @@
       </div>
 
     </div>
+  </div>
+</div>
+</div> <!-- Koniec subpageLabels -->
+
+<!-- PODSTRONA 2: Verpackung -->
+<div id="subpageVerpackung" class="subpage-view">
+  <div class="subpage-placeholder">
+    <div style="font-size: 48px; margin-bottom: 14px;">📦</div>
+    <h2>Verpackung (Pakowanie)</h2>
+    <p>Moduł jest przygotowany do zaprojektowania. Zaraz rozpoczniemy dodawanie dedykowanych pól, list pakunkowych i układów.</p>
+  </div>
+</div>
+
+<!-- PODSTRONA 3: Wykaz materiałów -->
+<div id="subpageMaterials" class="subpage-view">
+  <div class="subpage-placeholder">
+    <div style="font-size: 48px; margin-bottom: 14px;">📋</div>
+    <h2>Wykaz materiałów</h2>
+    <p>Moduł jest przygotowany do zaprojektowania. Zaraz rozpoczniemy dodawanie specyfikacji materiałowych, zestawień i profili.</p>
   </div>
 </div>
 
@@ -3090,6 +3205,35 @@
       container.appendChild(pageEl);
     }
   }
+
+
+  // --- GŁÓWNE PODSTRONY (Etykiety / Verpackung / Wykaz materiałów) ---
+  function switchMainSubpage(page) {
+    const pages = ['labels', 'verpackung', 'materials'];
+    const tabMap = {
+      labels: document.getElementById('tabNavLabels'),
+      verpackung: document.getElementById('tabNavVerpackung'),
+      materials: document.getElementById('tabNavMaterials')
+    };
+    const viewMap = {
+      labels: document.getElementById('subpageLabels'),
+      verpackung: document.getElementById('subpageVerpackung'),
+      materials: document.getElementById('subpageMaterials')
+    };
+
+    pages.forEach(p => {
+      if (tabMap[p]) tabMap[p].classList.toggle('active', p === page);
+      if (viewMap[p]) viewMap[p].classList.toggle('active', p === page);
+    });
+
+    // Zapisz preferencję w localStorage
+    localStorage.setItem('dt_active_subpage', page);
+  }
+
+  // Wczytanie zapamiętanej podstrony przy starcie
+  const savedSubpage = localStorage.getItem('dt_active_subpage') || 'labels';
+  switchMainSubpage(savedSubpage);
+
 
   // Inicjalizacja
   initDates();
