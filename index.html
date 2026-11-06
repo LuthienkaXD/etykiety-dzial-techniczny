@@ -1075,7 +1075,7 @@
 
 <!-- Modal Magazynu Zamówień -->
 <div class="modal-overlay" id="ordersModal">
-  <div class="modal-box" style="width: 750px;">
+  <div class="modal-box" style="width: 880px;">
     <h3>📁 Magazyn zamówień</h3>
     <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">
       Lista zapisanych zamówień. Kliknij na dowolne zamówienie, aby wczytać je do ponownej edycji. Kolejny zapis nadpisze dane tego zamówienia.
@@ -1098,7 +1098,7 @@
             <th>Nr zamówienia</th>
             <th>Klient</th>
             <th>Model / Kolor</th>
-            <th>Data</th>
+            <th>Ostatnia zmiana</th>
             <th style="width: 140px; text-align: center;">Akcja</th>
           </tr>
         </thead>
@@ -1572,14 +1572,20 @@
       return;
     }
 
+    const activeWorker = (currentWorker || localStorage.getItem('order_app_current_worker') || document.getElementById('workerNameInput').value || 'Nieznany').trim();
+    const cleanModels = orderModels.map(m => m.trim()).filter(m => m.length > 0);
+    const cleanColors = orderColors.map(c => c.trim()).filter(c => c.length > 0);
+
     orderConfig = {
       orderNumber: orderNum,
       orderDate: document.getElementById('orderDate').value,
       workerName: document.getElementById('workerNameInput').value,
+      lastModifiedBy: activeWorker,
       clientData: document.getElementById('clientData').value,
       orderModels: JSON.parse(JSON.stringify(orderModels)),
+      model: cleanModels.join(', '),
       orderColors: JSON.parse(JSON.stringify(orderColors)),
-      color: orderColors.map(c => c.trim()).filter(c => c.length > 0).join(', '),
+      color: cleanColors.join(', '),
       boxDate: document.getElementById('boxDate').value,
       boldDate: document.getElementById('boldDateCheck').checked,
       pickup: document.getElementById('pickupCheck').checked,
@@ -1613,10 +1619,17 @@
     const sortVal = document.getElementById('sortOrdersSelect') ? document.getElementById('sortOrdersSelect').value : 'newest';
 
     let filtered = savedOrders.filter(o => {
+      let mText = '';
+      if (Array.isArray(o.orderModels)) {
+        mText = o.orderModels.filter(m => m && m.trim().length > 0).join(', ');
+      } else if (o.model) {
+        mText = o.model;
+      }
       const numMatch = (o.orderNumber || '').toLowerCase().includes(query);
       const clientMatch = (o.clientData || '').toLowerCase().includes(query);
-      const modelMatch = (o.model || '').toLowerCase().includes(query);
-      return numMatch || clientMatch || modelMatch;
+      const modelMatch = mText.toLowerCase().includes(query);
+      const workerMatch = (o.lastModifiedBy || o.workerName || '').toLowerCase().includes(query);
+      return numMatch || clientMatch || modelMatch || workerMatch;
     });
 
     // Sortowanie zamówień
@@ -1639,11 +1652,36 @@
       const tr = document.createElement('tr');
       const firstLineClient = (ord.clientData || '-').split('\n')[0].substring(0, 30);
 
+      // Odczyt modeli
+      let modelDisplay = '-';
+      if (Array.isArray(ord.orderModels) && ord.orderModels.length > 0) {
+        const valid = ord.orderModels.map(m => (m || '').trim()).filter(m => m.length > 0);
+        if (valid.length > 0) modelDisplay = valid.join(', ');
+      } else if (ord.model && ord.model.trim().length > 0) {
+        modelDisplay = ord.model.trim();
+      }
+
+      // Odczyt kolorów
+      let colorDisplay = '-';
+      if (Array.isArray(ord.orderColors) && ord.orderColors.length > 0) {
+        const valid = ord.orderColors.map(c => (c || '').trim()).filter(c => c.length > 0);
+        if (valid.length > 0) colorDisplay = valid.join(', ');
+      } else if (ord.color && ord.color.trim().length > 0) {
+        colorDisplay = ord.color.trim();
+      }
+
+      // Osoba wprowadzająca zmianę
+      const modifier = (ord.lastModifiedBy || ord.workerName || '-').trim();
+      const saveDate = ord.savedAt || ord.orderDate || '-';
+
       tr.innerHTML = `
         <td><strong>${ord.orderNumber}</strong></td>
         <td>${firstLineClient}</td>
-        <td>${ord.model || '-'} / ${ord.color || '-'}</td>
-        <td>${ord.savedAt || ord.orderDate || '-'}</td>
+        <td><strong style="color: #0369a1;">${modelDisplay}</strong> / <span>${colorDisplay}</span></td>
+        <td>
+          <div style="font-weight: 600; color: #1e293b;">${saveDate}</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 2px;">👤 ${modifier}</div>
+        </td>
         <td style="text-align: center;">
           <button class="btn-primary" style="padding: 4px 10px; font-size: 12px; margin-right: 4px;" onclick="loadOrderForEdit('${ord.orderNumber}')">Wczytaj</button>
           <button class="btn-danger" style="padding: 4px 8px; font-size: 11px;" onclick="deleteOrder('${ord.orderNumber}')">✕</button>
