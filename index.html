@@ -805,6 +805,60 @@
       line-height: 1.6;
     }
 
+    
+    /* Pasek akcji nad etykietą (Edytuj / Usuń) */
+    .label-actions-overlay {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      display: flex;
+      gap: 5px;
+      z-index: 20;
+    }
+
+    .btn-label-action {
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      padding: 3px 7px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      transition: all 0.15s ease;
+      color: #334155;
+    }
+
+    .btn-label-action:hover {
+      background: #f1f5f9;
+      border-color: #94a3b8;
+    }
+
+    .btn-label-action.delete-btn {
+      color: #dc2626;
+      border-color: #fca5a5;
+    }
+
+    .btn-label-action.delete-btn:hover {
+      background: #fef2f2;
+      border-color: #ef4444;
+    }
+
+    .labels-info-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 8px 14px;
+      margin-bottom: 14px;
+      font-size: 13px;
+    }
+
     /* Style druku A4 */
     @media print {
       @page {
@@ -1160,6 +1214,18 @@
 
       <!-- Widok Etykiet (Grid) -->
       <div id="viewLabels" class="pdf-page-container" style="display: none;">
+
+      <!-- Pasek informacji i przywracania etykiet -->
+      <div class="labels-info-toolbar no-print" id="labelsToolbar">
+        <div style="color: #475569; display: flex; align-items: center; gap: 8px;">
+          <span>🏷️ Liczba wygenerowanych etykiet: <strong id="labelsCountBadge">0</strong></span>
+          <span id="labelsModifiedNotice" style="display: none; background: #fef08a; color: #854d0e; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">⚠️ Etykiety zostały zmodyfikowane</span>
+        </div>
+        <button type="button" class="btn-secondary" id="btnResetAllLabels" onclick="resetAllLabelsToDefault()" style="display: none; font-size: 12px; padding: 5px 10px; background: #ffffff; border: 1px solid #cbd5e1; color: #b91c1c;">
+          🔄 Przywróć wszystkie etykiety do domyślnych
+        </button>
+      </div>
+
         <div id="labelsA4Pages">
           <!-- Strony etykiet w formacie A4 generowane przez JS -->
         </div>
@@ -1225,6 +1291,53 @@
 
     <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px;">
       <button class="btn-secondary" onclick="closeOrdersModal()">Zamknij</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Modal Edycji Pojedynczej Etykiety -->
+<div class="modal-overlay" id="editLabelModal">
+  <div class="modal-box" style="width: 500px;">
+    <h3>✏️ Edycja Etykiety Produktowej</h3>
+    <p style="font-size: 13px; color: #64748b; margin-bottom: 14px;">
+      Możesz zmodyfikować treść tej konkretnej etykiety. Wprowadzone zmiany będą widoczne na podglądzie, wydruku PDF oraz w eksporcie do Excela.
+    </p>
+
+    <div class="form-group" style="margin-bottom: 12px;">
+      <label for="editLabelTitleInput" style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Tytuł pozycji:</label>
+      <input type="text" id="editLabelTitleInput" class="form-control" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;">
+    </div>
+
+    <div class="form-group" style="margin-bottom: 12px;">
+      <label for="editLabelSubtitleInput" style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Podtytuł / Skrzydło (opcjonalnie w nawiasie):</label>
+      <input type="text" id="editLabelSubtitleInput" class="form-control" placeholder="np. lewe skrzydło" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;">
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+      <div class="form-group">
+        <label for="editLabelModelInput" style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Model:</label>
+        <input type="text" id="editLabelModelInput" class="form-control" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;">
+      </div>
+      <div class="form-group">
+        <label for="editLabelColorInput" style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Kolor:</label>
+        <input type="text" id="editLabelColorInput" class="form-control" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;">
+      </div>
+    </div>
+
+    <div class="form-group" style="margin-bottom: 16px;">
+      <label for="editLabelBottomDimInput" style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Wymiar w dolnym polu:</label>
+      <input type="text" id="editLabelBottomDimInput" class="form-control" placeholder="np. 1800" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;">
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+      <button type="button" class="btn-secondary" onclick="restoreSingleLabelDefault()" style="font-size: 12px; color: #475569; padding: 7px 12px;">
+        Przywróć domyślne dla tej etykiety
+      </button>
+      <div style="display: flex; gap: 8px;">
+        <button type="button" class="btn-secondary" onclick="closeEditLabelModal()" style="padding: 7px 14px;">Anuluj</button>
+        <button type="button" class="btn-primary" onclick="saveLabelEditModal()" style="padding: 7px 16px; font-weight: bold;">Zapisz zmiany</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1415,6 +1528,9 @@
 
   // Obiekt przechowujący wpisane wymiary w dolnym prostokącie etykiet dla niesłupków
   let labelCustomBottomDims = {};
+  // Przechowuje modyfikacje poszczególnych etykiet: { [unitIdx]: { deleted: bool, title, subtitle, modelText, colorText, bottomDim } }
+  let labelCustomOverrides = {};
+  let editingLabelIndex = null;
 
   function initDates() {
     const today = new Date();
@@ -1708,6 +1824,7 @@
       orderItems: JSON.parse(JSON.stringify(orderItems)),
       individualPosts: JSON.parse(JSON.stringify(individualPosts)),
       labelCustomBottomDims: JSON.parse(JSON.stringify(labelCustomBottomDims)),
+      labelCustomOverrides: JSON.parse(JSON.stringify(labelCustomOverrides)),
       savedAt: new Date().toLocaleString('pl-PL')
     };
 
@@ -1841,6 +1958,7 @@
     orderItems = ord.orderItems ? JSON.parse(JSON.stringify(ord.orderItems)) : [];
     individualPosts = ord.individualPosts ? JSON.parse(JSON.stringify(ord.individualPosts)) : [];
     labelCustomBottomDims = ord.labelCustomBottomDims ? JSON.parse(JSON.stringify(ord.labelCustomBottomDims)) : {};
+    labelCustomOverrides = ord.labelCustomOverrides ? JSON.parse(JSON.stringify(ord.labelCustomOverrides)) : {};
 
     currentWorker = ord.workerName || currentWorker;
     updateWorkerDisplay();
@@ -1912,16 +2030,11 @@
     for (let p = 0; p < pageCount; p++) {
       const pageUnits = labelUnits.slice(p * pageSize, (p + 1) * pageSize);
 
-      function renderExcelLabelCard(unit, uIdx) {
+      function renderExcelLabelCard(unit) {
         if (!unit) {
           return `<td style="width: 48%; height: 480px; border: 1px dashed #cbd5e1;"></td>`;
         }
-        let currentVal = '';
-        if (unit.type === 'post') {
-          currentVal = unit.bottomDim || '';
-        } else {
-          currentVal = labelCustomBottomDims[uIdx] !== undefined ? labelCustomBottomDims[uIdx] : (unit.bottomDim || '');
-        }
+        let currentVal = unit.bottomDim || '';
 
         return `
           <td style="width: 48%; vertical-align: top; padding: 4px;">
@@ -2941,13 +3054,13 @@
   }
 
   // --- GENEROWANIE ETYKIET ---
-  function generateLabelUnits() {
+  // Generuje listę bazowych etykiet (przed nadpisaniami i usuwaniem)
+  function getBaseLabelUnits() {
     const units = [];
     const nameCounters = {};
-
     let postCursor = 0;
 
-    orderItems.forEach(item => {
+    orderItems.forEach((item, itemIdx) => {
       const qty = parseInt(item.qty) || 1;
       const itemName = getItemDisplayName(item).trim() || 'Pozycja';
       const itemModel = getItemModelForLabel(item);
@@ -2956,36 +3069,45 @@
       const customParam = item.customParam ? item.customParam.trim() : '';
 
       if (itemType === 'box' || itemName.toLowerCase().includes('pudełko') || itemName.toLowerCase().includes('pudelko')) {
-        // Pudełko z częściami - BEZ NUMERU "nr 1"
         for (let i = 0; i < qty; i++) {
           units.push({
+            origIndex: units.length,
+            key: 'item_' + itemIdx + '_box_' + i,
             type: 'box',
             title: itemName,
             subtitle: '',
-            modelText: itemModel, colorText: itemColor, bottomDim: ''
+            modelText: itemModel,
+            colorText: itemColor,
+            bottomDim: ''
           });
         }
       } else if (itemType === 'double_gate' || itemName.toLowerCase().includes('brama dwuskrzydłowa') || itemName.toLowerCase().includes('brama dwuskrzydlowa')) {
-        // Brama dwuskrzydłowa
         for (let i = 0; i < qty; i++) {
           nameCounters['brama'] = (nameCounters['brama'] || 0) + 1;
           const currentNr = nameCounters['brama'];
 
           units.push({
+            origIndex: units.length,
+            key: 'item_' + itemIdx + '_gate_' + i + '_left',
             type: 'double_gate',
             title: `${itemName} nr ${currentNr}`,
             subtitle: 'lewe skrzydło',
-            modelText: itemModel, colorText: itemColor, bottomDim: ''
+            modelText: itemModel,
+            colorText: itemColor,
+            bottomDim: ''
           });
           units.push({
+            origIndex: units.length,
+            key: 'item_' + itemIdx + '_gate_' + i + '_right',
             type: 'double_gate',
             title: `${itemName} nr ${currentNr}`,
             subtitle: 'prawe skrzydło',
-            modelText: itemModel, colorText: itemColor, bottomDim: ''
+            modelText: itemModel,
+            colorText: itemColor,
+            bottomDim: ''
           });
         }
       } else if (isPostItem(item)) {
-        // Słupki
         for (let i = 0; i < qty; i++) {
           const postObj = individualPosts[postCursor] || { name: item.name, profile: customParam, customDim: '' };
           const postNr = postCursor + 1;
@@ -3002,25 +3124,32 @@
           const fullPostName = `${postObj.name}${profileText}${bracketsStr}`;
 
           units.push({
+            origIndex: units.length,
+            key: 'post_' + postCursor,
             type: 'post',
             postIndex: postCursor,
             title: `${fullPostName} nr ${postNr}`,
             subtitle: '',
-            modelText: itemModel, colorText: itemColor, bottomDim: postObj.customDim || ''
+            modelText: itemModel,
+            colorText: itemColor,
+            bottomDim: postObj.customDim || ''
           });
           postCursor++;
         }
       } else {
-        // Inne pozycje
         for (let i = 0; i < qty; i++) {
           nameCounters[itemName] = (nameCounters[itemName] || 0) + 1;
           const currentNr = nameCounters[itemName];
 
           units.push({
+            origIndex: units.length,
+            key: 'item_' + itemIdx + '_std_' + i,
             type: 'standard',
             title: `${itemName} nr ${currentNr}`,
             subtitle: '',
-            modelText: itemModel, colorText: itemColor, bottomDim: ''
+            modelText: itemModel,
+            colorText: itemColor,
+            bottomDim: ''
           });
         }
       }
@@ -3029,15 +3158,167 @@
     return units;
   }
 
-  function handleLabelDimChange(unitIndex, value, unitObj) {
+  // Zwraca ostateczną listę etykiet (z uwzględnieniem edycji i usunięć)
+  function generateLabelUnits() {
+    const baseUnits = getBaseLabelUnits();
+    const finalUnits = [];
+
+    baseUnits.forEach((baseUnit, origIdx) => {
+      const override = labelCustomOverrides[origIdx];
+      // Jeśli oznaczona jako usunięta - pomijamy
+      if (override && override.deleted) {
+        return;
+      }
+
+      // Klonujemy obiekt jednostki
+      const unit = { ...baseUnit };
+
+      // Jeśli jest nadpisanie pól tekstowych:
+      if (override) {
+        if (override.title !== undefined) unit.title = override.title;
+        if (override.subtitle !== undefined) unit.subtitle = override.subtitle;
+        if (override.modelText !== undefined) unit.modelText = override.modelText;
+        if (override.colorText !== undefined) unit.colorText = override.colorText;
+        if (override.bottomDim !== undefined) unit.bottomDim = override.bottomDim;
+      }
+
+      // Wymiar w dolnym polu
+      if (unit.type === 'post' && unit.postIndex !== undefined) {
+        if (individualPosts[unit.postIndex] && individualPosts[unit.postIndex].customDim !== undefined) {
+          unit.bottomDim = individualPosts[unit.postIndex].customDim;
+        }
+      } else if (labelCustomBottomDims[origIdx] !== undefined) {
+        unit.bottomDim = labelCustomBottomDims[origIdx];
+      }
+
+      finalUnits.push(unit);
+    });
+
+    return finalUnits;
+  }
+
+  function handleLabelDimChange(origIndex, value, unitObj) {
     if (unitObj && unitObj.type === 'post' && unitObj.postIndex !== undefined) {
       if (individualPosts[unitObj.postIndex]) {
         individualPosts[unitObj.postIndex].customDim = value;
         renderPostsManager();
       }
     } else {
-      labelCustomBottomDims[unitIndex] = value;
+      labelCustomBottomDims[origIndex] = value;
     }
+  }
+
+  // --- ZARZĄDZANIE EDYCJĄ I USUWANIEM ETYKIET ---
+  function deleteLabelUnit(origIndex, title) {
+    if (confirm(`Czy na pewno usunąć etykietę: "${title}"?`)) {
+      if (!labelCustomOverrides[origIndex]) {
+        labelCustomOverrides[origIndex] = {};
+      }
+      labelCustomOverrides[origIndex].deleted = true;
+      renderAll();
+    }
+  }
+
+  function openEditLabelModal(origIndex) {
+    editingLabelIndex = origIndex;
+    const baseUnits = getBaseLabelUnits();
+    const base = baseUnits[origIndex] || {};
+    const ov = labelCustomOverrides[origIndex] || {};
+
+    const validModels = orderModels.map(m => m.trim()).filter(m => m.length > 0);
+    const defaultModel = base.modelText || validModels.join(', ');
+
+    const validColors = orderColors.map(c => c.trim()).filter(c => c.length > 0);
+    const defaultColor = base.colorText || validColors.join(', ');
+
+    let defaultDim = '';
+    if (base.type === 'post' && base.postIndex !== undefined) {
+      defaultDim = (individualPosts[base.postIndex] && individualPosts[base.postIndex].customDim) || '';
+    } else {
+      defaultDim = labelCustomBottomDims[origIndex] !== undefined ? labelCustomBottomDims[origIndex] : (base.bottomDim || '');
+    }
+
+    document.getElementById('editLabelTitleInput').value = ov.title !== undefined ? ov.title : (base.title || '');
+    document.getElementById('editLabelSubtitleInput').value = ov.subtitle !== undefined ? ov.subtitle : (base.subtitle || '');
+    document.getElementById('editLabelModelInput').value = ov.modelText !== undefined ? ov.modelText : defaultModel;
+    document.getElementById('editLabelColorInput').value = ov.colorText !== undefined ? ov.colorText : defaultColor;
+    document.getElementById('editLabelBottomDimInput').value = ov.bottomDim !== undefined ? ov.bottomDim : defaultDim;
+
+    document.getElementById('editLabelModal').style.display = 'flex';
+  }
+
+  function closeEditLabelModal() {
+    document.getElementById('editLabelModal').style.display = 'none';
+    editingLabelIndex = null;
+  }
+
+  function saveLabelEditModal() {
+    if (editingLabelIndex === null) return;
+    const origIndex = editingLabelIndex;
+
+    if (!labelCustomOverrides[origIndex]) {
+      labelCustomOverrides[origIndex] = {};
+    }
+
+    const newTitle = document.getElementById('editLabelTitleInput').value.trim();
+    const newSubtitle = document.getElementById('editLabelSubtitleInput').value.trim();
+    const newModel = document.getElementById('editLabelModelInput').value.trim();
+    const newColor = document.getElementById('editLabelColorInput').value.trim();
+    const newBottomDim = document.getElementById('editLabelBottomDimInput').value.trim();
+
+    labelCustomOverrides[origIndex].title = newTitle;
+    labelCustomOverrides[origIndex].subtitle = newSubtitle;
+    labelCustomOverrides[origIndex].modelText = newModel;
+    labelCustomOverrides[origIndex].colorText = newColor;
+    labelCustomOverrides[origIndex].bottomDim = newBottomDim;
+
+    // Jeśli to słupek, aktualizujemy również w individualPosts
+    const baseUnits = getBaseLabelUnits();
+    const base = baseUnits[origIndex];
+    if (base && base.type === 'post' && base.postIndex !== undefined && individualPosts[base.postIndex]) {
+      individualPosts[base.postIndex].customDim = newBottomDim;
+      renderPostsManager();
+    } else {
+      labelCustomBottomDims[origIndex] = newBottomDim;
+    }
+
+    closeEditLabelModal();
+    renderAll();
+  }
+
+  function restoreSingleLabelDefault() {
+    if (editingLabelIndex === null) return;
+    const origIndex = editingLabelIndex;
+
+    if (confirm('Czy na pewno przywrócić domyślne dane dla tej etykiety?')) {
+      delete labelCustomOverrides[origIndex];
+      delete labelCustomBottomDims[origIndex];
+      const baseUnits = getBaseLabelUnits();
+      const base = baseUnits[origIndex];
+      if (base && base.type === 'post' && base.postIndex !== undefined && individualPosts[base.postIndex]) {
+        individualPosts[base.postIndex].customDim = '';
+        renderPostsManager();
+      }
+      closeEditLabelModal();
+      renderAll();
+    }
+  }
+
+  function resetAllLabelsToDefault() {
+    const hasOverrides = Object.keys(labelCustomOverrides).length > 0;
+    if (!hasOverrides) return;
+
+    if (confirm('Czy na pewno przywrócić wszystkie etykiety do domyślnych (anulować wszystkie edycje i usunięcia)?')) {
+      labelCustomOverrides = {};
+      renderAll();
+    }
+  }
+
+  function hasAnyLabelModifications() {
+    return Object.keys(labelCustomOverrides).some(k => {
+      const o = labelCustomOverrides[k];
+      return o && (o.deleted || o.title !== undefined || o.modelText !== undefined || o.colorText !== undefined || o.subtitle !== undefined || o.bottomDim !== undefined);
+    });
   }
 
   // --- RENDEROWANIE CAŁOŚCI ---
@@ -3117,6 +3398,17 @@
     container.innerHTML = '';
 
     const labelUnits = generateLabelUnits();
+
+    // Aktualizacja paska informacyjnego o etykietach
+    const countBadge = document.getElementById('labelsCountBadge');
+    if (countBadge) countBadge.textContent = labelUnits.length;
+
+    const modifiedNotice = document.getElementById('labelsModifiedNotice');
+    const resetAllBtn = document.getElementById('btnResetAllLabels');
+    const isModified = hasAnyLabelModifications();
+    if (modifiedNotice) modifiedNotice.style.display = isModified ? 'inline-block' : 'none';
+    if (resetAllBtn) resetAllBtn.style.display = isModified ? 'inline-flex' : 'none';
+
     const pageSize = 4;
     const pageCount = Math.ceil(labelUnits.length / pageSize) || 1;
 
@@ -3135,15 +3427,24 @@
         if (unit) {
           const card = document.createElement('div');
           card.className = 'label-card';
+          const origIdx = unit.origIndex;
 
-          let currentVal = '';
-          if (unit.type === 'post') {
-            currentVal = unit.bottomDim || '';
-          } else {
-            currentVal = labelCustomBottomDims[uIdx] !== undefined ? labelCustomBottomDims[uIdx] : (unit.bottomDim || '');
-          }
+          let currentVal = unit.bottomDim || '';
+
+          // Bezpieczny tytuł do promptu usuwania
+          const safeTitle = (unit.title || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
 
           card.innerHTML = `
+            <!-- Pasek akcji na etykiecie (Edytuj / Usuń) - ukryty na wydruku no-print -->
+            <div class="label-actions-overlay no-print">
+              <button type="button" class="btn-label-action edit-btn" onclick="openEditLabelModal(${origIdx})" title="Edytuj tę etykietę">
+                ✏️ Edytuj
+              </button>
+              <button type="button" class="btn-label-action delete-btn" onclick="deleteLabelUnit(${origIdx}, '${safeTitle}')" title="Usuń tę etykietę">
+                ✕ Usuń
+              </button>
+            </div>
+
             <!-- Strzałka w prawym górnym rogu -->
             <div class="label-arrow-box">
               <div class="label-arrow-head"></div>
@@ -3179,10 +3480,10 @@
               </div>
             </div>
 
-            <!-- Dolny prostokąt z możliwością dopisania wymiaru (przy słupkach domyślnie pusty / powiązany z listą słupków) -->
+            <!-- Dolny prostokąt z możliwością dopisania wymiaru -->
             <div class="label-bottom-dim-box">
               <input type="text" class="label-bottom-input" placeholder="Wpisz wymiar..." value="${currentVal}" 
-                     oninput="handleLabelDimChange(${uIdx}, this.value, labelUnits[${uIdx}])">
+                     oninput="handleLabelDimChange(${origIdx}, this.value, labelUnits[${uIdx}])">
             </div>
           `;
           gridEl.appendChild(card);
@@ -3207,7 +3508,7 @@
   }
 
 
-  // --- GŁÓWNE PODSTRONY (Etykiety / Verpackung / Wykaz materiałów) ---
+    // --- GŁÓWNE PODSTRONY (Etykiety / Verpackung / Wykaz materiałów) ---
   function switchMainSubpage(page) {
     const pages = ['labels', 'verpackung', 'materials'];
     const tabMap = {
