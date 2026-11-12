@@ -859,6 +859,91 @@
       font-size: 13px;
     }
 
+    
+    /* Style tabeli Verpackung */
+    .vp-excel-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 2px solid #000000;
+      font-family: Calibri, Arial, sans-serif;
+      background: #ffffff;
+    }
+
+    .vp-excel-table td, .vp-excel-table th {
+      border: 1px solid #000000;
+      padding: 6px 8px;
+      font-size: 13px;
+      vertical-align: middle;
+      box-sizing: border-box;
+    }
+
+    .vp-big-pakowanie-cell {
+      font-size: 24px;
+      font-weight: bold;
+      text-align: center;
+      vertical-align: middle;
+      background: #ffffff;
+      letter-spacing: 1px;
+      width: 375px;
+    }
+
+    .vp-label-cell {
+      font-size: 14px;
+      font-weight: normal;
+      background: #ffffff;
+      width: 120px;
+    }
+
+    .vp-val-cell {
+      font-size: 14px;
+      background: #ffffff;
+    }
+
+    .vp-bold-cell {
+      font-weight: bold;
+      font-size: 15px;
+    }
+
+    .vp-thead-row th {
+      background: #f1f5f9;
+      font-weight: bold;
+      font-size: 13px;
+      padding: 7px 8px;
+      border: 1px solid #000000;
+    }
+
+    .vp-cell-input {
+      width: 100%;
+      border: none;
+      outline: none;
+      font-family: inherit;
+      font-size: 13px;
+      background: transparent;
+      padding: 2px 4px;
+      box-sizing: border-box;
+    }
+
+    .vp-cell-input:focus {
+      background: #eff6ff;
+    }
+
+    /* Kafelki zbiorów */
+    .set-list-card {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e2e8f0;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .set-list-card:hover {
+      background: #f8fafc;
+    }
+
+    .set-list-card.active {
+      background: #e0f2fe;
+      border-left: 4px solid #0284c7;
+    }
+
     /* Style druku A4 */
     @media print {
       @page {
@@ -899,6 +984,26 @@
         display: block !important;
         margin: 0 !important;
         padding: 0 !important;
+      }
+
+      
+      #subpageVerpackung.active {
+        display: block !important;
+      }
+      #viewVerpackungSheet {
+        display: block !important;
+        background: transparent !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      .verpackung-a4-page {
+        box-shadow: none !important;
+        background: #ffffff !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: auto !important;
+        padding: 0 !important;
+        margin: 0 !important;
       }
 
       /* Karta główna oraz etykiety łączą się w jeden dokument do druku/PDF */
@@ -1000,11 +1105,24 @@
         <p style="font-size: 12px; color: #64748b; margin-top: 2px;">System Zarządzania i Produkcji</p>
       </div>
       <div class="nav-links">
-        <button class="btn-nav" onclick="openOrdersModal()">
+        <!-- Magazyn zamówień - widoczny zawsze we wszystkich podstronach -->
+        <button class="btn-nav" id="btnNavOrders" onclick="openOrdersModal()">
           📁 Magazyn zamówień
         </button>
-        <button class="btn-nav" onclick="openWarehouseModal()">
+        <!-- Magazyn pozycji - widoczny tylko na stronie Etykiety -->
+        <button class="btn-nav" id="btnNavWarehouseItems" onclick="openWarehouseModal()">
           📦 Magazyn pozycji
+        </button>
+        <!-- Magazyn opcji i zbiory - widoczne tylko na stronie Verpackung -->
+        <button class="btn-nav" id="btnNavOptions" onclick="openOptionsModal()" style="display: none;">
+          ⚙️ Magazyn opcji
+        </button>
+        <button class="btn-nav" id="btnNavSets" onclick="openSetsModal()" style="display: none;">
+          📚 Magazyn zbiorów
+        </button>
+        <!-- Magazyn profili - widoczny tylko na stronie Wykaz materiałów -->
+        <button class="btn-nav" id="btnNavProfiles" onclick="openProfilesModal()" style="display: none;">
+          🧱 Magazyn profili
         </button>
         <button class="btn-nav" id="adminPanelNavBtn" onclick="openAdminModal()" style="display: none; background: #fef3c7; color: #92400e; border-color: #fcd34d;">
           👑 Panel Administratora
@@ -1237,13 +1355,173 @@
 </div> <!-- Koniec subpageLabels -->
 
 <!-- PODSTRONA 2: Verpackung -->
+
+<!-- PODSTRONA 2: Verpackung -->
 <div id="subpageVerpackung" class="subpage-view">
-  <div class="subpage-placeholder">
-    <div style="font-size: 48px; margin-bottom: 14px;">📦</div>
-    <h2>Verpackung (Pakowanie)</h2>
-    <p>Moduł jest przygotowany do zaprojektowania. Zaraz rozpoczniemy dodawanie dedykowanych pól, list pakunkowych i układów.</p>
+  <div class="workspace">
+    <!-- Panel boczny Verpackung -->
+    <div class="panel no-print" style="width: 380px; min-width: 340px;">
+      <h2 style="margin-bottom: 6px;">📦 Konfiguracja Verpackung</h2>
+      <p style="font-size: 13px; color: #64748b; margin-bottom: 16px;">
+        Uzupełnij numer zamówienia lub wybierz zbiory opcji pakowania.
+      </p>
+
+      <div class="form-group" style="margin-bottom: 14px;">
+        <label for="vpOrderNumber">Numer zamówienia ($):</label>
+        <div style="display: flex; gap: 6px;">
+          <input type="text" id="vpOrderNumber" class="form-control" placeholder="np. 5361_26" oninput="handleVpOrderNumberInput(this.value)" style="font-weight: bold; font-size: 16px;">
+          <button type="button" class="btn-secondary" onclick="syncVpOrderFromEtykiety()" title="Pobierz RAL i Model jeśli wpisano w Etykietach" style="padding: 0 10px; font-size: 13px;">🔄</button>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 14px;">
+        <label for="vpClientInput">Klient:</label>
+        <textarea id="vpClientInput" class="form-control" rows="2" placeholder="Wpisz dane klienta..." oninput="renderVerpackungView()"></textarea>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+        <div class="form-group">
+          <label for="vpRalInput">RAL (Kolor):</label>
+          <input type="text" id="vpRalInput" class="form-control" placeholder="np. 7016 str" oninput="handleVpRalInput(this.value)">
+        </div>
+        <div class="form-group">
+          <label for="vpModelInput">Model:</label>
+          <input type="text" id="vpModelInput" class="form-control" placeholder="np. Modern" oninput="handleVpModelInput(this.value)">
+        </div>
+      </div>
+
+      <!-- Wybór i wstawianie zbioru -->
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+        <label style="font-weight: 700; font-size: 13px; color: #1e293b; margin-bottom: 6px; display: block;">
+          📚 Wstaw gotowy zbiór do pakowania:
+        </label>
+        <div style="display: flex; gap: 6px;">
+          <select id="vpSelectSet" class="form-control" style="flex: 1; font-size: 13px;">
+            <option value="">-- Wybierz zbiór --</option>
+          </select>
+          <button type="button" class="btn-primary" onclick="addSetToVerpackung()" style="padding: 6px 12px; font-size: 13px;">+ Dodaj</button>
+        </div>
+      </div>
+
+      <!-- Dodawanie pojedynczej opcji z Magazynu Opcji -->
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+        <label style="font-weight: 700; font-size: 13px; color: #1e293b; margin-bottom: 6px; display: block;">
+          ⚙️ Dodaj pozycję z Magazynu Opcji:
+        </label>
+        <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+          <select id="vpSelectOption" class="form-control" style="flex: 1; font-size: 13px;" onchange="onVpSelectOptionChange()">
+            <option value="">-- Wybierz opcję z bazy --</option>
+          </select>
+          <button type="button" class="btn-primary" onclick="addOptionToVerpackung()" style="padding: 6px 12px; font-size: 13px;">+ Dodaj</button>
+        </div>
+        <button type="button" class="btn-secondary" onclick="addEmptyRowToVerpackung()" style="width: 100%; font-size: 12px; padding: 6px;">
+          ➕ Dodaj pusty wiersz ręcznie
+        </button>
+      </div>
+
+      <!-- Przyciski akcji Verpackung -->
+      <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <button class="btn-primary" onclick="printVerpackung()" style="flex: 1; padding: 12px; font-size: 15px;">
+          🖨️ Drukuj / PDF
+        </button>
+        <button class="btn-secondary" onclick="exportVerpackungToExcel()" style="padding: 12px 16px; font-size: 14px; background: #0284c7; color: white;" title="Eksportuj Verpackung do Excela">
+          📊 Eksport Excel
+        </button>
+      </div>
+      <div style="margin-top: 8px;">
+        <button class="btn-success" onclick="saveVerpackungToWarehouse()" style="width: 100%; padding: 12px; font-size: 15px; font-weight: bold;">
+          💾 Zapisz Verpackung w Magazynie Zamówień
+        </button>
+      </div>
+    </div>
+
+    <!-- Arkusz Verpackung (Podgląd i Druk 1:1 jak w pliku Excel) -->
+    <div style="flex: 1; overflow-x: auto;">
+      <div class="actions-bar no-print" style="margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
+        <div style="font-weight: bold; color: #334155;">
+          📄 Podgląd dokumentu Verpackung (Pakowanie)
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn-secondary" onclick="clearVerpackungItems()" style="font-size: 12px; color: #dc2626;">
+            🗑️ Wyczyść listę pozycji
+          </button>
+        </div>
+      </div>
+
+      <div id="viewVerpackungSheet" class="pdf-page-container">
+        <div class="sheet-a4 verpackung-a4-page">
+          <!-- Tabela nagłówkowa Pakowanie -->
+          <table class="vp-excel-table" id="vpHeaderTable">
+            <colgroup>
+              <col style="width: 55px;">
+              <col style="width: 320px;">
+              <col style="width: 75px;">
+              <col style="width: 75px;">
+              <col style="width: 95px;">
+              <col style="width: 95px;">
+              <col style="width: 130px;">
+            </colgroup>
+            <tbody>
+              <!-- Wiersz 2: Pakowanie (merge A2:B5), Zamówienie nr: [C2], _26 [D2:G2] -->
+              <tr style="height: 38px;">
+                <td rowspan="4" colspan="2" class="vp-big-pakowanie-cell">
+                  Pakowanie
+                </td>
+                <td class="vp-label-cell" style="font-weight: bold; font-size: 14px;">Zamówienie nr:</td>
+                <td colspan="4" class="vp-val-cell vp-bold-cell" id="vpViewOrderNum">_26</td>
+              </tr>
+              <!-- Wiersz 3: Klient -->
+              <tr style="height: 34px;">
+                <td class="vp-label-cell">Klient</td>
+                <td colspan="4" class="vp-val-cell" id="vpViewClient"></td>
+              </tr>
+              <!-- Wiersz 4: RAL -->
+              <tr style="height: 34px;">
+                <td class="vp-label-cell">RAL</td>
+                <td colspan="4" class="vp-val-cell" id="vpViewRal"></td>
+              </tr>
+              <!-- Wiersz 5: Model -->
+              <tr style="height: 34px;">
+                <td class="vp-label-cell">Model</td>
+                <td colspan="4" class="vp-val-cell" id="vpViewModel"></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Tabela pozycji tabeli pakowania -->
+          <table class="vp-excel-table" id="vpItemsTable" style="margin-top: 15px;">
+            <colgroup>
+              <col style="width: 55px;">
+              <col style="width: 320px;">
+              <col style="width: 75px;">
+              <col style="width: 75px;">
+              <col style="width: 95px;">
+              <col style="width: 95px;">
+              <col style="width: 130px;">
+              <col class="no-print" style="width: 45px;">
+            </colgroup>
+            <thead>
+              <tr class="vp-thead-row">
+                <th style="text-align: center;">Lp.</th>
+                <th>Nazwa</th>
+                <th style="text-align: center;">J.m.</th>
+                <th style="text-align: center;">Ilość</th>
+                <th style="text-align: center;">Element</th>
+                <th style="text-align: center;">Montaż</th>
+                <th>Opis</th>
+                <th class="no-print" style="width: 45px; text-align: center;">Usuń</th>
+              </tr>
+            </thead>
+            <tbody id="vpItemsTbody">
+              <!-- Generowane dynamicznie wiersze pozycji -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
+
 
 <!-- PODSTRONA 3: Wykaz materiałów -->
 <div id="subpageMaterials" class="subpage-view">
@@ -1338,6 +1616,247 @@
         <button type="button" class="btn-secondary" onclick="closeEditLabelModal()" style="padding: 7px 14px;">Anuluj</button>
         <button type="button" class="btn-primary" onclick="saveLabelEditModal()" style="padding: 7px 16px; font-weight: bold;">Zapisz zmiany</button>
       </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Modal Magazynu Opcji -->
+<div class="modal-overlay" id="optionsModal">
+  <div class="modal-box" style="width: 900px; max-width: 96%;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <h3 style="margin: 0;">⚙️ Magazyn opcji pakowania</h3>
+      <button class="btn-secondary" onclick="closeOptionsModal()" style="padding: 4px 10px;">✕</button>
+    </div>
+    <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">
+      Baza wszystkich dostępnych opcji i elementów złącznych. Możesz dodawać nowe opcje, edytować je oraz przypisywać do jednego lub wielu zbiorów.
+    </p>
+
+    <!-- Formularz dodawania/edycji opcji -->
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 14px;">
+      <h4 id="optionFormTitle" style="font-size: 13px; margin-bottom: 8px; color: #1e293b;">Dodaj nową opcję:</h4>
+      <input type="hidden" id="editOptionIndex" value="-1">
+      
+      <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1.5fr 1.5fr 2fr; gap: 8px; margin-bottom: 10px;">
+        <div>
+          <label style="font-size: 11px; font-weight: 600;">Nazwa:</label>
+          <input type="text" id="optFormName" class="form-control" placeholder="np. Śruba M6x20 DIN 933" style="font-size: 12px; padding: 6px;">
+        </div>
+        <div>
+          <label style="font-size: 11px; font-weight: 600;">J.m.:</label>
+          <input type="text" id="optFormJm" class="form-control" placeholder="szt., kpl." value="szt." style="font-size: 12px; padding: 6px;">
+        </div>
+        <div>
+          <label style="font-size: 11px; font-weight: 600;">Ilość:</label>
+          <input type="text" id="optFormQty" class="form-control" placeholder="1" value="1" style="font-size: 12px; padding: 6px;">
+        </div>
+        <div>
+          <label style="font-size: 11px; font-weight: 600;">Element:</label>
+          <input type="text" id="optFormElement" class="form-control" placeholder="Furtka, Brama..." style="font-size: 12px; padding: 6px;">
+        </div>
+        <div>
+          <label style="font-size: 11px; font-weight: 600;">Montaż:</label>
+          <input type="text" id="optFormMontaz" class="form-control" placeholder="np. wózek, zamek" style="font-size: 12px; padding: 6px;">
+        </div>
+        <div>
+          <label style="font-size: 11px; font-weight: 600;">Opis:</label>
+          <input type="text" id="optFormOpis" class="form-control" placeholder="opcjonalny opis" style="font-size: 12px; padding: 6px;">
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 8px;">
+        <button type="button" class="btn-secondary" id="cancelEditOptBtn" onclick="cancelEditOption()" style="display: none; padding: 5px 12px; font-size: 12px;">Anuluj edycję</button>
+        <button type="button" class="btn-primary" id="saveOptBtn" onclick="saveOptionFromForm()" style="padding: 5px 16px; font-size: 12px; font-weight: bold;">+ Dodaj opcję</button>
+      </div>
+    </div>
+
+    <!-- Wyszukiwarka opcji -->
+    <div style="margin-bottom: 10px; display: flex; gap: 8px;">
+      <input type="text" id="searchOptionsInput" class="form-control" placeholder="🔍 Szukaj opcji po nazwie, elemencie..." oninput="renderOptionsTable()" style="flex: 1; font-size: 13px;">
+    </div>
+
+    <!-- Tabela opcji -->
+    <div style="max-height: 280px; overflow-y: auto;">
+      <table class="warehouse-table">
+        <thead>
+          <tr>
+            <th>Nazwa</th>
+            <th style="width: 60px; text-align: center;">J.m.</th>
+            <th style="width: 60px; text-align: center;">Ilość</th>
+            <th>Element</th>
+            <th>Montaż</th>
+            <th>Opis</th>
+            <th style="width: 170px; text-align: center;">Akcja</th>
+          </tr>
+        </thead>
+        <tbody id="optionsTableBody">
+          <!-- Wiersze opcji -->
+        </tbody>
+      </table>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
+      <button class="btn-secondary" onclick="closeOptionsModal()">Zamknij</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Przypisywania Opcji do Zbiorów -->
+<div class="modal-overlay" id="assignOptionModal">
+  <div class="modal-box" style="width: 580px;">
+    <h3>📌 Przypisz opcję do zbiorów</h3>
+    <p id="assignOptionSubtitle" style="font-size: 13px; color: #0284c7; font-weight: 600; margin-bottom: 10px;"></p>
+    <p style="font-size: 12px; color: #64748b; margin-bottom: 12px;">
+      Zaznacz zbiory, do których ma należeć ta opcja. W każdym zbiorze możesz później indywidualnie dostosować ilość, j.m. i opis.
+    </p>
+
+    <div style="max-height: 240px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; margin-bottom: 14px;" id="assignSetsChecklist">
+      <!-- Checkboxy ze zbiorami -->
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <button class="btn-secondary" onclick="openNewSetPromptFromAssign()" style="font-size: 12px;">+ Utwórz nowy zbiór</button>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn-secondary" onclick="closeAssignOptionModal()">Anuluj</button>
+        <button class="btn-primary" onclick="saveOptionAssignment()">Zapisz przypisania</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Magazynu Zbiorów -->
+<div class="modal-overlay" id="setsModal">
+  <div class="modal-box" style="width: 950px; max-width: 96%;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <h3 style="margin: 0;">📚 Magazyn zbiorów pakowania</h3>
+      <button class="btn-secondary" onclick="closeSetsModal()" style="padding: 4px 10px;">✕</button>
+    </div>
+    <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">
+      Zbiory grupują opcje pakowania (np. dla wybranego elementu i modelu: <em>Furtka - Comb</em>, <em>Brama - Nu</em>). Widać ostatnią edytującą osobę i godzinę.
+    </p>
+
+    <!-- Formularz tworzenia nowego zbioru -->
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 14px;">
+      <h4 style="font-size: 13px; margin-bottom: 8px; color: #1e293b;">Utwórz nowy zbiór:</h4>
+      <div style="display: grid; grid-template-columns: 1.5fr 1.5fr 2fr auto; gap: 8px; align-items: flex-end;">
+        <div>
+          <label style="font-size: 11px; font-weight: 600;">Element (np. Furtka, Przęsło):</label>
+          <input type="text" id="newSetElement" class="form-control" placeholder="np. Furtka" style="font-size: 12px; padding: 6px;">
+        </div>
+        <div>
+          <label style="font-size: 11px; font-weight: 600;">Model (np. Comb, Nu, Modern):</label>
+          <input type="text" id="newSetModel" class="form-control" placeholder="np. Comb" style="font-size: 12px; padding: 6px;">
+        </div>
+        <div>
+          <label style="font-size: 11px; font-weight: 600;">Indywidualna nazwa zbioru (opcjonalnie):</label>
+          <input type="text" id="newSetCustomTitle" class="form-control" placeholder="Domyślnie: Element - Model" style="font-size: 12px; padding: 6px;">
+        </div>
+        <button type="button" class="btn-primary" onclick="createSetFromForm()" style="padding: 7px 16px; font-size: 13px; font-weight: bold;">+ Dodaj zbiór</button>
+      </div>
+    </div>
+
+    <!-- Lista zbiorów -->
+    <div style="display: grid; grid-template-columns: 320px 1fr; gap: 14px; min-height: 320px;">
+      <!-- Kolumna lewa: lista zbiorów -->
+      <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow-y: auto; max-height: 420px; background: #ffffff;">
+        <div style="padding: 8px; background: #f1f5f9; font-weight: 600; font-size: 12px; border-bottom: 1px solid #e2e8f0;">
+          Dostępne zbiory:
+        </div>
+        <div id="setsListContainer">
+          <!-- Kafelki zbiorów -->
+        </div>
+      </div>
+
+      <!-- Kolumna prawa: zawartość wybranego zbioru -->
+      <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; background: #ffffff; display: flex; flex-direction: column;">
+        <div id="setDetailsHeader" style="margin-bottom: 10px;">
+          <h4 id="setDetailsTitle" style="font-size: 16px; color: #1e3a8a; margin-bottom: 4px;">Wybierz zbiór z listy po lewej</h4>
+          <div id="setDetailsMeta" style="font-size: 11px; color: #64748b;"></div>
+        </div>
+
+        <div id="setItemsTableWrapper" style="flex: 1; overflow-y: auto; display: none;">
+          <table class="warehouse-table" style="margin-top: 0;">
+            <thead>
+              <tr>
+                <th>Nazwa</th>
+                <th style="width: 50px;">J.m.</th>
+                <th style="width: 50px;">Ilość</th>
+                <th style="width: 75px;">Element</th>
+                <th style="width: 75px;">Montaż</th>
+                <th>Opis</th>
+                <th style="width: 40px; text-align: center;">✕</th>
+              </tr>
+            </thead>
+            <tbody id="setItemsTbody">
+              <!-- Pozycje w zbiorze -->
+            </tbody>
+          </table>
+        </div>
+
+        <div id="setDetailsActions" style="display: none; justify-content: space-between; align-items: center; margin-top: 10px; border-top: 1px solid #e2e8f0; padding-top: 10px;">
+          <button class="btn-secondary" onclick="openAddOptionToCurrentSetModal()" style="font-size: 12px;">+ Przypisz kolejną opcję do tego zbioru</button>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn-danger" onclick="deleteCurrentSet()" style="font-size: 12px; padding: 4px 10px;">Usuń cały zbiór</button>
+            <button class="btn-success" onclick="saveCurrentSetItemsChanges()" style="font-size: 12px; padding: 6px 14px; font-weight: bold;">💾 Zapisz zmiany w zbiorze</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
+      <button class="btn-secondary" onclick="closeSetsModal()">Zamknij</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Magazynu Profili (Wykaz materiałów) -->
+<div class="modal-overlay" id="profilesModal">
+  <div class="modal-box" style="width: 800px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <h3 style="margin: 0;">🧱 Magazyn profili (Wykaz materiałów)</h3>
+      <button class="btn-secondary" onclick="closeProfilesModal()" style="padding: 4px 10px;">✕</button>
+    </div>
+    <p style="font-size: 13px; color: #64748b; margin-bottom: 14px;">
+      Baza profili i materiałów konstrukcyjnych. Moduł przygotowany do rozbudowy w podstronie Wykaz materiałów.
+    </p>
+
+    <!-- Formularz dodawania profilu -->
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 14px;">
+      <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr auto; gap: 8px; align-items: flex-end;">
+        <div>
+          <label style="font-size: 11px; font-weight: 600;">Nazwa profilu:</label>
+          <input type="text" id="newProfileName" class="form-control" placeholder="np. Profil 80x20x1.2" style="font-size: 12px; padding: 6px;">
+        </div>
+        <div>
+          <label style="font-size: 11px; font-weight: 600;">Typ / Zastosowanie:</label>
+          <input type="text" id="newProfileType" class="form-control" placeholder="np. Sztacheta, Rama" style="font-size: 12px; padding: 6px;">
+        </div>
+        <div>
+          <label style="font-size: 11px; font-weight: 600;">Dł. handlowa:</label>
+          <input type="text" id="newProfileLen" class="form-control" placeholder="np. 6000 mm" style="font-size: 12px; padding: 6px;">
+        </div>
+        <button type="button" class="btn-primary" onclick="addProfileFromForm()" style="padding: 7px 14px; font-size: 12px; font-weight: bold;">+ Dodaj profil</button>
+      </div>
+    </div>
+
+    <div style="max-height: 260px; overflow-y: auto;">
+      <table class="warehouse-table">
+        <thead>
+          <tr>
+            <th>Nazwa profilu</th>
+            <th>Typ / Zastosowanie</th>
+            <th>Długość handlowa</th>
+            <th style="width: 60px; text-align: center;">Usuń</th>
+          </tr>
+        </thead>
+        <tbody id="profilesTableBody">
+          <!-- Wiersze profili -->
+        </tbody>
+      </table>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
+      <button class="btn-secondary" onclick="closeProfilesModal()">Zamknij</button>
     </div>
   </div>
 </div>
@@ -1789,6 +2308,8 @@
     document.getElementById('ordersModal').style.display = 'flex';
     // Od razu pobierz najświeższe zamówienia z chmury
     fetchCloudOrders();
+  fetchCloudOptions();
+  fetchCloudSets();
   }
 
   function closeOrdersModal() {
@@ -1914,9 +2435,14 @@
           <div style="font-weight: 600; color: #1e293b;">${saveDate}</div>
           <div style="font-size: 11px; color: #64748b; margin-top: 2px;">👤 ${modifier}</div>
         </td>
-        <td style="text-align: center;">
-          <button class="btn-primary" style="padding: 4px 10px; font-size: 12px; margin-right: 4px;" onclick="loadOrderForEdit('${ord.orderNumber}')">Wczytaj</button>
-          <button class="btn-danger" style="padding: 4px 8px; font-size: 11px;" onclick="deleteOrder('${ord.orderNumber}')">✕</button>
+        <td style="text-align: center; white-space: nowrap;">
+          <div style="display: inline-flex; align-items: center; gap: 4px;">
+            <select class="form-control" style="padding: 3px 6px; font-size: 11px; width: 140px; background: #f8fafc;" onchange="handleOrderLoadSelect('${ord.orderNumber}', this.value); this.value='';">
+              <option value="">📂 Wczytaj...</option>
+              ${renderLoadOptionsForOrder(ord)}
+            </select>
+            <button class="btn-danger" style="padding: 3px 6px; font-size: 11px;" onclick="deleteOrder('${ord.orderNumber}')" title="Usuń zamówienie">✕</button>
+          </div>
         </td>
       `;
       tbody.appendChild(tr);
@@ -2991,6 +3517,89 @@
     renderAll();
   }
 
+
+  function renderLoadOptionsForOrder(ord) {
+    const hasLabels = (ord.orderItems && ord.orderItems.length > 0) || ord.hasLabels !== false;
+    const hasVp = !!(ord.verpackung || ord.hasVerpackung);
+    const hasMat = !!(ord.materials || ord.hasMaterials);
+
+    let opts = '';
+    // Jeśli są oba moduły:
+    if (hasLabels && hasVp) {
+      opts += '<option value="all">Wszystko (Etykiety + Verpackung)</option>';
+      opts += '<option value="labels">Tylko Etykiety</option>';
+      opts += '<option value="verpackung">Tylko Verpackung</option>';
+    } else if (hasVp && !hasLabels) {
+      opts += '<option value="verpackung">Tylko Verpackung</option>';
+    } else {
+      opts += '<option value="labels">Tylko Etykiety</option>';
+      if (hasVp) opts += '<option value="verpackung">Tylko Verpackung</option>';
+    }
+
+    if (hasMat) {
+      opts += '<option value="materials">Tylko Wykaz materiałów</option>';
+    }
+
+    return opts;
+  }
+
+  function handleOrderLoadSelect(orderNum, choice) {
+    if (!choice) return;
+    const ord = savedOrders.find(o => o.orderNumber === orderNum);
+    if (!ord) return;
+
+    if (choice === 'labels') {
+      loadOrderForEdit(orderNum);
+      switchMainSubpage('labels');
+    } else if (choice === 'verpackung') {
+      loadVerpackungForEdit(orderNum);
+      switchMainSubpage('verpackung');
+    } else if (choice === 'all') {
+      loadOrderForEdit(orderNum);
+      loadVerpackungForEdit(orderNum);
+      // Przełącz na aktualną podstronę lub labels
+      const curSub = localStorage.getItem('dt_active_subpage') || 'labels';
+      switchMainSubpage(curSub);
+    }
+  }
+
+  function loadVerpackungForEdit(orderNum) {
+    const ord = savedOrders.find(o => o.orderNumber === orderNum);
+    if (!ord) return;
+
+    const vp = ord.verpackung || {};
+    document.getElementById('vpOrderNumber').value = ord.orderNumber || '';
+    document.getElementById('vpClientInput').value = vp.client || ord.clientData || '';
+    
+    // RAL (kolor)
+    let c = vp.ral || '';
+    if (!c) {
+      if (Array.isArray(ord.orderColors)) c = ord.orderColors.filter(x => x && x.trim()).join(', ');
+      else if (ord.color) c = ord.color;
+    }
+    document.getElementById('vpRalInput').value = c;
+
+    // Model
+    let m = vp.model || '';
+    if (!m) {
+      if (Array.isArray(ord.orderModels)) m = ord.orderModels.filter(x => x && x.trim()).join(', ');
+      else if (ord.model) m = ord.model;
+    }
+    document.getElementById('vpModelInput').value = m;
+
+    if (Array.isArray(vp.items) && vp.items.length > 0) {
+      verpackungState.items = JSON.parse(JSON.stringify(vp.items));
+    } else {
+      verpackungState.items = [
+        { name: 'Szkic montażowy', jm: 'kpl.', qty: '1', element: '', montaz: '', opis: '' },
+        { name: 'Próbka farby', jm: 'szt.', qty: '1', element: '', montaz: '', opis: '' }
+      ];
+    }
+
+    renderVerpackungView();
+    closeOrdersModal();
+  }
+
   // --- ZAKŁADKI ---
   function switchTab(tab) {
     const viewSheet = document.getElementById('viewSheet');
@@ -3508,7 +4117,986 @@
   }
 
 
-    // --- GŁÓWNE PODSTRONY (Etykiety / Verpackung / Wykaz materiałów) ---
+  
+  // ==========================================
+  // STAN I FUNKCJE VERPACKUNG, OPCJI I ZBIORÓW
+  // ==========================================
+
+  // Domyślne opcje
+  const defaultOptions = [
+    { name: 'Szkic montażowy', jm: 'kpl.', qty: '1', element: '', montaz: '', opis: '', createdAt: 1 },
+    { name: 'Próbka farby', jm: 'szt.', qty: '1', element: '', montaz: '', opis: '', createdAt: 2 },
+    { name: 'Śruba M6x20 DIN 933, podkładka DIN 9021, nakrętka M6 DIN 934', jm: 'kpl.', qty: '4', element: 'Furtka', montaz: 'zamek', opis: '', createdAt: 3 },
+    { name: 'Wózek jezdny 5-rolkowy wahliwy', jm: 'kpl.', qty: '2', element: 'Brama przesuwna', montaz: 'szyna', opis: '', createdAt: 4 },
+    { name: 'Zamek hakowy z wkładką i kluczami', jm: 'kpl.', qty: '1', element: 'Furtka', montaz: 'skrzydło', opis: '', createdAt: 5 },
+    { name: 'Zawias regulowany M16/M20', jm: 'szt.', qty: '2', element: 'Brama dwuskrzydłowa', montaz: 'słupek', opis: '', createdAt: 6 },
+    { name: 'Odbój dolny bramy', jm: 'szt.', qty: '1', element: 'Brama dwuskrzydłowa', montaz: 'podłoże', opis: '', createdAt: 7 }
+  ];
+
+  let packingOptions = JSON.parse(localStorage.getItem('order_app_options')) || defaultOptions;
+
+  // Domyślne zbiory
+  const defaultSets = [
+    {
+      id: 1,
+      title: 'Furtka - Comb',
+      element: 'Furtka',
+      model: 'Comb',
+      items: [
+        { name: 'Szkic montażowy', jm: 'kpl.', qty: '1', element: 'Furtka', montaz: '', opis: '' },
+        { name: 'Próbka farby', jm: 'szt.', qty: '1', element: 'Furtka', montaz: '', opis: '' },
+        { name: 'Śruba M6x20 DIN 933, podkładka DIN 9021, nakrętka M6 DIN 934', jm: 'kpl.', qty: '4', element: 'Furtka', montaz: 'zamek', opis: '' },
+        { name: 'Zamek hakowy z wkładką i kluczami', jm: 'kpl.', qty: '1', element: 'Furtka', montaz: 'skrzydło', opis: '' }
+      ],
+      lastModifiedBy: 'System',
+      lastModifiedAt: new Date().toLocaleString('pl-PL'),
+      createdAt: 1
+    },
+    {
+      id: 2,
+      title: 'Furtka - Blacha',
+      element: 'Furtka',
+      model: 'Blacha',
+      items: [
+        { name: 'Szkic montażowy', jm: 'kpl.', qty: '1', element: 'Furtka', montaz: '', opis: '' },
+        { name: 'Próbka farby', jm: 'szt.', qty: '1', element: 'Furtka', montaz: '', opis: '' },
+        { name: 'Śruba M6x20 DIN 933, podkładka DIN 9021, nakrętka M6 DIN 934', jm: 'kpl.', qty: '4', element: 'Furtka', montaz: 'zamek', opis: '' }
+      ],
+      lastModifiedBy: 'System',
+      lastModifiedAt: new Date().toLocaleString('pl-PL'),
+      createdAt: 2
+    },
+    {
+      id: 3,
+      title: 'Brama dwuskrzydłowa - Nu',
+      element: 'Brama dwuskrzydłowa',
+      model: 'Nu',
+      items: [
+        { name: 'Szkic montażowy', jm: 'kpl.', qty: '1', element: 'Brama dwuskrzydłowa', montaz: '', opis: '' },
+        { name: 'Próbka farby', jm: 'szt.', qty: '1', element: 'Brama dwuskrzydłowa', montaz: '', opis: '' },
+        { name: 'Śruba M6x20 DIN 933, podkładka DIN 9021, nakrętka M6 DIN 934', jm: 'kpl.', qty: '8', element: 'Brama dwuskrzydłowa', montaz: 'zawias', opis: '' },
+        { name: 'Zawias regulowany M16/M20', jm: 'szt.', qty: '4', element: 'Brama dwuskrzydłowa', montaz: 'słupek', opis: '' },
+        { name: 'Odbój dolny bramy', jm: 'szt.', qty: '1', element: 'Brama dwuskrzydłowa', montaz: 'podłoże', opis: '' }
+      ],
+      lastModifiedBy: 'System',
+      lastModifiedAt: new Date().toLocaleString('pl-PL'),
+      createdAt: 3
+    }
+  ];
+
+  let packingSets = JSON.parse(localStorage.getItem('order_app_sets')) || defaultSets;
+
+  // Domyślne profile (Wykaz materiałów)
+  const defaultProfiles = [
+    { name: 'Profil 80x20x1.2', type: 'Sztacheta', length: '6000 mm' },
+    { name: 'Profil 60x40x2.0', type: 'Rama', length: '6000 mm' },
+    { name: 'Profil 100x100x3.0', type: 'Słupek', length: '6000 mm' },
+    { name: 'Profil 120x120x3.0', type: 'Słupek', length: '6000 mm' },
+    { name: 'Cechownik 80x80x5.0', type: 'Szyna bramy', length: '6000 mm' }
+  ];
+
+  let materialsProfiles = JSON.parse(localStorage.getItem('order_app_profiles')) || defaultProfiles;
+
+  // Bieżący stan formularza Verpackung
+  let verpackungState = {
+    orderNumber: '',
+    client: '',
+    ral: '',
+    model: '',
+    items: [
+      { name: 'Szkic montażowy', jm: 'kpl.', qty: '1', element: '', montaz: '', opis: '' },
+      { name: 'Próbka farby', jm: 'szt.', qty: '1', element: '', montaz: '', opis: '' }
+    ]
+  };
+
+  // Indeks aktualnie edytowanego zbioru w modal
+  let selectedSetIndex = 0;
+  let optionToAssignIdx = null;
+
+  // --- OBSŁUGA PÓL VERPACKUNG ---
+  function handleVpOrderNumberInput(val) {
+    verpackungState.orderNumber = val;
+    // Auto-uzupełnienie RAL i Model z Etykiet jeśli istnieje zamówienie o tym numerze lub jest już wpisane w Etykietach
+    syncVpOrderFromEtykiety();
+    renderVerpackungView();
+  }
+
+  function handleVpRalInput(val) {
+    verpackungState.ral = val;
+    // Jeśli w etykietach kolor jest pusty, uzupełnij go
+    if (orderColors && (!orderColors[0] || orderColors[0].trim() === '')) {
+      orderColors[0] = val;
+      renderColorsInputs();
+      renderAll();
+    }
+    renderVerpackungView();
+  }
+
+  function handleVpModelInput(val) {
+    verpackungState.model = val;
+    // Jeśli w etykietach model jest pusty, uzupełnij go
+    if (orderModels && (!orderModels[0] || orderModels[0].trim() === '')) {
+      orderModels[0] = val;
+      renderModelsInputs();
+      renderAll();
+    }
+    renderVerpackungView();
+  }
+
+  function syncVpOrderFromEtykiety() {
+    const etyNum = (document.getElementById('orderNumber').value || '').trim();
+    const vpNum = (document.getElementById('vpOrderNumber').value || '').trim();
+
+    // 1. Jeśli numery się zgadzają lub vpNum pasuje do zapisanego zamówienia w magazynie
+    if (vpNum && etyNum && vpNum.toLowerCase() === etyNum.toLowerCase()) {
+      const validCols = orderColors.map(c => c.trim()).filter(c => c.length > 0);
+      if (validCols.length > 0 && !document.getElementById('vpRalInput').value) {
+        document.getElementById('vpRalInput').value = validCols.join(', ');
+        verpackungState.ral = validCols.join(', ');
+      }
+      const validMods = orderModels.map(m => m.trim()).filter(m => m.length > 0);
+      if (validMods.length > 0 && !document.getElementById('vpModelInput').value) {
+        document.getElementById('vpModelInput').value = validMods.join(', ');
+        verpackungState.model = validMods.join(', ');
+      }
+    } else if (vpNum) {
+      // Sprawdź czy jest w savedOrders
+      const foundOrd = savedOrders.find(o => (o.orderNumber || '').trim().toLowerCase() === vpNum.toLowerCase());
+      if (foundOrd) {
+        let m = '';
+        if (Array.isArray(foundOrd.orderModels)) m = foundOrd.orderModels.filter(x => x && x.trim()).join(', ');
+        else if (foundOrd.model) m = foundOrd.model;
+        let c = '';
+        if (Array.isArray(foundOrd.orderColors)) c = foundOrd.orderColors.filter(x => x && x.trim()).join(', ');
+        else if (foundOrd.color) c = foundOrd.color;
+
+        if (c && !document.getElementById('vpRalInput').value) {
+          document.getElementById('vpRalInput').value = c;
+          verpackungState.ral = c;
+        }
+        if (m && !document.getElementById('vpModelInput').value) {
+          document.getElementById('vpModelInput').value = m;
+          verpackungState.model = m;
+        }
+      }
+    }
+  }
+
+  function renderVerpackungView() {
+    const vpNum = document.getElementById('vpOrderNumber').value || '';
+    const vpClient = document.getElementById('vpClientInput').value || '';
+    const vpRal = document.getElementById('vpRalInput').value || '';
+    const vpModel = document.getElementById('vpModelInput').value || '';
+
+    verpackungState.orderNumber = vpNum;
+    verpackungState.client = vpClient;
+    verpackungState.ral = vpRal;
+    verpackungState.model = vpModel;
+
+    document.getElementById('vpViewOrderNum').textContent = vpNum || '_26';
+    document.getElementById('vpViewClient').textContent = vpClient;
+    document.getElementById('vpViewRal').textContent = vpRal;
+    document.getElementById('vpViewModel').textContent = vpModel;
+
+    const tbody = document.getElementById('vpItemsTbody');
+    tbody.innerHTML = '';
+
+    verpackungState.items.forEach((item, idx) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="text-align: center; font-weight: bold; width: 45px;">${idx + 1}</td>
+        <td><input type="text" class="vp-cell-input" value="${(item.name || '').replace(/"/g, '&quot;')}" oninput="updateVpItem(${idx}, 'name', this.value)"></td>
+        <td style="text-align: center;"><input type="text" class="vp-cell-input" style="text-align: center;" value="${(item.jm || '').replace(/"/g, '&quot;')}" oninput="updateVpItem(${idx}, 'jm', this.value)"></td>
+        <td style="text-align: center;"><input type="text" class="vp-cell-input" style="text-align: center;" value="${(item.qty !== undefined ? item.qty : '').replace(/"/g, '&quot;')}" oninput="updateVpItem(${idx}, 'qty', this.value)"></td>
+        <td style="text-align: center;"><input type="text" class="vp-cell-input" style="text-align: center;" value="${(item.element || '').replace(/"/g, '&quot;')}" oninput="updateVpItem(${idx}, 'element', this.value)"></td>
+        <td style="text-align: center;"><input type="text" class="vp-cell-input" style="text-align: center;" value="${(item.montaz || '').replace(/"/g, '&quot;')}" oninput="updateVpItem(${idx}, 'montaz', this.value)"></td>
+        <td><input type="text" class="vp-cell-input" value="${(item.opis || '').replace(/"/g, '&quot;')}" oninput="updateVpItem(${idx}, 'opis', this.value)"></td>
+        <td class="no-print" style="text-align: center;">
+          <button type="button" class="btn-danger" style="padding: 2px 6px; font-size: 11px;" onclick="removeVpItem(${idx})">✕</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function updateVpItem(index, field, val) {
+    if (verpackungState.items[index]) {
+      verpackungState.items[index][field] = val;
+    }
+  }
+
+  function removeVpItem(index) {
+    verpackungState.items.splice(index, 1);
+    renderVerpackungView();
+  }
+
+  function addEmptyRowToVerpackung() {
+    verpackungState.items.push({ name: '', jm: 'szt.', qty: '1', element: '', montaz: '', opis: '' });
+    renderVerpackungView();
+  }
+
+  function clearVerpackungItems() {
+    if (confirm('Czy na pewno wyczyścić pozycje tabeli Verpackung?')) {
+      verpackungState.items = [];
+      renderVerpackungView();
+    }
+  }
+
+  function populateVpSelects() {
+    const selSet = document.getElementById('vpSelectSet');
+    if (selSet) {
+      selSet.innerHTML = '<option value="">-- Wybierz zbiór --</option>';
+      packingSets.forEach((s, idx) => {
+        const opt = document.createElement('option');
+        opt.value = idx;
+        opt.textContent = s.title || (s.element + ' - ' + (s.model || ''));
+        selSet.appendChild(opt);
+      });
+    }
+
+    const selOpt = document.getElementById('vpSelectOption');
+    if (selOpt) {
+      selOpt.innerHTML = '<option value="">-- Wybierz opcję z bazy --</option>';
+      packingOptions.forEach((o, idx) => {
+        const opt = document.createElement('option');
+        opt.value = idx;
+        opt.textContent = o.name + (o.element ? ` [${o.element}]` : '');
+        selOpt.appendChild(opt);
+      });
+    }
+  }
+
+  function addSetToVerpackung() {
+    const selSet = document.getElementById('vpSelectSet');
+    const idx = parseInt(selSet.value);
+    if (isNaN(idx) || !packingSets[idx]) {
+      alert('Wybierz najpierw zbiór z listy!');
+      return;
+    }
+    const chosenSet = packingSets[idx];
+    if (Array.isArray(chosenSet.items) && chosenSet.items.length > 0) {
+      chosenSet.items.forEach(it => {
+        verpackungState.items.push(JSON.parse(JSON.stringify(it)));
+      });
+      renderVerpackungView();
+      alert(`Dodano ${chosenSet.items.length} pozycji ze zbioru: ${chosenSet.title}`);
+    } else {
+      alert('Wybrany zbiór nie ma jeszcze przypisanych pozycji.');
+    }
+  }
+
+  function addOptionToVerpackung() {
+    const selOpt = document.getElementById('vpSelectOption');
+    const idx = parseInt(selOpt.value);
+    if (isNaN(idx) || !packingOptions[idx]) {
+      alert('Wybierz najpierw opcję z listy!');
+      return;
+    }
+    const opt = packingOptions[idx];
+    verpackungState.items.push(JSON.parse(JSON.stringify(opt)));
+    renderVerpackungView();
+  }
+
+  function onVpSelectOptionChange() {
+    // Można rozszerzyć o podgląd
+  }
+
+  // --- ZAPIS VERPACKUNG DO MAGAZYNU ZAMÓWIEŃ ---
+  function saveVerpackungToWarehouse() {
+    const orderNum = (document.getElementById('vpOrderNumber').value || '').trim();
+    if (!orderNum) {
+      alert('Wpisz numer zamówienia ($) przed zapisaniem Verpackung!');
+      document.getElementById('vpOrderNumber').focus();
+      return;
+    }
+
+    const activeWorker = (currentWorker || localStorage.getItem('order_app_current_worker') || 'Nieznany').trim();
+    const existingIndex = savedOrders.findIndex(o => (o.orderNumber || '').trim().toLowerCase() === orderNum.toLowerCase());
+
+    const vpData = {
+      orderNumber: orderNum,
+      client: document.getElementById('vpClientInput').value,
+      ral: document.getElementById('vpRalInput').value,
+      model: document.getElementById('vpModelInput').value,
+      items: JSON.parse(JSON.stringify(verpackungState.items)),
+      savedAt: new Date().toLocaleString('pl-PL'),
+      lastModifiedBy: activeWorker
+    };
+
+    let targetOrder;
+    if (existingIndex >= 0) {
+      targetOrder = savedOrders[existingIndex];
+      targetOrder.verpackung = vpData;
+      targetOrder.hasVerpackung = true;
+      targetOrder.lastModifiedBy = activeWorker;
+      targetOrder.savedAt = new Date().toLocaleString('pl-PL');
+      // Jeśli w targetOrder nie ma koloru/modelu, uzupełnij z verpackung
+      if (!targetOrder.color && vpData.ral) targetOrder.color = vpData.ral;
+      if (!targetOrder.model && vpData.model) targetOrder.model = vpData.model;
+      alert(`Verpackung dla zamówienia nr ${orderNum} został pomyślnie zapisany w Magazynie Zamówień!`);
+    } else {
+      targetOrder = {
+        orderNumber: orderNum,
+        clientData: vpData.client,
+        model: vpData.model,
+        color: vpData.ral,
+        orderModels: vpData.model ? [vpData.model] : [''],
+        orderColors: vpData.ral ? [vpData.ral] : [''],
+        orderDate: new Date().toISOString().split('T')[0],
+        workerName: activeWorker,
+        lastModifiedBy: activeWorker,
+        savedAt: new Date().toLocaleString('pl-PL'),
+        hasVerpackung: true,
+        hasLabels: false,
+        verpackung: vpData
+      };
+      savedOrders.unshift(targetOrder);
+      alert(`Utworzono nowe zamówienie nr ${orderNum} z modułem Verpackung w Magazynie Zamówień!`);
+    }
+
+    localStorage.setItem('order_app_saved_orders', JSON.stringify(savedOrders));
+    syncOrderWithCloud(targetOrder);
+  }
+
+  // --- DRUK I EKSPORT VERPACKUNG DO EXCELA ---
+  function printVerpackung() {
+    window.print();
+  }
+
+  function exportVerpackungToExcel() {
+    const orderNum = verpackungState.orderNumber || '_26';
+    const client = verpackungState.client || '';
+    const ral = verpackungState.ral || '';
+    const model = verpackungState.model || '';
+
+    let rowsHtml = '';
+    verpackungState.items.forEach((item, idx) => {
+      rowsHtml += `
+        <tr style="height: 28px;">
+          <td style="border: 1pt solid #000000; text-align: center; font-size: 11pt;">${idx + 1}</td>
+          <td style="border: 1pt solid #000000; font-size: 11pt; padding: 4px 8px;">${item.name || ''}</td>
+          <td style="border: 1pt solid #000000; text-align: center; font-size: 11pt;">${item.jm || ''}</td>
+          <td style="border: 1pt solid #000000; text-align: center; font-size: 11pt;">${item.qty !== undefined ? item.qty : ''}</td>
+          <td style="border: 1pt solid #000000; text-align: center; font-size: 11pt;">${item.element || ''}</td>
+          <td style="border: 1pt solid #000000; text-align: center; font-size: 11pt;">${item.montaz || ''}</td>
+          <td style="border: 1pt solid #000000; font-size: 11pt; padding: 4px 8px;">${item.opis || ''}</td>
+        </tr>
+      `;
+    });
+
+    const excelHtml = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <style>
+          body { font-family: Calibri, Arial, sans-serif; }
+          table { border-collapse: collapse; width: 100%; }
+          .pakowanie-big { font-size: 20pt; font-weight: bold; text-align: center; vertical-align: middle; border: 1pt solid #000000; }
+          .hdr-lbl { font-size: 14pt; font-weight: normal; border: 1pt solid #000000; padding: 4px 8px; }
+          .hdr-val { font-size: 14pt; border: 1pt solid #000000; padding: 4px 8px; }
+          .hdr-bold { font-weight: bold; }
+          .th-col { background: #f2f2f2; font-weight: bold; font-size: 12pt; border: 1pt solid #000000; padding: 6px; }
+        </style>
+      </head>
+      <body>
+        <table>
+          <colgroup>
+            <col style="width: 50px;">
+            <col style="width: 320px;">
+            <col style="width: 80px;">
+            <col style="width: 80px;">
+            <col style="width: 100px;">
+            <col style="width: 100px;">
+            <col style="width: 200px;">
+          </colgroup>
+          <tr style="height: 35px;">
+            <td rowspan="4" colspan="2" class="pakowanie-big">Pakowanie </td>
+            <td class="hdr-lbl hdr-bold">Zamówienie nr:</td>
+            <td colspan="4" class="hdr-val hdr-bold">${orderNum}</td>
+          </tr>
+          <tr style="height: 32px;">
+            <td class="hdr-lbl">Klient</td>
+            <td colspan="4" class="hdr-val">${client}</td>
+          </tr>
+          <tr style="height: 32px;">
+            <td class="hdr-lbl">RAL</td>
+            <td colspan="4" class="hdr-val">${ral}</td>
+          </tr>
+          <tr style="height: 32px;">
+            <td class="hdr-lbl">Model</td>
+            <td colspan="4" class="hdr-val">${model}</td>
+          </tr>
+          <tr style="height: 35px;">
+            <th class="th-col" style="text-align: center;">Lp.</th>
+            <th class="th-col">Nazwa</th>
+            <th class="th-col" style="text-align: center;">J.m.</th>
+            <th class="th-col" style="text-align: center;">Ilość</th>
+            <th class="th-col" style="text-align: center;">Element</th>
+            <th class="th-col" style="text-align: center;">Montaż</th>
+            <th class="th-col">Opis</th>
+          </tr>
+          ${rowsHtml}
+        </table>
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob([excelHtml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `Verpackung_${orderNum}_${formatDatePL(new Date().toISOString().split('T')[0])}.xls`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  // --- MAGAZYN OPCJI ---
+  function openOptionsModal() {
+    renderOptionsTable();
+    document.getElementById('optionsModal').style.display = 'flex';
+    fetchCloudOptions();
+  }
+
+  function closeOptionsModal() {
+    cancelEditOption();
+    document.getElementById('optionsModal').style.display = 'none';
+  }
+
+  function renderOptionsTable() {
+    const tbody = document.getElementById('optionsTableBody');
+    tbody.innerHTML = '';
+    const query = (document.getElementById('searchOptionsInput').value || '').toLowerCase().trim();
+
+    const filtered = packingOptions.filter(o => {
+      return (o.name || '').toLowerCase().includes(query) || (o.element || '').toLowerCase().includes(query) || (o.montaz || '').toLowerCase().includes(query);
+    });
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 15px;">Brak pasujących opcji</td></tr>';
+      return;
+    }
+
+    filtered.forEach((opt) => {
+      const origIdx = packingOptions.indexOf(opt);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${opt.name}</strong></td>
+        <td style="text-align: center;">${opt.jm || '-'}</td>
+        <td style="text-align: center;">${opt.qty !== undefined ? opt.qty : '-'}</td>
+        <td>${opt.element || '-'}</td>
+        <td>${opt.montaz || '-'}</td>
+        <td>${opt.opis || '-'}</td>
+        <td style="text-align: center; white-space: nowrap;">
+          <button type="button" class="btn-primary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px;" onclick="openAssignOptionModal(${origIdx})" title="Przypisz do zbiorów">📌 Przypisz</button>
+          <button type="button" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px;" onclick="startEditOption(${origIdx})">✏️</button>
+          <button type="button" class="btn-danger" style="padding: 3px 8px; font-size: 11px;" onclick="deleteOption(${origIdx})">✕</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function saveOptionFromForm() {
+    const name = document.getElementById('optFormName').value.trim();
+    if (!name) {
+      alert('Podaj nazwę opcji!');
+      document.getElementById('optFormName').focus();
+      return;
+    }
+    const editIdx = parseInt(document.getElementById('editOptionIndex').value);
+    const jm = document.getElementById('optFormJm').value.trim();
+    const qty = document.getElementById('optFormQty').value.trim();
+    const element = document.getElementById('optFormElement').value.trim();
+    const montaz = document.getElementById('optFormMontaz').value.trim();
+    const opis = document.getElementById('optFormOpis').value.trim();
+
+    if (editIdx >= 0 && packingOptions[editIdx]) {
+      packingOptions[editIdx] = {
+        ...packingOptions[editIdx],
+        name, jm, qty, element, montaz, opis
+      };
+      alert(`Zaktualizowano opcję: ${name}`);
+    } else {
+      packingOptions.push({
+        name, jm, qty, element, montaz, opis, createdAt: Date.now()
+      });
+      alert(`Dodano nową opcję: ${name}`);
+    }
+
+    localStorage.setItem('order_app_options', JSON.stringify(packingOptions));
+    syncOptionsWithCloud();
+    cancelEditOption();
+    renderOptionsTable();
+    populateVpSelects();
+  }
+
+  function startEditOption(idx) {
+    const opt = packingOptions[idx];
+    if (!opt) return;
+    document.getElementById('editOptionIndex').value = idx;
+    document.getElementById('optFormName').value = opt.name;
+    document.getElementById('optFormJm').value = opt.jm || '';
+    document.getElementById('optFormQty').value = opt.qty !== undefined ? opt.qty : '';
+    document.getElementById('optFormElement').value = opt.element || '';
+    document.getElementById('optFormMontaz').value = opt.montaz || '';
+    document.getElementById('optFormOpis').value = opt.opis || '';
+
+    document.getElementById('optionFormTitle').textContent = `Edytuj opcję: ${opt.name}`;
+    document.getElementById('saveOptBtn').textContent = 'Zapisz zmiany';
+    document.getElementById('cancelEditOptBtn').style.display = 'inline-block';
+  }
+
+  function cancelEditOption() {
+    document.getElementById('editOptionIndex').value = '-1';
+    document.getElementById('optFormName').value = '';
+    document.getElementById('optFormJm').value = 'szt.';
+    document.getElementById('optFormQty').value = '1';
+    document.getElementById('optFormElement').value = '';
+    document.getElementById('optFormMontaz').value = '';
+    document.getElementById('optFormOpis').value = '';
+
+    document.getElementById('optionFormTitle').textContent = 'Dodaj nową opcję:';
+    document.getElementById('saveOptBtn').textContent = '+ Dodaj opcję';
+    document.getElementById('cancelEditOptBtn').style.display = 'none';
+  }
+
+  function deleteOption(idx) {
+    const opt = packingOptions[idx];
+    if (!opt) return;
+    if (confirm(`Czy na pewno usunąć opcję: "${opt.name}" z bazy?`)) {
+      packingOptions.splice(idx, 1);
+      localStorage.setItem('order_app_options', JSON.stringify(packingOptions));
+      syncOptionsWithCloud();
+      renderOptionsTable();
+      populateVpSelects();
+    }
+  }
+
+  // --- PRZYPISYWANIE OPCJI DO ZBIORÓW ---
+  function openAssignOptionModal(optIdx) {
+    optionToAssignIdx = optIdx;
+    const opt = packingOptions[optIdx];
+    if (!opt) return;
+
+    document.getElementById('assignOptionSubtitle').textContent = `Opcja: "${opt.name}"`;
+    const container = document.getElementById('assignSetsChecklist');
+    container.innerHTML = '';
+
+    if (packingSets.length === 0) {
+      container.innerHTML = '<div style="color: #94a3b8; font-size: 13px; padding: 10px;">Brak utworzonych zbiorów. Utwórz najpierw zbiór.</div>';
+    } else {
+      packingSets.forEach((set, sIdx) => {
+        const isAssigned = (set.items || []).some(it => it.name === opt.name);
+        const div = document.createElement('div');
+        div.style.cssText = 'display: flex; align-items: center; gap: 8px; padding: 6px; border-bottom: 1px solid #f1f5f9;';
+        div.innerHTML = `
+          <input type="checkbox" id="chkSet_${sIdx}" value="${sIdx}" ${isAssigned ? 'checked' : ''} style="cursor: pointer;">
+          <label for="chkSet_${sIdx}" style="cursor: pointer; font-size: 13px; flex: 1;">
+            <strong>${set.title}</strong> <span style="color: #64748b; font-size: 12px;">(${(set.items || []).length} pozycji)</span>
+          </label>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    document.getElementById('assignOptionModal').style.display = 'flex';
+  }
+
+  function closeAssignOptionModal() {
+    document.getElementById('assignOptionModal').style.display = 'none';
+    optionToAssignIdx = null;
+  }
+
+  function saveOptionAssignment() {
+    if (optionToAssignIdx === null || !packingOptions[optionToAssignIdx]) return;
+    const opt = packingOptions[optionToAssignIdx];
+    const activeWorker = (currentWorker || localStorage.getItem('order_app_current_worker') || 'Nieznany').trim();
+    const nowTime = new Date().toLocaleString('pl-PL');
+
+    packingSets.forEach((set, sIdx) => {
+      const chk = document.getElementById(`chkSet_${sIdx}`);
+      if (!chk) return;
+      if (!Array.isArray(set.items)) set.items = [];
+
+      const existingItemIdx = set.items.findIndex(it => it.name === opt.name);
+
+      if (chk.checked) {
+        // Dodaj jeśli nie ma
+        if (existingItemIdx === -1) {
+          set.items.push(JSON.parse(JSON.stringify(opt)));
+          set.lastModifiedBy = activeWorker;
+          set.lastModifiedAt = nowTime;
+        }
+      } else {
+        // Usuń jeśli jest
+        if (existingItemIdx >= 0) {
+          set.items.splice(existingItemIdx, 1);
+          set.lastModifiedBy = activeWorker;
+          set.lastModifiedAt = nowTime;
+        }
+      }
+    });
+
+    localStorage.setItem('order_app_sets', JSON.stringify(packingSets));
+    syncSetsWithCloud();
+    closeAssignOptionModal();
+    alert('Przypisania opcji do zbiorów zostały pomyślnie zaktualizowane!');
+    if (document.getElementById('setsModal').style.display === 'flex') {
+      renderSetsList();
+      renderSetDetails(selectedSetIndex);
+    }
+    populateVpSelects();
+  }
+
+  function openNewSetPromptFromAssign() {
+    const elem = prompt('Podaj Element (np. Furtka, Brama dwuskrzydłowa):');
+    if (!elem) return;
+    const mod = prompt('Podaj Model (np. Comb, Nu, Modern):') || '';
+    const title = prompt('Podaj Tytuł zbioru (opcjonalnie):', `${elem} - ${mod}`) || `${elem} - ${mod}`;
+
+    const activeWorker = (currentWorker || localStorage.getItem('order_app_current_worker') || 'Nieznany').trim();
+    const newSet = {
+      id: Date.now(),
+      title: title.trim(),
+      element: elem.trim(),
+      model: mod.trim(),
+      items: [],
+      lastModifiedBy: activeWorker,
+      lastModifiedAt: new Date().toLocaleString('pl-PL'),
+      createdAt: Date.now()
+    };
+
+    packingSets.push(newSet);
+    localStorage.setItem('order_app_sets', JSON.stringify(packingSets));
+    syncSetsWithCloud();
+    openAssignOptionModal(optionToAssignIdx);
+  }
+
+  // --- MAGAZYN ZBIORÓW ---
+  function openSetsModal() {
+    renderSetsList();
+    if (packingSets.length > 0) {
+      renderSetDetails(0);
+    }
+    document.getElementById('setsModal').style.display = 'flex';
+    fetchCloudSets();
+  }
+
+  function closeSetsModal() {
+    document.getElementById('setsModal').style.display = 'none';
+  }
+
+  function createSetFromForm() {
+    const elem = document.getElementById('newSetElement').value.trim();
+    const mod = document.getElementById('newSetModel').value.trim();
+    const customTitle = document.getElementById('newSetCustomTitle').value.trim();
+
+    if (!elem && !customTitle) {
+      alert('Podaj element lub nazwę zbioru!');
+      document.getElementById('newSetElement').focus();
+      return;
+    }
+
+    const title = customTitle || (elem + (mod ? ' - ' + mod : ''));
+    const activeWorker = (currentWorker || localStorage.getItem('order_app_current_worker') || 'Nieznany').trim();
+
+    const newSet = {
+      id: Date.now(),
+      title,
+      element: elem,
+      model: mod,
+      items: [],
+      lastModifiedBy: activeWorker,
+      lastModifiedAt: new Date().toLocaleString('pl-PL'),
+      createdAt: Date.now()
+    };
+
+    packingSets.push(newSet);
+    localStorage.setItem('order_app_sets', JSON.stringify(packingSets));
+    syncSetsWithCloud();
+
+    document.getElementById('newSetElement').value = '';
+    document.getElementById('newSetModel').value = '';
+    document.getElementById('newSetCustomTitle').value = '';
+
+    renderSetsList();
+    renderSetDetails(packingSets.length - 1);
+    populateVpSelects();
+    alert(`Utworzono nowy zbiór: ${title}`);
+  }
+
+  function renderSetsList() {
+    const container = document.getElementById('setsListContainer');
+    container.innerHTML = '';
+
+    if (packingSets.length === 0) {
+      container.innerHTML = '<div style="padding: 15px; color: #94a3b8; font-size: 13px; text-align: center;">Brak zbiorów. Utwórz zbiór powyżej.</div>';
+      return;
+    }
+
+    packingSets.forEach((s, idx) => {
+      const card = document.createElement('div');
+      card.className = 'set-list-card' + (idx === selectedSetIndex ? ' active' : '');
+      card.onclick = () => renderSetDetails(idx);
+
+      const itemsCount = (s.items || []).length;
+      card.innerHTML = `
+        <div style="font-weight: bold; font-size: 13px; color: #1e3a8a;">${s.title}</div>
+        <div style="font-size: 11px; color: #64748b; margin-top: 3px;">
+          Pozycji: ${itemsCount} | ${s.element || ''} ${s.model ? '• ' + s.model : ''}
+        </div>
+        <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">
+          👤 ${s.lastModifiedBy || 'Brak'} (${s.lastModifiedAt || '-'})
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  function renderSetDetails(setIdx) {
+    selectedSetIndex = setIdx;
+    const currentSet = packingSets[setIdx];
+
+    const cards = document.querySelectorAll('.set-list-card');
+    cards.forEach((c, i) => c.classList.toggle('active', i === setIdx));
+
+    if (!currentSet) {
+      document.getElementById('setDetailsTitle').textContent = 'Wybierz zbiór z listy';
+      document.getElementById('setDetailsMeta').textContent = '';
+      document.getElementById('setItemsTableWrapper').style.display = 'none';
+      document.getElementById('setDetailsActions').style.display = 'none';
+      return;
+    }
+
+    document.getElementById('setDetailsTitle').innerHTML = `${currentSet.title} <button type="button" class="btn-secondary" style="font-size: 11px; padding: 2px 6px;" onclick="renameCurrentSet()">✏️ Zmień nazwę</button>`;
+    document.getElementById('setDetailsMeta').textContent = `Ostatnia edycja: ${currentSet.lastModifiedAt || '-'} przez ${currentSet.lastModifiedBy || 'Nieznany'} | Element: ${currentSet.element || '-'}, Model: ${currentSet.model || '-'}`;
+    document.getElementById('setItemsTableWrapper').style.display = 'block';
+    document.getElementById('setDetailsActions').style.display = 'flex';
+
+    const tbody = document.getElementById('setItemsTbody');
+    tbody.innerHTML = '';
+
+    const items = currentSet.items || [];
+    if (items.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 20px;">Ten zbiór jest pusty. Kliknij "+ Przypisz kolejną opcję" poniżej.</td></tr>';
+      return;
+    }
+
+    items.forEach((it, itIdx) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input type="text" class="vp-cell-input" value="${(it.name || '').replace(/"/g, '&quot;')}" oninput="updateCurrentSetItem(${itIdx}, 'name', this.value)"></td>
+        <td><input type="text" class="vp-cell-input" style="text-align: center;" value="${(it.jm || '').replace(/"/g, '&quot;')}" oninput="updateCurrentSetItem(${itIdx}, 'jm', this.value)"></td>
+        <td><input type="text" class="vp-cell-input" style="text-align: center;" value="${(it.qty !== undefined ? it.qty : '').replace(/"/g, '&quot;')}" oninput="updateCurrentSetItem(${itIdx}, 'qty', this.value)"></td>
+        <td><input type="text" class="vp-cell-input" value="${(it.element || '').replace(/"/g, '&quot;')}" oninput="updateCurrentSetItem(${itIdx}, 'element', this.value)"></td>
+        <td><input type="text" class="vp-cell-input" value="${(it.montaz || '').replace(/"/g, '&quot;')}" oninput="updateCurrentSetItem(${itIdx}, 'montaz', this.value)"></td>
+        <td><input type="text" class="vp-cell-input" value="${(it.opis || '').replace(/"/g, '&quot;')}" oninput="updateCurrentSetItem(${itIdx}, 'opis', this.value)"></td>
+        <td style="text-align: center;">
+          <button type="button" class="btn-danger" style="padding: 2px 6px; font-size: 11px;" onclick="removeCurrentSetItem(${itIdx})">✕</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renameCurrentSet() {
+    const s = packingSets[selectedSetIndex];
+    if (!s) return;
+    const newTitle = prompt('Podaj nową nazwę zbioru:', s.title);
+    if (newTitle && newTitle.trim()) {
+      s.title = newTitle.trim();
+      s.lastModifiedBy = (currentWorker || localStorage.getItem('order_app_current_worker') || 'Nieznany').trim();
+      s.lastModifiedAt = new Date().toLocaleString('pl-PL');
+      localStorage.setItem('order_app_sets', JSON.stringify(packingSets));
+      syncSetsWithCloud();
+      renderSetsList();
+      renderSetDetails(selectedSetIndex);
+      populateVpSelects();
+    }
+  }
+
+  function updateCurrentSetItem(itIdx, field, val) {
+    const s = packingSets[selectedSetIndex];
+    if (s && s.items && s.items[itIdx]) {
+      s.items[itIdx][field] = val;
+    }
+  }
+
+  function removeCurrentSetItem(itIdx) {
+    const s = packingSets[selectedSetIndex];
+    if (s && s.items) {
+      s.items.splice(itIdx, 1);
+      renderSetDetails(selectedSetIndex);
+    }
+  }
+
+  function saveCurrentSetItemsChanges() {
+    const s = packingSets[selectedSetIndex];
+    if (!s) return;
+    s.lastModifiedBy = (currentWorker || localStorage.getItem('order_app_current_worker') || 'Nieznany').trim();
+    s.lastModifiedAt = new Date().toLocaleString('pl-PL');
+    localStorage.setItem('order_app_sets', JSON.stringify(packingSets));
+    syncSetsWithCloud();
+    renderSetsList();
+    renderSetDetails(selectedSetIndex);
+    populateVpSelects();
+    alert(`Zapisano zmiany w zbiorze: ${s.title}!`);
+  }
+
+  function deleteCurrentSet() {
+    const s = packingSets[selectedSetIndex];
+    if (!s) return;
+    if (confirm(`Czy na pewno bezpowrotnie usunąć zbiór "${s.title}"?`)) {
+      packingSets.splice(selectedSetIndex, 1);
+      localStorage.setItem('order_app_sets', JSON.stringify(packingSets));
+      syncSetsWithCloud();
+      selectedSetIndex = 0;
+      renderSetsList();
+      renderSetDetails(0);
+      populateVpSelects();
+    }
+  }
+
+  function openAddOptionToCurrentSetModal() {
+    const s = packingSets[selectedSetIndex];
+    if (!s) return;
+
+    // Szybki wybór opcji do dodania
+    let optList = packingOptions.map((o, i) => `${i + 1}. ${o.name} [${o.element || '-'}]`).join('\n');
+    const pick = prompt('Wpisz numer opcji z Magazynu Opcji, którą chcesz dodać:\n\n' + optList);
+    if (!pick) return;
+    const pIdx = parseInt(pick) - 1;
+    if (!isNaN(pIdx) && packingOptions[pIdx]) {
+      if (!Array.isArray(s.items)) s.items = [];
+      s.items.push(JSON.parse(JSON.stringify(packingOptions[pIdx])));
+      s.lastModifiedBy = (currentWorker || localStorage.getItem('order_app_current_worker') || 'Nieznany').trim();
+      s.lastModifiedAt = new Date().toLocaleString('pl-PL');
+      localStorage.setItem('order_app_sets', JSON.stringify(packingSets));
+      syncSetsWithCloud();
+      renderSetDetails(selectedSetIndex);
+    } else {
+      alert('Nieprawidłowy numer opcji.');
+    }
+  }
+
+  // --- MAGAZYN PROFILI (Wykaz materiałów) ---
+  function openProfilesModal() {
+    renderProfilesTable();
+    document.getElementById('profilesModal').style.display = 'flex';
+  }
+
+  function closeProfilesModal() {
+    document.getElementById('profilesModal').style.display = 'none';
+  }
+
+  function renderProfilesTable() {
+    const tbody = document.getElementById('profilesTableBody');
+    tbody.innerHTML = '';
+    materialsProfiles.forEach((p, idx) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${p.name}</strong></td>
+        <td>${p.type || '-'}</td>
+        <td>${p.length || '-'}</td>
+        <td style="text-align: center;">
+          <button type="button" class="btn-danger" style="padding: 2px 6px; font-size: 11px;" onclick="deleteProfile(${idx})">✕</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function addProfileFromForm() {
+    const name = document.getElementById('newProfileName').value.trim();
+    const type = document.getElementById('newProfileType').value.trim();
+    const len = document.getElementById('newProfileLen').value.trim();
+
+    if (!name) {
+      alert('Podaj nazwę profilu!');
+      return;
+    }
+
+    materialsProfiles.push({ name, type, length: len });
+    localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
+    document.getElementById('newProfileName').value = '';
+    document.getElementById('newProfileType').value = '';
+    document.getElementById('newProfileLen').value = '';
+    renderProfilesTable();
+  }
+
+  function deleteProfile(idx) {
+    if (confirm('Usunąć ten profil z magazynu?')) {
+      materialsProfiles.splice(idx, 1);
+      localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
+      renderProfilesTable();
+    }
+  }
+
+  // --- SYNCHRONIZACJA Z CHMURĄ DLA OPCJI I ZBIORÓW ---
+  async function fetchCloudOptions() {
+    if (!CLOUD_API_URL) return;
+    try {
+      const res = await fetch(`${CLOUD_API_URL}/api/options`);
+      if (res.ok) {
+        const cloudOpts = await res.json();
+        if (Array.isArray(cloudOpts) && cloudOpts.length > 0) {
+          packingOptions = cloudOpts;
+          localStorage.setItem('order_app_options', JSON.stringify(packingOptions));
+          renderOptionsTable();
+          populateVpSelects();
+        }
+      }
+    } catch (e) {
+      console.warn('Błąd pobierania opcji z chmury:', e);
+    }
+  }
+
+  async function syncOptionsWithCloud() {
+    if (!CLOUD_API_URL) return;
+    try {
+      await fetch(`${CLOUD_API_URL}/api/options`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(packingOptions)
+      });
+    } catch (e) {
+      console.warn('Nie udało się zapisać opcji w chmurze:', e);
+    }
+  }
+
+  async function fetchCloudSets() {
+    if (!CLOUD_API_URL) return;
+    try {
+      const res = await fetch(`${CLOUD_API_URL}/api/sets`);
+      if (res.ok) {
+        const cloudSets = await res.json();
+        if (Array.isArray(cloudSets) && cloudSets.length > 0) {
+          packingSets = cloudSets;
+          localStorage.setItem('order_app_sets', JSON.stringify(packingSets));
+          renderSetsList();
+          renderSetDetails(selectedSetIndex);
+          populateVpSelects();
+        }
+      }
+    } catch (e) {
+      console.warn('Błąd pobierania zbiorów z chmury:', e);
+    }
+  }
+
+  async function syncSetsWithCloud() {
+    if (!CLOUD_API_URL) return;
+    try {
+      await fetch(`${CLOUD_API_URL}/api/sets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(packingSets)
+      });
+    } catch (e) {
+      console.warn('Nie udało się zapisać zbiorów w chmurze:', e);
+    }
+  }
+
+  // --- GŁÓWNE PODSTRONY (Etykiety / Verpackung / Wykaz materiałów) ---
   function switchMainSubpage(page) {
     const pages = ['labels', 'verpackung', 'materials'];
     const tabMap = {
@@ -3526,6 +5114,23 @@
       if (tabMap[p]) tabMap[p].classList.toggle('active', p === page);
       if (viewMap[p]) viewMap[p].classList.toggle('active', p === page);
     });
+
+    // Sterowanie widocznością przycisków magazynów w górnym pasku
+    const btnNavWhItems = document.getElementById('btnNavWarehouseItems');
+    const btnNavOptions = document.getElementById('btnNavOptions');
+    const btnNavSets = document.getElementById('btnNavSets');
+    const btnNavProfiles = document.getElementById('btnNavProfiles');
+
+    if (btnNavWhItems) btnNavWhItems.style.display = (page === 'labels') ? 'inline-flex' : 'none';
+    if (btnNavOptions) btnNavOptions.style.display = (page === 'verpackung') ? 'inline-flex' : 'none';
+    if (btnNavSets) btnNavSets.style.display = (page === 'verpackung') ? 'inline-flex' : 'none';
+    if (btnNavProfiles) btnNavProfiles.style.display = (page === 'materials') ? 'inline-flex' : 'none';
+
+    if (page === 'verpackung') {
+      populateVpSelects();
+      syncVpOrderFromEtykiety();
+      renderVerpackungView();
+    }
 
     // Zapisz preferencję w localStorage
     localStorage.setItem('dt_active_subpage', page);
@@ -3556,11 +5161,15 @@
   setInterval(() => {
     fetchCloudWarehouse();
     fetchCloudOrders();
+    fetchCloudOptions();
+    fetchCloudSets();
   }, 5000);
 
   window.addEventListener('focus', () => {
     fetchCloudWarehouse();
     fetchCloudOrders();
+    fetchCloudOptions();
+    fetchCloudSets();
   });
 </script>
 
