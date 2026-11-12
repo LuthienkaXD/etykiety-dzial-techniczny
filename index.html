@@ -5009,18 +5009,54 @@
   }
 
   // --- MAGAZYN ZBIORÓW ---
+  function getSortedPackingSets() {
+    const query = (document.getElementById('searchSetsInput') ? document.getElementById('searchSetsInput').value : '').toLowerCase().trim();
+    const sortVal = document.getElementById('sortSetsSelect') ? document.getElementById('sortSetsSelect').value : 'alpha_asc';
+
+    let list = packingSets.map((s, originalIdx) => {
+      // Przypisz stabilne ID zbioru
+      const sId = (s.id !== undefined && s.id !== null) ? s.id : ('set_idx_' + originalIdx);
+      return { ...s, _sId: String(sId), _originalIdx: originalIdx };
+    });
+
+    if (query) {
+      list = list.filter(s => {
+        return (s.title || '').toLowerCase().includes(query) || (s.element || '').toLowerCase().includes(query) || (s.model || '').toLowerCase().includes(query);
+      });
+    }
+
+    list.sort((a, b) => {
+      if (sortVal === 'alpha_asc') return (a.title || '').localeCompare(b.title || '', 'pl');
+      if (sortVal === 'alpha_desc') return (b.title || '').localeCompare(a.title || '', 'pl');
+      if (sortVal === 'newest') return (b.createdAt || b.id || b._originalIdx || 0) - (a.createdAt || a.id || a._originalIdx || 0);
+      if (sortVal === 'oldest') return (a.createdAt || a.id || a._originalIdx || 0) - (b.createdAt || b.id || b._originalIdx || 0);
+      return 0;
+    });
+
+    return list;
+  }
+
   function openSetsModal() {
     isEditingCurrentSet = false;
     tempEditSetItems = null;
-    if (packingSets.length > 0) {
-      if (selectedSetId === null || !packingSets.some(s => (s.id !== undefined ? s.id === selectedSetId : packingSets.indexOf(s) === selectedSetId))) {
-        selectedSetId = packingSets[0].id !== undefined ? packingSets[0].id : 0;
+
+    const sorted = getSortedPackingSets();
+    if (sorted.length > 0) {
+      // Jeśli żaden zbiór nie jest wybrany lub wybrany zbiór nie istnieje w aktualnej liście, wybierz pierwszy widoczny
+      if (!selectedSetId || !packingSets.some((s, idx) => String(s.id !== undefined && s.id !== null ? s.id : 'set_idx_' + idx) === String(selectedSetId))) {
+        selectedSetId = sorted[0]._sId;
       }
+    } else {
+      selectedSetId = null;
     }
+
     renderSetsList();
-    if (packingSets.length > 0) {
+    if (selectedSetId) {
       renderSetDetailsById(selectedSetId);
+    } else {
+      clearSetDetails();
     }
+
     document.getElementById('setsModal').style.display = 'flex';
     fetchCloudSets();
   }
@@ -5062,9 +5098,9 @@
     document.getElementById('newSetModel').value = '';
     document.getElementById('newSetCustomTitle').value = '';
 
-    selectedSetId = newSet.id;
+    selectedSetId = String(newSet.id);
     renderSetsList();
-    renderSetDetailsById(newSet.id);
+    renderSetDetailsById(selectedSetId);
     populateVpSelects();
     alert(`Utworzono nowy zbiór: ${title}`);
   }
@@ -5078,37 +5114,38 @@
       return;
     }
 
-    const query = (document.getElementById('searchSetsInput') ? document.getElementById('searchSetsInput').value : '').toLowerCase().trim();
-    const sortVal = document.getElementById('sortSetsSelect') ? document.getElementById('sortSetsSelect').value : 'alpha_asc';
+    const sortedList = getSortedPackingSets();
 
-    let listWithIdx = packingSets.map((s, originalIdx) => ({ ...s, originalIdx }));
-
-    if (query) {
-      listWithIdx = listWithIdx.filter(s => {
-        return (s.title || '').toLowerCase().includes(query) || (s.element || '').toLowerCase().includes(query) || (s.model || '').toLowerCase().includes(query);
-      });
-    }
-
-    listWithIdx.sort((a, b) => {
-      if (sortVal === 'alpha_asc') return (a.title || '').localeCompare(b.title || '', 'pl');
-      if (sortVal === 'alpha_desc') return (b.title || '').localeCompare(a.title || '', 'pl');
-      if (sortVal === 'newest') return (b.createdAt || b.id || b.originalIdx || 0) - (a.createdAt || a.id || a.originalIdx || 0);
-      if (sortVal === 'oldest') return (a.createdAt || a.id || a.originalIdx || 0) - (b.createdAt || b.id || b.originalIdx || 0);
-      return 0;
-    });
-
-    if (listWithIdx.length === 0) {
+    if (sortedList.length === 0) {
       container.innerHTML = '<div style="padding: 15px; color: #94a3b8; font-size: 13px; text-align: center;">Brak pasujących zbiorów.</div>';
       return;
     }
 
-    listWithIdx.forEach((s) => {
-      const sId = s.id !== undefined ? s.id : s.originalIdx;
-      const isCardActive = (selectedSetId !== null && sId === selectedSetId);
+    sortedList.forEach((s) => {
+      const sId = s._sId;
+      const isCardActive = (selectedSetId !== null && String(sId) === String(selectedSetId));
       const card = document.createElement('div');
       card.className = 'set-list-card' + (isCardActive ? ' active' : '');
       card.dataset.setId = String(sId);
-      card.onclick = () => renderSetDetailsById(sId);
+
+      card.onclick = () => {
+        if (isEditingCurrentSet && String(selectedSetId) !== String(sId)) {
+          if (!confirm('Masz niezapisane zmiany w edytowanym zbiorze. Czy na pewno przejść do innego zbioru i odrzucić zmiany?')) {
+            return;
+          }
+          isEditingCurrentSet = false;
+          tempEditSetItems = null;
+        }
+
+        selectedSetId = String(sId);
+
+        // Natychmiastowe zaktualizowanie podświetlenia kart
+        document.querySelectorAll('.set-list-card').forEach(el => {
+          el.classList.toggle('active', el.dataset.setId === String(sId));
+        });
+
+        renderSetDetailsById(sId);
+      };
 
       const itemsCount = (s.items || []).length;
       card.innerHTML = `
@@ -5124,47 +5161,45 @@
     });
   }
 
-  function renderSetDetailsById(sId) {
-    let targetIdx = packingSets.findIndex(s => (s.id !== undefined ? s.id === sId : packingSets.indexOf(s) === sId));
-    if (targetIdx === -1 && typeof sId === 'number' && packingSets[sId]) {
-      targetIdx = sId;
-    }
-    if (targetIdx >= 0) {
-      selectedSetId = sId;
-      selectedSetIndex = targetIdx;
-      renderSetDetails(targetIdx);
-    }
+  function getSetObjectById(sId) {
+    if (sId === null || sId === undefined) return null;
+    const strId = String(sId);
+    let found = packingSets.find((s, idx) => {
+      const currentId = (s.id !== undefined && s.id !== null) ? String(s.id) : ('set_idx_' + idx);
+      return currentId === strId;
+    });
+    return found || null;
   }
 
-  function renderSetDetails(setIdx) {
-    if (isEditingCurrentSet && selectedSetIndex !== setIdx) {
-      if (!confirm('Masz niezapisane zmiany w edytowanym zbiorze. Czy na pewno przejść do innego zbioru i odrzucić zmiany?')) {
-        return;
-      }
-      isEditingCurrentSet = false;
-      tempEditSetItems = null;
-    }
+  function getSetIndexById(sId) {
+    if (sId === null || sId === undefined) return -1;
+    const strId = String(sId);
+    return packingSets.findIndex((s, idx) => {
+      const currentId = (s.id !== undefined && s.id !== null) ? String(s.id) : ('set_idx_' + idx);
+      return currentId === strId;
+    });
+  }
 
-    selectedSetIndex = setIdx;
-    const currentSet = packingSets[setIdx];
-    if (currentSet && currentSet.id !== undefined) {
-      selectedSetId = currentSet.id;
-    } else {
-      selectedSetId = setIdx;
-    }
+  function clearSetDetails() {
+    document.getElementById('setDetailsTitle').textContent = 'Wybierz zbiór z listy';
+    document.getElementById('setDetailsMeta').textContent = '';
+    document.getElementById('setItemsTableWrapper').style.display = 'none';
+    document.getElementById('setDetailsActions').style.display = 'none';
+  }
+
+  function renderSetDetailsById(sId) {
+    const currentSet = getSetObjectById(sId);
+    selectedSetIndex = getSetIndexById(sId);
+    selectedSetId = String(sId);
 
     // Podświetlenie odpowiedniego kafelka na liście
     const cards = document.querySelectorAll('.set-list-card');
     cards.forEach(c => {
-      const cId = c.dataset.setId;
-      c.classList.toggle('active', cId === String(selectedSetId));
+      c.classList.toggle('active', c.dataset.setId === String(selectedSetId));
     });
 
     if (!currentSet) {
-      document.getElementById('setDetailsTitle').textContent = 'Wybierz zbiór z listy';
-      document.getElementById('setDetailsMeta').textContent = '';
-      document.getElementById('setItemsTableWrapper').style.display = 'none';
-      document.getElementById('setDetailsActions').style.display = 'none';
+      clearSetDetails();
       return;
     }
 
@@ -5224,8 +5259,18 @@
     });
   }
 
+  function renderSetDetails(setIdx) {
+    if (packingSets[setIdx]) {
+      const s = packingSets[setIdx];
+      const sId = (s.id !== undefined && s.id !== null) ? String(s.id) : ('set_idx_' + setIdx);
+      renderSetDetailsById(sId);
+    } else {
+      clearSetDetails();
+    }
+  }
+
   function renameCurrentSet() {
-    const s = packingSets[selectedSetIndex];
+    const s = getSetObjectById(selectedSetId) || packingSets[selectedSetIndex];
     if (!s) return;
     const newTitle = prompt('Podaj nową nazwę zbioru:', s.title);
     if (newTitle && newTitle.trim()) {
@@ -5235,7 +5280,7 @@
       localStorage.setItem('order_app_sets', JSON.stringify(packingSets));
       syncSetsWithCloud();
       renderSetsList();
-      renderSetDetails(selectedSetIndex);
+      renderSetDetailsById(selectedSetId);
       populateVpSelects();
     }
   }
@@ -5244,7 +5289,7 @@
     if (isEditingCurrentSet && tempEditSetItems && tempEditSetItems[itIdx]) {
       tempEditSetItems[itIdx][field] = val;
     } else {
-      const s = packingSets[selectedSetIndex];
+      const s = getSetObjectById(selectedSetId) || packingSets[selectedSetIndex];
       if (s && s.items && s.items[itIdx]) {
         s.items[itIdx][field] = val;
       }
@@ -5254,18 +5299,18 @@
   function removeCurrentSetItem(itIdx) {
     if (isEditingCurrentSet && tempEditSetItems) {
       tempEditSetItems.splice(itIdx, 1);
-      renderSetDetails(selectedSetIndex);
+      renderSetDetailsById(selectedSetId);
     } else {
-      const s = packingSets[selectedSetIndex];
+      const s = getSetObjectById(selectedSetId) || packingSets[selectedSetIndex];
       if (s && s.items) {
         s.items.splice(itIdx, 1);
-        renderSetDetails(selectedSetIndex);
+        renderSetDetailsById(selectedSetId);
       }
     }
   }
 
   function saveCurrentSetItemsChanges() {
-    const s = packingSets[selectedSetIndex];
+    const s = getSetObjectById(selectedSetId) || packingSets[selectedSetIndex];
     if (!s) return;
     if (isEditingCurrentSet && tempEditSetItems) {
       s.items = JSON.parse(JSON.stringify(tempEditSetItems));
@@ -5278,27 +5323,36 @@
     localStorage.setItem('order_app_sets', JSON.stringify(packingSets));
     syncSetsWithCloud();
     renderSetsList();
-    renderSetDetails(selectedSetIndex);
+    renderSetDetailsById(selectedSetId);
     populateVpSelects();
     alert(`Zapisano zmiany w zbiorze: ${s.title}!`);
   }
 
   function deleteCurrentSet() {
-    const s = packingSets[selectedSetIndex];
+    const s = getSetObjectById(selectedSetId) || packingSets[selectedSetIndex];
     if (!s) return;
     if (confirm(`Czy na pewno bezpowrotnie usunąć zbiór "${s.title}"?`)) {
-      packingSets.splice(selectedSetIndex, 1);
+      const idxToDelete = packingSets.findIndex(item => item === s);
+      if (idxToDelete >= 0) {
+        packingSets.splice(idxToDelete, 1);
+      }
       localStorage.setItem('order_app_sets', JSON.stringify(packingSets));
       syncSetsWithCloud();
-      selectedSetIndex = 0;
+      
+      const sorted = getSortedPackingSets();
+      selectedSetId = sorted.length > 0 ? sorted[0]._sId : null;
       renderSetsList();
-      renderSetDetails(0);
+      if (selectedSetId) {
+        renderSetDetailsById(selectedSetId);
+      } else {
+        clearSetDetails();
+      }
       populateVpSelects();
     }
   }
 
   function openAddOptionToCurrentSetModal() {
-    const s = packingSets[selectedSetIndex];
+    const s = getSetObjectById(selectedSetId) || packingSets[selectedSetIndex];
     if (!s) return;
 
     // Szybki wybór opcji do dodania
@@ -5318,7 +5372,7 @@
         localStorage.setItem('order_app_sets', JSON.stringify(packingSets));
         syncSetsWithCloud();
       }
-      renderSetDetails(selectedSetIndex);
+      renderSetDetailsById(selectedSetId);
     } else {
       alert('Nieprawidłowy numer opcji.');
     }
