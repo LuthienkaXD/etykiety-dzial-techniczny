@@ -899,12 +899,13 @@
     
     /* Style tabeli Verpackung */
     .verpackung-a4-page {
-      width: 297mm !important;
-      min-width: 297mm !important;
-      min-height: 210mm !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+      min-height: auto !important;
       height: auto !important;
       background: #ffffff !important;
-      padding: 10mm 12mm 12mm 12mm !important;
+      padding: 15px !important;
       box-shadow: 0 4px 15px rgba(0,0,0,0.3) !important;
       position: relative !important;
       box-sizing: border-box !important;
@@ -1562,10 +1563,10 @@
           <!-- Tabela nagłówkowa Pakowanie -->
           <table class="vp-excel-table" id="vpHeaderTable">
             <colgroup>
-              <col style="width: 140px;">
-              <col style="width: 480px;">
-              <col style="width: 140px;">
-              <col style="width: 300px;">
+              <col style="width: 13%;">
+              <col style="width: 45%;">
+              <col style="width: 14%;">
+              <col style="width: 28%;">
             </colgroup>
             <tbody>
               <tr style="height: 38px;">
@@ -1602,14 +1603,14 @@
           <!-- Tabela pozycji tabeli pakowania -->
           <table class="vp-excel-table" id="vpItemsTable" style="margin-top: 15px;">
             <colgroup>
-              <col style="width: 50px;">
-              <col style="width: 490px;">
-              <col style="width: 65px;">
-              <col style="width: 65px;">
-              <col style="width: 90px;">
-              <col style="width: 100px;">
-              <col style="width: 160px;">
-              <col class="no-print" style="width: 40px;">
+              <col style="width: 4%;">
+              <col style="width: 46%;">
+              <col style="width: 6%;">
+              <col style="width: 6%;">
+              <col style="width: 9%;">
+              <col style="width: 11%;">
+              <col style="width: 14%;">
+              <col class="no-print" style="width: 4%;">
             </colgroup>
             <thead>
               <tr class="vp-thead-row">
