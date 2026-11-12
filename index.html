@@ -721,18 +721,55 @@
       border-collapse: collapse;
       margin-top: 10px;
       margin-bottom: 14px;
+      table-layout: auto;
     }
 
     .warehouse-table th, .warehouse-table td {
       border: 1px solid #e2e8f0;
-      padding: 8px 10px;
+      padding: 9px 12px;
       font-size: 13px;
       text-align: left;
+      vertical-align: middle;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      white-space: normal;
+      line-height: 1.45;
     }
 
     .warehouse-table th {
       background: #f8fafc;
       font-weight: 600;
+    }
+
+    /* Szeroka kolumna z nazwą rozszerzająca się w pionie przy dłuższym tekście */
+    .wh-col-name {
+      min-width: 320px;
+      width: 45%;
+      font-weight: 600;
+      line-height: 1.4;
+      white-space: normal !important;
+      word-break: break-word !important;
+    }
+
+    /* Elastyczne pole wieloliniowe w trybie edycji */
+    .vp-cell-textarea {
+      width: 100%;
+      min-height: 34px;
+      border: none;
+      outline: none;
+      font-family: inherit;
+      font-size: 13px;
+      background: transparent;
+      padding: 3px 4px;
+      box-sizing: border-box;
+      resize: vertical;
+      line-height: 1.35;
+      display: block;
+    }
+
+    .vp-cell-textarea:focus {
+      background: #eff6ff;
+      border-radius: 4px;
     }
 
     
@@ -1536,7 +1573,7 @@
 
 <!-- Modal Magazynu Zamówień -->
 <div class="modal-overlay" id="ordersModal">
-  <div class="modal-box" style="width: 880px;">
+  <div class="modal-box" style="width: 1250px; max-width: 96%;">
     <h3>📁 Magazyn zamówień</h3>
     <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">
       Lista zapisanych zamówień. Kliknij na dowolne zamówienie, aby wczytać je do ponownej edycji. Kolejny zapis nadpisze dane tego zamówienia.
@@ -1556,8 +1593,8 @@
       <table class="warehouse-table">
         <thead>
           <tr>
-            <th>Nr zamówienia</th>
-            <th>Klient</th>
+            <th style="width: 140px;">Nr zamówienia</th>
+            <th class="wh-col-name">Klient</th>
             <th>Model / Kolor</th>
             <th>Ostatnia zmiana</th>
             <th style="width: 140px; text-align: center;">Akcja</th>
@@ -1671,7 +1708,7 @@
 
 <!-- Modal Magazynu Opcji -->
 <div class="modal-overlay" id="optionsModal">
-  <div class="modal-box" style="width: 900px; max-width: 96%;">
+  <div class="modal-box" style="width: 1350px; max-width: 98%;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
       <h3 style="margin: 0;">⚙️ Magazyn opcji pakowania</h3>
       <button class="btn-secondary" onclick="closeOptionsModal()" style="padding: 4px 10px;">✕</button>
@@ -1734,8 +1771,8 @@
       <table class="warehouse-table">
         <thead>
           <tr>
-            <th>Nazwa</th>
-            <th style="width: 60px; text-align: center;">J.m.</th>
+            <th class="wh-col-name">Nazwa</th>
+            <th style="width: 70px; text-align: center;">J.m.</th>
             <th style="width: 60px; text-align: center;">Ilość</th>
             <th>Element</th>
             <th>Montaż</th>
@@ -1780,7 +1817,7 @@
 
 <!-- Modal Magazynu Zbiorów -->
 <div class="modal-overlay" id="setsModal">
-  <div class="modal-box" style="width: 950px; max-width: 96%;">
+  <div class="modal-box" style="width: 1400px; max-width: 98%;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
       <h3 style="margin: 0;">📚 Magazyn zbiorów pakowania</h3>
       <button class="btn-secondary" onclick="closeSetsModal()" style="padding: 4px 10px;">✕</button>
@@ -1810,7 +1847,7 @@
     </div>
 
     <!-- Lista zbiorów -->
-    <div style="display: grid; grid-template-columns: 320px 1fr; gap: 14px; min-height: 320px;">
+    <div style="display: grid; grid-template-columns: 340px 1fr; gap: 16px; min-height: 420px;">
       <!-- Kolumna lewa: lista zbiorów -->
       <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow-y: auto; max-height: 420px; background: #ffffff;">
         <div style="padding: 8px; background: #f1f5f9; border-bottom: 1px solid #e2e8f0;">
@@ -1839,8 +1876,8 @@
           <table class="warehouse-table" style="margin-top: 0;">
             <thead>
               <tr>
-                <th>Nazwa</th>
-                <th style="width: 50px;">J.m.</th>
+                <th class="wh-col-name">Nazwa</th>
+                <th style="width: 65px; text-align: center;">J.m.</th>
                 <th style="width: 50px;">Ilość</th>
                 <th style="width: 75px;">Element</th>
                 <th style="width: 75px;">Montaż</th>
@@ -1879,7 +1916,7 @@
 
 <!-- Modal Magazynu Profili (Wykaz materiałów) -->
 <div class="modal-overlay" id="profilesModal">
-  <div class="modal-box" style="width: 800px;">
+  <div class="modal-box" style="width: 1200px; max-width: 96%;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
       <h3 style="margin: 0;">🧱 Magazyn profili (Wykaz materiałów)</h3>
       <button class="btn-secondary" onclick="closeProfilesModal()" style="padding: 4px 10px;">✕</button>
@@ -1922,8 +1959,8 @@
       <table class="warehouse-table">
         <thead>
           <tr>
-            <th>Nazwa profilu</th>
-            <th>Typ / Zastosowanie</th>
+            <th class="wh-col-name">Nazwa profilu</th>
+            <th style="width: 220px;">Typ / Zastosowanie</th>
             <th>Długość handlowa</th>
             <th style="width: 60px; text-align: center;">Usuń</th>
           </tr>
@@ -1987,7 +2024,7 @@
 
 <!-- Modal Magazynu Pozycji -->
 <div class="modal-overlay" id="warehouseModal">
-  <div class="modal-box" style="width: 650px;">
+  <div class="modal-box" style="width: 1100px; max-width: 96%;">
     <h3>📦 Magazyn pozycji zamówienia</h3>
     <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">
       Zarządzaj dostępnymi pozycjami. Możesz dodawać, usuwać oraz edytować istniejące pozycje.
@@ -2025,8 +2062,8 @@
       <table class="warehouse-table">
         <thead>
           <tr>
-            <th>Nazwa pozycji</th>
-            <th>Typ</th>
+            <th class="wh-col-name">Nazwa pozycji</th>
+            <th style="width: 160px;">Typ</th>
             <th>Domyślny wymiar/profil</th>
             <th style="width: 100px; text-align: center;">Akcja</th>
           </tr>
@@ -2197,7 +2234,7 @@
       const typeLabel = item.type === 'double_gate' ? 'Brama dwuskrzydłowa' : 'Standardowy';
 
       tr.innerHTML = `
-        <td><strong>${item.name}</strong></td>
+        <td class="wh-col-name"><strong>${item.name}</strong></td>
         <td>${typeLabel}</td>
         <td>${item.defaultParam || '-'}</td>
         <td style="text-align: center;">
@@ -4778,7 +4815,7 @@
       const origIdx = opt.originalIdx;
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><strong>${opt.name}</strong></td>
+        <td class="wh-col-name"><strong>${opt.name}</strong></td>
         <td style="text-align: center;">${opt.jm || '-'}</td>
         <td style="text-align: center;">${opt.qty !== undefined ? opt.qty : '-'}</td>
         <td>${opt.element || '-'}</td>
@@ -5129,7 +5166,7 @@
       if (isEditingCurrentSet) {
         // Tryb edycji - aktywne pola input
         tr.innerHTML = `
-          <td><input type="text" class="vp-cell-input" value="${(it.name || '').replace(/"/g, '&quot;')}" oninput="updateCurrentSetItem(${itIdx}, 'name', this.value)"></td>
+          <td class="wh-col-name"><textarea class="vp-cell-textarea" rows="2" oninput="updateCurrentSetItem(${itIdx}, 'name', this.value)">${(it.name || '')}</textarea></td>
           <td><input type="text" class="vp-cell-input" style="text-align: center;" value="${(it.jm || '').replace(/"/g, '&quot;')}" oninput="updateCurrentSetItem(${itIdx}, 'jm', this.value)"></td>
           <td><input type="text" class="vp-cell-input" style="text-align: center; font-weight: bold;" value="${(it.qty !== undefined ? it.qty : '').replace(/"/g, '&quot;')}" oninput="updateCurrentSetItem(${itIdx}, 'qty', this.value)"></td>
           <td><input type="text" class="vp-cell-input" value="${(it.element || '').replace(/"/g, '&quot;')}" oninput="updateCurrentSetItem(${itIdx}, 'element', this.value)"></td>
@@ -5142,7 +5179,7 @@
       } else {
         // Tryb podglądu - statyczny tekst, stabilny i odporny na odświeżanie
         tr.innerHTML = `
-          <td><strong>${it.name || '-'}</strong></td>
+          <td class="wh-col-name"><strong>${it.name || '-'}</strong></td>
           <td style="text-align: center;">${it.jm || '-'}</td>
           <td style="text-align: center; font-weight: bold; color: #0284c7;">${it.qty !== undefined ? it.qty : '-'}</td>
           <td style="text-align: center;">${it.element || '-'}</td>
@@ -5297,7 +5334,7 @@
       const idx = p.originalIdx;
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><strong>${p.name}</strong></td>
+        <td class="wh-col-name"><strong>${p.name}</strong></td>
         <td>${p.type || '-'}</td>
         <td>${p.length || '-'}</td>
         <td style="text-align: center;">
