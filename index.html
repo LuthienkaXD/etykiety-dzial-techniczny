@@ -4322,7 +4322,8 @@
     ]
   };
 
-  // Indeks aktualnie edytowanego zbioru w modal
+  // ID lub indeks aktualnie wybranego zbioru w modal
+  let selectedSetId = null;
   let selectedSetIndex = 0;
 
   let isEditingCurrentSet = false;
@@ -5009,9 +5010,16 @@
 
   // --- MAGAZYN ZBIORÓW ---
   function openSetsModal() {
+    isEditingCurrentSet = false;
+    tempEditSetItems = null;
+    if (packingSets.length > 0) {
+      if (selectedSetId === null || !packingSets.some(s => (s.id !== undefined ? s.id === selectedSetId : packingSets.indexOf(s) === selectedSetId))) {
+        selectedSetId = packingSets[0].id !== undefined ? packingSets[0].id : 0;
+      }
+    }
     renderSetsList();
     if (packingSets.length > 0) {
-      renderSetDetails(0);
+      renderSetDetailsById(selectedSetId);
     }
     document.getElementById('setsModal').style.display = 'flex';
     fetchCloudSets();
@@ -5054,8 +5062,9 @@
     document.getElementById('newSetModel').value = '';
     document.getElementById('newSetCustomTitle').value = '';
 
+    selectedSetId = newSet.id;
     renderSetsList();
-    renderSetDetails(packingSets.length - 1);
+    renderSetDetailsById(newSet.id);
     populateVpSelects();
     alert(`Utworzono nowy zbiór: ${title}`);
   }
@@ -5094,10 +5103,12 @@
     }
 
     listWithIdx.forEach((s) => {
-      const idx = s.originalIdx;
+      const sId = s.id !== undefined ? s.id : s.originalIdx;
+      const isCardActive = (selectedSetId !== null && sId === selectedSetId);
       const card = document.createElement('div');
-      card.className = 'set-list-card' + (idx === selectedSetIndex ? ' active' : '');
-      card.onclick = () => renderSetDetails(idx);
+      card.className = 'set-list-card' + (isCardActive ? ' active' : '');
+      card.dataset.setId = String(sId);
+      card.onclick = () => renderSetDetailsById(sId);
 
       const itemsCount = (s.items || []).length;
       card.innerHTML = `
@@ -5113,6 +5124,18 @@
     });
   }
 
+  function renderSetDetailsById(sId) {
+    let targetIdx = packingSets.findIndex(s => (s.id !== undefined ? s.id === sId : packingSets.indexOf(s) === sId));
+    if (targetIdx === -1 && typeof sId === 'number' && packingSets[sId]) {
+      targetIdx = sId;
+    }
+    if (targetIdx >= 0) {
+      selectedSetId = sId;
+      selectedSetIndex = targetIdx;
+      renderSetDetails(targetIdx);
+    }
+  }
+
   function renderSetDetails(setIdx) {
     if (isEditingCurrentSet && selectedSetIndex !== setIdx) {
       if (!confirm('Masz niezapisane zmiany w edytowanym zbiorze. Czy na pewno przejść do innego zbioru i odrzucić zmiany?')) {
@@ -5124,9 +5147,18 @@
 
     selectedSetIndex = setIdx;
     const currentSet = packingSets[setIdx];
+    if (currentSet && currentSet.id !== undefined) {
+      selectedSetId = currentSet.id;
+    } else {
+      selectedSetId = setIdx;
+    }
 
+    // Podświetlenie odpowiedniego kafelka na liście
     const cards = document.querySelectorAll('.set-list-card');
-    cards.forEach((c, i) => c.classList.toggle('active', i === setIdx));
+    cards.forEach(c => {
+      const cId = c.dataset.setId;
+      c.classList.toggle('active', cId === String(selectedSetId));
+    });
 
     if (!currentSet) {
       document.getElementById('setDetailsTitle').textContent = 'Wybierz zbiór z listy';
@@ -5419,7 +5451,11 @@
           if (!isEditingCurrentSet) {
             if (isModalOpen) {
               renderSetsList();
-              renderSetDetails(selectedSetIndex);
+              if (selectedSetId !== null) {
+                renderSetDetailsById(selectedSetId);
+              } else if (packingSets.length > 0) {
+                renderSetDetails(0);
+              }
             }
           }
           populateVpSelects();
