@@ -4816,7 +4816,7 @@
       const origIdx = opt.originalIdx;
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td class="wh-col-name"><strong>${opt.name}</strong></td>
+        <td class="wh-col-name">${opt.name}</td>
         <td style="text-align: center;">${opt.jm || '-'}</td>
         <td style="text-align: center;">${opt.qty !== undefined ? opt.qty : '-'}</td>
         <td>${opt.element || '-'}</td>
@@ -5246,7 +5246,7 @@
       } else {
         // Tryb podglądu - statyczny tekst, stabilny i odporny na odświeżanie
         tr.innerHTML = `
-          <td class="wh-col-name"><strong>${it.name || '-'}</strong></td>
+          <td class="wh-col-name">${it.name || '-'}</td>
           <td style="text-align: center;">${it.jm || '-'}</td>
           <td style="text-align: center; font-weight: bold; color: #0284c7;">${it.qty !== undefined ? it.qty : '-'}</td>
           <td style="text-align: center;">${it.element || '-'}</td>
