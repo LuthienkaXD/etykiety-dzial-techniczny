@@ -1914,6 +1914,43 @@
   </div>
 </div>
 
+<!-- Modal Wyboru Opcji do Zbioru -->
+<div class="modal-overlay" id="pickOptionModal" style="z-index: 10005;">
+  <div class="modal-box" style="width: 560px; max-width: 95%; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <h3 style="margin: 0; font-size: 16px; color: #1e3a8a;">➕ Dodaj opcję do zbioru</h3>
+      <button type="button" class="btn-secondary" onclick="closePickOptionModal()" style="padding: 3px 8px; font-size: 13px;">✕</button>
+    </div>
+    
+    <p style="font-size: 12px; color: #64748b; margin-bottom: 10px;">
+      Wybierz opcję z listy lub wpisz jej numer w polu poniżej.
+    </p>
+
+    <!-- Pasek z suwakiem/listą wszystkich dostępnych opcji -->
+    <div style="font-size: 11px; font-weight: 600; color: #475569; margin-bottom: 4px;">Lista dostępnych opcji:</div>
+    <div id="pickOptionScrollList" style="max-height: 220px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px; background: #f8fafc; padding: 6px; margin-bottom: 12px; font-family: monospace; font-size: 12px; line-height: 1.5;">
+      <!-- Generowane pozycje 1. 2. 3. ... -->
+    </div>
+
+    <!-- Pole wpisania numeru -->
+    <div style="margin-bottom: 8px;">
+      <label for="pickOptionNumberInput" style="display: block; font-size: 12px; font-weight: 600; color: #1e293b; margin-bottom: 4px;">Wpisz numer opcji:</label>
+      <input type="number" id="pickOptionNumberInput" class="form-control" placeholder="Wpisz np. 1, 14..." min="1" style="width: 100%; padding: 8px 10px; font-size: 14px; border: 1px solid #94a3b8; border-radius: 6px;" oninput="onPickOptionNumberChange()">
+    </div>
+
+    <!-- Półprzezroczysty tekst z podglądem pozycji -->
+    <div id="pickOptionPreview" style="min-height: 38px; padding: 6px 10px; border-radius: 6px; background: rgba(241, 245, 249, 0.7); color: rgba(30, 41, 59, 0.55); font-size: 13px; font-style: italic; display: flex; align-items: center; border: 1px dashed rgba(148, 163, 184, 0.5); margin-bottom: 14px;">
+      (Wpisz numer powyżej, aby zobaczyć podgląd opcji)
+    </div>
+
+    <!-- Przyciski akcji -->
+    <div style="display: flex; justify-content: flex-end; gap: 8px;">
+      <button type="button" class="btn-secondary" onclick="closePickOptionModal()" style="padding: 6px 14px;">Anuluj</button>
+      <button type="button" class="btn-primary" onclick="confirmPickOptionForCurrentSet()" style="padding: 6px 18px; font-weight: bold;">OK</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal Magazynu Profili (Wykaz materiałów) -->
 <div class="modal-overlay" id="profilesModal">
   <div class="modal-box" style="width: 1200px; max-width: 96%;">
@@ -5355,11 +5392,78 @@
     const s = getSetObjectById(selectedSetId) || packingSets[selectedSetIndex];
     if (!s) return;
 
-    // Szybki wybór opcji do dodania
-    let optList = packingOptions.map((o, i) => `${i + 1}. ${o.name} [${o.element || '-'}]`).join('\n');
-    const pick = prompt('Wpisz numer opcji z Magazynu Opcji, którą chcesz dodać:\n\n' + optList);
-    if (!pick) return;
-    const pIdx = parseInt(pick) - 1;
+    const listDiv = document.getElementById('pickOptionScrollList');
+    if (listDiv) {
+      listDiv.innerHTML = packingOptions.map((o, i) => {
+        const elemStr = o.element ? ` [${o.element}]` : (o.montaz ? ` [${o.montaz}]` : ' [-]');
+        return `<div style="padding: 3px 6px; cursor: pointer; border-radius: 4px; transition: background 0.15s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='transparent'" onclick="selectOptionNumberDirectly(${i + 1})">${i + 1}. ${o.name}${elemStr}</div>`;
+      }).join('');
+    }
+
+    const input = document.getElementById('pickOptionNumberInput');
+    if (input) {
+      input.value = '';
+    }
+    const preview = document.getElementById('pickOptionPreview');
+    if (preview) {
+      preview.style.color = 'rgba(30, 41, 59, 0.45)';
+      preview.style.fontWeight = 'normal';
+      preview.textContent = '(Wpisz numer powyżej, aby zobaczyć podgląd opcji)';
+    }
+
+    const modal = document.getElementById('pickOptionModal');
+    if (modal) {
+      modal.style.display = 'flex';
+      setTimeout(() => {
+        if (input) input.focus();
+      }, 50);
+    }
+  }
+
+  function closePickOptionModal() {
+    const modal = document.getElementById('pickOptionModal');
+    if (modal) modal.style.display = 'none';
+  }
+
+  function selectOptionNumberDirectly(num) {
+    const input = document.getElementById('pickOptionNumberInput');
+    if (input) {
+      input.value = num;
+      onPickOptionNumberChange();
+    }
+  }
+
+  function onPickOptionNumberChange() {
+    const input = document.getElementById('pickOptionNumberInput');
+    const preview = document.getElementById('pickOptionPreview');
+    if (!input || !preview) return;
+
+    const val = parseInt(input.value);
+    if (!isNaN(val) && val >= 1 && val <= packingOptions.length) {
+      const opt = packingOptions[val - 1];
+      const elemStr = opt.element ? ` [${opt.element}]` : (opt.montaz ? ` [${opt.montaz}]` : '');
+      preview.style.color = 'rgba(15, 23, 42, 0.65)';
+      preview.style.fontWeight = '600';
+      preview.textContent = `${val}. ${opt.name}${elemStr}`;
+    } else if (input.value.trim() === '') {
+      preview.style.color = 'rgba(30, 41, 59, 0.45)';
+      preview.style.fontWeight = 'normal';
+      preview.textContent = '(Wpisz numer powyżej, aby zobaczyć podgląd opcji)';
+    } else {
+      preview.style.color = 'rgba(239, 68, 68, 0.65)';
+      preview.style.fontWeight = 'normal';
+      preview.textContent = 'Brak opcji o takim numerze (zakres: 1 - ' + packingOptions.length + ')';
+    }
+  }
+
+  function confirmPickOptionForCurrentSet() {
+    const s = getSetObjectById(selectedSetId) || packingSets[selectedSetIndex];
+    if (!s) return;
+
+    const input = document.getElementById('pickOptionNumberInput');
+    if (!input) return;
+
+    const pIdx = parseInt(input.value) - 1;
     if (!isNaN(pIdx) && packingOptions[pIdx]) {
       const chosenOpt = JSON.parse(JSON.stringify(packingOptions[pIdx]));
       if (isEditingCurrentSet && tempEditSetItems) {
@@ -5372,9 +5476,11 @@
         localStorage.setItem('order_app_sets', JSON.stringify(packingSets));
         syncSetsWithCloud();
       }
+      closePickOptionModal();
       renderSetDetailsById(selectedSetId);
     } else {
-      alert('Nieprawidłowy numer opcji.');
+      alert('Wpisz prawidłowy numer opcji z listy!');
+      input.focus();
     }
   }
 
