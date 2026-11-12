@@ -41,6 +41,28 @@ if (DATABASE_URL && pg) {
       created_at BIGINT
     );
 
+    
+    CREATE TABLE IF NOT EXISTS etykiety_options (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      jm VARCHAR(50),
+      qty VARCHAR(50),
+      element VARCHAR(100),
+      montaz VARCHAR(100),
+      opis TEXT,
+      created_at BIGINT
+    );
+
+    CREATE TABLE IF NOT EXISTS etykiety_sets (
+      id SERIAL PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      element VARCHAR(100),
+      model VARCHAR(100),
+      items JSONB DEFAULT '[]'::jsonb,
+      last_modified_by VARCHAR(100),
+      last_modified_at VARCHAR(100),
+      created_at BIGINT
+    );
     CREATE TABLE IF NOT EXISTS etykiety_orders (
       id SERIAL PRIMARY KEY,
       order_number VARCHAR(100) UNIQUE NOT NULL,
@@ -324,6 +346,145 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Błąd usuwania zamówienia' }));
       }
+      return;
+    }
+  }
+
+
+  // --- API MAGAZYN OPCJI ---
+  if (url.pathname === '/api/options') {
+    if (req.method === 'GET') {
+      try {
+        if (!pool) {
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify([]));
+          return;
+        }
+        const result = await pool.query('SELECT id, name, jm, qty, element, montaz, opis, created_at as "createdAt" FROM etykiety_options ORDER BY id ASC');
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify(result.rows));
+      } catch (err) {
+        console.error('Błąd pobierania opcji:', err);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify([]));
+      }
+      return;
+    }
+
+    if (req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => body += chunk);
+      req.on('end', async () => {
+        try {
+          const items = JSON.parse(body);
+          if (!Array.isArray(items)) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Dane muszą być tablicą' }));
+            return;
+          }
+
+          if (pool) {
+            const client = await pool.connect();
+            try {
+              await client.query('BEGIN');
+              await client.query('DELETE FROM etykiety_options');
+              for (const item of items) {
+                if (!item.name) continue;
+                await client.query(
+                  'INSERT INTO etykiety_options (name, jm, qty, element, montaz, opis, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+                  [item.name.trim(), item.jm || '', item.qty !== undefined ? String(item.qty) : '', item.element || '', item.montaz || '', item.opis || '', item.createdAt || Date.now()]
+                );
+              }
+              await client.query('COMMIT');
+            } catch (txErr) {
+              await client.query('ROLLBACK');
+              throw txErr;
+            } finally {
+              client.release();
+            }
+          }
+
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: true, count: items.length }));
+        } catch (e) {
+          console.error('Błąd zapisu opcji:', e);
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Błąd zapisu opcji w chmurze' }));
+        }
+      });
+      return;
+    }
+  }
+
+  // --- API MAGAZYN ZBIORÓW ---
+  if (url.pathname === '/api/sets') {
+    if (req.method === 'GET') {
+      try {
+        if (!pool) {
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify([]));
+          return;
+        }
+        const result = await pool.query('SELECT id, title, element, model, items, last_modified_by as "lastModifiedBy", last_modified_at as "lastModifiedAt", created_at as "createdAt" FROM etykiety_sets ORDER BY id ASC');
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify(result.rows));
+      } catch (err) {
+        console.error('Błąd pobierania zbiorów:', err);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify([]));
+      }
+      return;
+    }
+
+    if (req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => body += chunk);
+      req.on('end', async () => {
+        try {
+          const sets = JSON.parse(body);
+          if (!Array.isArray(sets)) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Dane muszą być tablicą' }));
+            return;
+          }
+
+          if (pool) {
+            const client = await pool.connect();
+            try {
+              await client.query('BEGIN');
+              await client.query('DELETE FROM etykiety_sets');
+              for (const s of sets) {
+                if (!s.title && !s.element) continue;
+                await client.query(
+                  'INSERT INTO etykiety_sets (title, element, model, items, last_modified_by, last_modified_at, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+                  [
+                    (s.title || (s.element + ' - ' + (s.model || ''))).trim(),
+                    (s.element || '').trim(),
+                    (s.model || '').trim(),
+                    JSON.stringify(s.items || []),
+                    s.lastModifiedBy || '',
+                    s.lastModifiedAt || new Date().toLocaleString('pl-PL'),
+                    s.createdAt || Date.now()
+                  ]
+                );
+              }
+              await client.query('COMMIT');
+            } catch (txErr) {
+              await client.query('ROLLBACK');
+              throw txErr;
+            } finally {
+              client.release();
+            }
+          }
+
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: true, count: sets.length }));
+        } catch (e) {
+          console.error('Błąd zapisu zbiorów:', e);
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Błąd zapisu zbiorów w chmurze' }));
+        }
+      });
       return;
     }
   }
