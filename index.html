@@ -1718,9 +1718,15 @@
       </div>
     </div>
 
-    <!-- Wyszukiwarka opcji -->
-    <div style="margin-bottom: 10px; display: flex; gap: 8px;">
+    <!-- Pasek wyszukiwania i sortowania opcji -->
+    <div style="margin-bottom: 10px; display: flex; gap: 8px; align-items: center;">
       <input type="text" id="searchOptionsInput" class="form-control" placeholder="🔍 Szukaj opcji po nazwie, elemencie..." oninput="renderOptionsTable()" style="flex: 1; font-size: 13px;">
+      <select id="sortOptionsSelect" class="form-control" style="width: 220px; font-size: 13px;" onchange="renderOptionsTable()">
+        <option value="alpha_asc">🔤 Alfabetycznie (A - Z)</option>
+        <option value="alpha_desc">🔤 Alfabetycznie (Z - A)</option>
+        <option value="newest">📅 Data dodania (najnowsze)</option>
+        <option value="oldest">📅 Data dodania (najstarsze)</option>
+      </select>
     </div>
 
     <!-- Tabela opcji -->
@@ -1807,8 +1813,15 @@
     <div style="display: grid; grid-template-columns: 320px 1fr; gap: 14px; min-height: 320px;">
       <!-- Kolumna lewa: lista zbiorów -->
       <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow-y: auto; max-height: 420px; background: #ffffff;">
-        <div style="padding: 8px; background: #f1f5f9; font-weight: 600; font-size: 12px; border-bottom: 1px solid #e2e8f0;">
-          Dostępne zbiory:
+        <div style="padding: 8px; background: #f1f5f9; border-bottom: 1px solid #e2e8f0;">
+          <div style="font-weight: 600; font-size: 12px; margin-bottom: 6px;">Dostępne zbiory:</div>
+          <input type="text" id="searchSetsInput" class="form-control" placeholder="🔍 Szukaj zbioru..." oninput="renderSetsList()" style="width: 100%; font-size: 11px; padding: 4px 6px; margin-bottom: 5px;">
+          <select id="sortSetsSelect" class="form-control" style="width: 100%; font-size: 11px; padding: 4px 6px;" onchange="renderSetsList()">
+            <option value="alpha_asc">🔤 Alfabetycznie (A - Z)</option>
+            <option value="alpha_desc">🔤 Alfabetycznie (Z - A)</option>
+            <option value="newest">📅 Data dodania (najnowsze)</option>
+            <option value="oldest">📅 Data dodania (najstarsze)</option>
+          </select>
         </div>
         <div id="setsListContainer">
           <!-- Kafelki zbiorów -->
@@ -1892,6 +1905,17 @@
         </div>
         <button type="button" class="btn-primary" onclick="addProfileFromForm()" style="padding: 7px 14px; font-size: 12px; font-weight: bold;">+ Dodaj profil</button>
       </div>
+    </div>
+
+    <!-- Pasek szukania i sortowania profili -->
+    <div style="margin-bottom: 10px; display: flex; gap: 8px; align-items: center;">
+      <input type="text" id="searchProfilesInput" class="form-control" placeholder="🔍 Szukaj profilu..." oninput="renderProfilesTable()" style="flex: 1; font-size: 13px;">
+      <select id="sortProfilesSelect" class="form-control" style="width: 220px; font-size: 13px;" onchange="renderProfilesTable()">
+        <option value="alpha_asc">🔤 Alfabetycznie (A - Z)</option>
+        <option value="alpha_desc">🔤 Alfabetycznie (Z - A)</option>
+        <option value="newest">📅 Data dodania (najnowsze)</option>
+        <option value="oldest">📅 Data dodania (najstarsze)</option>
+      </select>
     </div>
 
     <div style="max-height: 260px; overflow-y: auto;">
@@ -4724,19 +4748,34 @@
   function renderOptionsTable() {
     const tbody = document.getElementById('optionsTableBody');
     tbody.innerHTML = '';
-    const query = (document.getElementById('searchOptionsInput').value || '').toLowerCase().trim();
+    const query = (document.getElementById('searchOptionsInput') ? document.getElementById('searchOptionsInput').value : '').toLowerCase().trim();
+    const sortVal = document.getElementById('sortOptionsSelect') ? document.getElementById('sortOptionsSelect').value : 'alpha_asc';
 
-    const filtered = packingOptions.filter(o => {
-      return (o.name || '').toLowerCase().includes(query) || (o.element || '').toLowerCase().includes(query) || (o.montaz || '').toLowerCase().includes(query);
+    // Klonujemy z zachowaniem indeksu oryginalnego
+    let listWithIdx = packingOptions.map((opt, originalIdx) => ({ ...opt, originalIdx }));
+
+    if (query) {
+      listWithIdx = listWithIdx.filter(o => {
+        return (o.name || '').toLowerCase().includes(query) || (o.element || '').toLowerCase().includes(query) || (o.montaz || '').toLowerCase().includes(query);
+      });
+    }
+
+    // Sortowanie
+    listWithIdx.sort((a, b) => {
+      if (sortVal === 'alpha_asc') return (a.name || '').localeCompare(b.name || '', 'pl');
+      if (sortVal === 'alpha_desc') return (b.name || '').localeCompare(a.name || '', 'pl');
+      if (sortVal === 'newest') return (b.createdAt || b.originalIdx || 0) - (a.createdAt || a.originalIdx || 0);
+      if (sortVal === 'oldest') return (a.createdAt || a.originalIdx || 0) - (b.createdAt || b.originalIdx || 0);
+      return 0;
     });
 
-    if (filtered.length === 0) {
+    if (listWithIdx.length === 0) {
       tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 15px;">Brak pasujących opcji</td></tr>';
       return;
     }
 
-    filtered.forEach((opt) => {
-      const origIdx = packingOptions.indexOf(opt);
+    listWithIdx.forEach((opt) => {
+      const origIdx = opt.originalIdx;
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td><strong>${opt.name}</strong></td>
@@ -4993,7 +5032,32 @@
       return;
     }
 
-    packingSets.forEach((s, idx) => {
+    const query = (document.getElementById('searchSetsInput') ? document.getElementById('searchSetsInput').value : '').toLowerCase().trim();
+    const sortVal = document.getElementById('sortSetsSelect') ? document.getElementById('sortSetsSelect').value : 'alpha_asc';
+
+    let listWithIdx = packingSets.map((s, originalIdx) => ({ ...s, originalIdx }));
+
+    if (query) {
+      listWithIdx = listWithIdx.filter(s => {
+        return (s.title || '').toLowerCase().includes(query) || (s.element || '').toLowerCase().includes(query) || (s.model || '').toLowerCase().includes(query);
+      });
+    }
+
+    listWithIdx.sort((a, b) => {
+      if (sortVal === 'alpha_asc') return (a.title || '').localeCompare(b.title || '', 'pl');
+      if (sortVal === 'alpha_desc') return (b.title || '').localeCompare(a.title || '', 'pl');
+      if (sortVal === 'newest') return (b.createdAt || b.id || b.originalIdx || 0) - (a.createdAt || a.id || a.originalIdx || 0);
+      if (sortVal === 'oldest') return (a.createdAt || a.id || a.originalIdx || 0) - (b.createdAt || b.id || b.originalIdx || 0);
+      return 0;
+    });
+
+    if (listWithIdx.length === 0) {
+      container.innerHTML = '<div style="padding: 15px; color: #94a3b8; font-size: 13px; text-align: center;">Brak pasujących zbiorów.</div>';
+      return;
+    }
+
+    listWithIdx.forEach((s) => {
+      const idx = s.originalIdx;
       const card = document.createElement('div');
       card.className = 'set-list-card' + (idx === selectedSetIndex ? ' active' : '');
       card.onclick = () => renderSetDetails(idx);
@@ -5204,7 +5268,33 @@
   function renderProfilesTable() {
     const tbody = document.getElementById('profilesTableBody');
     tbody.innerHTML = '';
-    materialsProfiles.forEach((p, idx) => {
+
+    const query = (document.getElementById('searchProfilesInput') ? document.getElementById('searchProfilesInput').value : '').toLowerCase().trim();
+    const sortVal = document.getElementById('sortProfilesSelect') ? document.getElementById('sortProfilesSelect').value : 'alpha_asc';
+
+    let listWithIdx = materialsProfiles.map((p, originalIdx) => ({ ...p, originalIdx }));
+
+    if (query) {
+      listWithIdx = listWithIdx.filter(p => {
+        return (p.name || '').toLowerCase().includes(query) || (p.type || '').toLowerCase().includes(query);
+      });
+    }
+
+    listWithIdx.sort((a, b) => {
+      if (sortVal === 'alpha_asc') return (a.name || '').localeCompare(b.name || '', 'pl');
+      if (sortVal === 'alpha_desc') return (b.name || '').localeCompare(a.name || '', 'pl');
+      if (sortVal === 'newest') return (b.createdAt || b.originalIdx || 0) - (a.createdAt || a.originalIdx || 0);
+      if (sortVal === 'oldest') return (a.createdAt || a.originalIdx || 0) - (b.createdAt || b.originalIdx || 0);
+      return 0;
+    });
+
+    if (listWithIdx.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 15px;">Brak pasujących profili</td></tr>';
+      return;
+    }
+
+    listWithIdx.forEach((p) => {
+      const idx = p.originalIdx;
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td><strong>${p.name}</strong></td>
@@ -5228,7 +5318,7 @@
       return;
     }
 
-    materialsProfiles.push({ name, type, length: len });
+    materialsProfiles.push({ name, type, length: len, createdAt: Date.now() });
     localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
     document.getElementById('newProfileName').value = '';
     document.getElementById('newProfileType').value = '';
