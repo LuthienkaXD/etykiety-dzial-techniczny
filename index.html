@@ -1842,10 +1842,17 @@
         </div>
 
         <div id="setDetailsActions" style="display: none; justify-content: space-between; align-items: center; margin-top: 10px; border-top: 1px solid #e2e8f0; padding-top: 10px;">
-          <button class="btn-secondary" onclick="openAddOptionToCurrentSetModal()" style="font-size: 12px;">+ Przypisz kolejną opcję do tego zbioru</button>
+          <!-- Przycisk dodawania opcji widoczny tylko w trybie edycji -->
+          <div id="setEditActionsLeft" style="display: none;">
+            <button type="button" class="btn-secondary" onclick="openAddOptionToCurrentSetModal()" style="font-size: 12px;">+ Przypisz kolejną opcję do tego zbioru</button>
+          </div>
+          <div id="setViewActionsLeft">
+            <button type="button" class="btn-primary" onclick="startEditingCurrentSet()" style="font-size: 13px; padding: 6px 14px; font-weight: bold;">✏️ Edytuj zbiór</button>
+          </div>
           <div style="display: flex; gap: 8px;">
-            <button class="btn-danger" onclick="deleteCurrentSet()" style="font-size: 12px; padding: 4px 10px;">Usuń cały zbiór</button>
-            <button class="btn-success" onclick="saveCurrentSetItemsChanges()" style="font-size: 12px; padding: 6px 14px; font-weight: bold;">💾 Zapisz zmiany w zbiorze</button>
+            <button type="button" class="btn-danger" onclick="deleteCurrentSet()" style="font-size: 12px; padding: 4px 10px;">Usuń cały zbiór</button>
+            <button type="button" id="btnCancelEditSet" class="btn-secondary" onclick="cancelEditingCurrentSet()" style="display: none; font-size: 12px; padding: 6px 12px;">Anuluj</button>
+            <button type="button" id="btnSaveEditSet" class="btn-success" onclick="saveCurrentSetItemsChanges()" style="display: none; font-size: 12px; padding: 6px 14px; font-weight: bold;">💾 Zapisz zmiany w zbiorze</button>
           </div>
         </div>
       </div>
@@ -4256,6 +4263,24 @@
 
   // Indeks aktualnie edytowanego zbioru w modal
   let selectedSetIndex = 0;
+
+  let isEditingCurrentSet = false;
+  let tempEditSetItems = null;
+
+  function startEditingCurrentSet() {
+    const s = packingSets[selectedSetIndex];
+    if (!s) return;
+    isEditingCurrentSet = true;
+    tempEditSetItems = JSON.parse(JSON.stringify(s.items || []));
+    renderSetDetails(selectedSetIndex);
+  }
+
+  function cancelEditingCurrentSet() {
+    isEditingCurrentSet = false;
+    tempEditSetItems = null;
+    renderSetDetails(selectedSetIndex);
+  }
+
   let optionToAssignIdx = null;
 
   // --- OBSŁUGA PÓL VERPACKUNG ---
@@ -4988,6 +5013,14 @@
   }
 
   function renderSetDetails(setIdx) {
+    if (isEditingCurrentSet && selectedSetIndex !== setIdx) {
+      if (!confirm('Masz niezapisane zmiany w edytowanym zbiorze. Czy na pewno przejść do innego zbioru i odrzucić zmiany?')) {
+        return;
+      }
+      isEditingCurrentSet = false;
+      tempEditSetItems = null;
+    }
+
     selectedSetIndex = setIdx;
     const currentSet = packingSets[setIdx];
 
@@ -5007,10 +5040,21 @@
     document.getElementById('setItemsTableWrapper').style.display = 'block';
     document.getElementById('setDetailsActions').style.display = 'flex';
 
+    // Przełączanie przycisków Edytuj vs Zapisz/Anuluj
+    const editLeft = document.getElementById('setEditActionsLeft');
+    const viewLeft = document.getElementById('setViewActionsLeft');
+    const btnCancel = document.getElementById('btnCancelEditSet');
+    const btnSave = document.getElementById('btnSaveEditSet');
+
+    if (editLeft) editLeft.style.display = isEditingCurrentSet ? 'block' : 'none';
+    if (viewLeft) viewLeft.style.display = isEditingCurrentSet ? 'none' : 'block';
+    if (btnCancel) btnCancel.style.display = isEditingCurrentSet ? 'inline-block' : 'none';
+    if (btnSave) btnSave.style.display = isEditingCurrentSet ? 'inline-block' : 'none';
+
     const tbody = document.getElementById('setItemsTbody');
     tbody.innerHTML = '';
 
-    const items = currentSet.items || [];
+    const items = isEditingCurrentSet ? (tempEditSetItems || []) : (currentSet.items || []);
     if (items.length === 0) {
       tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 20px;">Ten zbiór jest pusty. Kliknij "+ Przypisz kolejną opcję" poniżej.</td></tr>';
       return;
@@ -5018,17 +5062,31 @@
 
     items.forEach((it, itIdx) => {
       const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td><input type="text" class="vp-cell-input" value="${(it.name || '').replace(/"/g, '&quot;')}" oninput="updateCurrentSetItem(${itIdx}, 'name', this.value)"></td>
-        <td><input type="text" class="vp-cell-input" style="text-align: center;" value="${(it.jm || '').replace(/"/g, '&quot;')}" oninput="updateCurrentSetItem(${itIdx}, 'jm', this.value)"></td>
-        <td><input type="text" class="vp-cell-input" style="text-align: center;" value="${(it.qty !== undefined ? it.qty : '').replace(/"/g, '&quot;')}" oninput="updateCurrentSetItem(${itIdx}, 'qty', this.value)"></td>
-        <td><input type="text" class="vp-cell-input" value="${(it.element || '').replace(/"/g, '&quot;')}" oninput="updateCurrentSetItem(${itIdx}, 'element', this.value)"></td>
-        <td><input type="text" class="vp-cell-input" value="${(it.montaz || '').replace(/"/g, '&quot;')}" oninput="updateCurrentSetItem(${itIdx}, 'montaz', this.value)"></td>
-        <td><input type="text" class="vp-cell-input" value="${(it.opis || '').replace(/"/g, '&quot;')}" oninput="updateCurrentSetItem(${itIdx}, 'opis', this.value)"></td>
-        <td style="text-align: center;">
-          <button type="button" class="btn-danger" style="padding: 2px 6px; font-size: 11px;" onclick="removeCurrentSetItem(${itIdx})">✕</button>
-        </td>
-      `;
+      if (isEditingCurrentSet) {
+        // Tryb edycji - aktywne pola input
+        tr.innerHTML = `
+          <td><input type="text" class="vp-cell-input" value="${(it.name || '').replace(/"/g, '&quot;')}" oninput="updateCurrentSetItem(${itIdx}, 'name', this.value)"></td>
+          <td><input type="text" class="vp-cell-input" style="text-align: center;" value="${(it.jm || '').replace(/"/g, '&quot;')}" oninput="updateCurrentSetItem(${itIdx}, 'jm', this.value)"></td>
+          <td><input type="text" class="vp-cell-input" style="text-align: center; font-weight: bold;" value="${(it.qty !== undefined ? it.qty : '').replace(/"/g, '&quot;')}" oninput="updateCurrentSetItem(${itIdx}, 'qty', this.value)"></td>
+          <td><input type="text" class="vp-cell-input" value="${(it.element || '').replace(/"/g, '&quot;')}" oninput="updateCurrentSetItem(${itIdx}, 'element', this.value)"></td>
+          <td><input type="text" class="vp-cell-input" value="${(it.montaz || '').replace(/"/g, '&quot;')}" oninput="updateCurrentSetItem(${itIdx}, 'montaz', this.value)"></td>
+          <td><input type="text" class="vp-cell-input" value="${(it.opis || '').replace(/"/g, '&quot;')}" oninput="updateCurrentSetItem(${itIdx}, 'opis', this.value)"></td>
+          <td style="text-align: center;">
+            <button type="button" class="btn-danger" style="padding: 2px 6px; font-size: 11px;" onclick="removeCurrentSetItem(${itIdx})" title="Usuń opcję ze zbioru">✕</button>
+          </td>
+        `;
+      } else {
+        // Tryb podglądu - statyczny tekst, stabilny i odporny na odświeżanie
+        tr.innerHTML = `
+          <td><strong>${it.name || '-'}</strong></td>
+          <td style="text-align: center;">${it.jm || '-'}</td>
+          <td style="text-align: center; font-weight: bold; color: #0284c7;">${it.qty !== undefined ? it.qty : '-'}</td>
+          <td style="text-align: center;">${it.element || '-'}</td>
+          <td style="text-align: center;">${it.montaz || '-'}</td>
+          <td>${it.opis || '-'}</td>
+          <td style="text-align: center; color: #cbd5e1;">-</td>
+        `;
+      }
       tbody.appendChild(tr);
     });
   }
@@ -5050,25 +5108,40 @@
   }
 
   function updateCurrentSetItem(itIdx, field, val) {
-    const s = packingSets[selectedSetIndex];
-    if (s && s.items && s.items[itIdx]) {
-      s.items[itIdx][field] = val;
+    if (isEditingCurrentSet && tempEditSetItems && tempEditSetItems[itIdx]) {
+      tempEditSetItems[itIdx][field] = val;
+    } else {
+      const s = packingSets[selectedSetIndex];
+      if (s && s.items && s.items[itIdx]) {
+        s.items[itIdx][field] = val;
+      }
     }
   }
 
   function removeCurrentSetItem(itIdx) {
-    const s = packingSets[selectedSetIndex];
-    if (s && s.items) {
-      s.items.splice(itIdx, 1);
+    if (isEditingCurrentSet && tempEditSetItems) {
+      tempEditSetItems.splice(itIdx, 1);
       renderSetDetails(selectedSetIndex);
+    } else {
+      const s = packingSets[selectedSetIndex];
+      if (s && s.items) {
+        s.items.splice(itIdx, 1);
+        renderSetDetails(selectedSetIndex);
+      }
     }
   }
 
   function saveCurrentSetItemsChanges() {
     const s = packingSets[selectedSetIndex];
     if (!s) return;
+    if (isEditingCurrentSet && tempEditSetItems) {
+      s.items = JSON.parse(JSON.stringify(tempEditSetItems));
+    }
     s.lastModifiedBy = (currentWorker || localStorage.getItem('order_app_current_worker') || 'Nieznany').trim();
     s.lastModifiedAt = new Date().toLocaleString('pl-PL');
+    isEditingCurrentSet = false;
+    tempEditSetItems = null;
+
     localStorage.setItem('order_app_sets', JSON.stringify(packingSets));
     syncSetsWithCloud();
     renderSetsList();
@@ -5101,12 +5174,17 @@
     if (!pick) return;
     const pIdx = parseInt(pick) - 1;
     if (!isNaN(pIdx) && packingOptions[pIdx]) {
-      if (!Array.isArray(s.items)) s.items = [];
-      s.items.push(JSON.parse(JSON.stringify(packingOptions[pIdx])));
-      s.lastModifiedBy = (currentWorker || localStorage.getItem('order_app_current_worker') || 'Nieznany').trim();
-      s.lastModifiedAt = new Date().toLocaleString('pl-PL');
-      localStorage.setItem('order_app_sets', JSON.stringify(packingSets));
-      syncSetsWithCloud();
+      const chosenOpt = JSON.parse(JSON.stringify(packingOptions[pIdx]));
+      if (isEditingCurrentSet && tempEditSetItems) {
+        tempEditSetItems.push(chosenOpt);
+      } else {
+        if (!Array.isArray(s.items)) s.items = [];
+        s.items.push(chosenOpt);
+        s.lastModifiedBy = (currentWorker || localStorage.getItem('order_app_current_worker') || 'Nieznany').trim();
+        s.lastModifiedAt = new Date().toLocaleString('pl-PL');
+        localStorage.setItem('order_app_sets', JSON.stringify(packingSets));
+        syncSetsWithCloud();
+      }
       renderSetDetails(selectedSetIndex);
     } else {
       alert('Nieprawidłowy numer opcji.');
@@ -5207,8 +5285,16 @@
         if (Array.isArray(cloudSets) && cloudSets.length > 0) {
           packingSets = cloudSets;
           localStorage.setItem('order_app_sets', JSON.stringify(packingSets));
-          renderSetsList();
-          renderSetDetails(selectedSetIndex);
+          
+          // Jeśli modal zbiorów jest otwarty i użytkownik właśnie edytuje zbiór, NIE odświeżamy widoku, aby nie kasować wpisywanych zmian
+          const setsModal = document.getElementById('setsModal');
+          const isModalOpen = setsModal && setsModal.style.display === 'flex';
+          if (!isEditingCurrentSet) {
+            if (isModalOpen) {
+              renderSetsList();
+              renderSetDetails(selectedSetIndex);
+            }
+          }
           populateVpSelects();
         }
       }
