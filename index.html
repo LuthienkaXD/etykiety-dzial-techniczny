@@ -898,12 +898,25 @@
 
     
     /* Style tabeli Verpackung */
+    .verpackung-a4-page {
+      width: 297mm !important;
+      min-width: 297mm !important;
+      min-height: 210mm !important;
+      height: auto !important;
+      background: #ffffff !important;
+      padding: 10mm 12mm 12mm 12mm !important;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3) !important;
+      position: relative !important;
+      box-sizing: border-box !important;
+    }
+
     .vp-excel-table {
       width: 100%;
       border-collapse: collapse;
       border: 2px solid #000000;
       font-family: Calibri, Arial, sans-serif;
       background: #ffffff;
+      table-layout: fixed;
     }
 
     .vp-excel-table td, .vp-excel-table th {
@@ -912,23 +925,24 @@
       font-size: 13px;
       vertical-align: middle;
       box-sizing: border-box;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
     }
 
     .vp-big-pakowanie-cell {
-      font-size: 24px;
+      font-size: 26px;
       font-weight: bold;
       text-align: center;
       vertical-align: middle;
       background: #ffffff;
       letter-spacing: 1px;
-      width: 375px;
     }
 
     .vp-label-cell {
       font-size: 14px;
       font-weight: normal;
       background: #ffffff;
-      width: 120px;
+      width: 130px;
     }
 
     .vp-val-cell {
@@ -964,6 +978,25 @@
       background: #eff6ff;
     }
 
+    .vp-cell-textarea {
+      width: 100%;
+      border: none;
+      outline: none;
+      font-family: inherit;
+      font-size: 13px;
+      background: transparent;
+      padding: 2px 4px;
+      box-sizing: border-box;
+      resize: none;
+      overflow: hidden;
+      line-height: 1.35;
+      display: block;
+    }
+
+    .vp-cell-textarea:focus {
+      background: #eff6ff;
+    }
+
     /* Kafelki zbiorów */
     .set-list-card {
       padding: 10px 12px;
@@ -982,10 +1015,25 @@
     }
 
     /* Style druku A4 */
+    @page {
+      size: A4 portrait;
+      margin: 6mm 8mm;
+    }
+    @page vpLandscape {
+      size: A4 landscape;
+      margin: 6mm 8mm;
+    }
+    body.printing-vp {
+      page: vpLandscape;
+    }
+
     @media print {
-      @page {
-        size: A4 portrait;
-        margin: 6mm 8mm; /* Marginesy drukarki zapobiegające obcinaniu krawędzi */
+      body.printing-vp {
+        page: vpLandscape;
+      }
+      body.printing-vp @page {
+        size: A4 landscape;
+        margin: 6mm 8mm;
       }
 
       html, body {
@@ -1006,11 +1054,22 @@
       .main-nav-bar {
         display: none !important;
       }
-      #subpageLabels {
+
+      /* Domyślnie drukują się etykiety, chyba że aktywny jest Verpackung */
+      body:not(.printing-vp) #subpageLabels {
         display: block !important;
       }
-      #subpageVerpackung, #subpageMaterials {
+      body:not(.printing-vp) #subpageVerpackung,
+      body:not(.printing-vp) #subpageMaterials {
         display: none !important;
+      }
+
+      body.printing-vp #subpageLabels,
+      body.printing-vp #subpageMaterials {
+        display: none !important;
+      }
+      body.printing-vp #subpageVerpackung {
+        display: block !important;
       }
 
       .top-bar, .panel, .tabs, .actions-bar, .no-print {
@@ -1036,11 +1095,24 @@
       .verpackung-a4-page {
         box-shadow: none !important;
         background: #ffffff !important;
-        width: 100% !important;
+        width: 282mm !important;
+        min-width: 282mm !important;
+        max-width: 282mm !important;
         height: auto !important;
         min-height: auto !important;
         padding: 0 !important;
-        margin: 0 !important;
+        margin: 0 auto !important;
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+      }
+      .verpackung-a4-page .vp-excel-table {
+        width: 100% !important;
+      }
+      .verpackung-a4-page .vp-cell-textarea {
+        border: none !important;
+        background: transparent !important;
+        resize: none !important;
+        overflow: visible !important;
       }
 
       /* Karta główna oraz etykiety łączą się w jeden dokument do druku/PDF */
@@ -1491,9 +1563,9 @@
           <table class="vp-excel-table" id="vpHeaderTable">
             <colgroup>
               <col style="width: 140px;">
-              <col style="width: 250px;">
-              <col style="width: 130px;">
-              <col style="width: 330px;">
+              <col style="width: 480px;">
+              <col style="width: 140px;">
+              <col style="width: 300px;">
             </colgroup>
             <tbody>
               <tr style="height: 38px;">
@@ -1530,14 +1602,14 @@
           <!-- Tabela pozycji tabeli pakowania -->
           <table class="vp-excel-table" id="vpItemsTable" style="margin-top: 15px;">
             <colgroup>
-              <col style="width: 55px;">
-              <col style="width: 320px;">
-              <col style="width: 75px;">
-              <col style="width: 75px;">
-              <col style="width: 95px;">
-              <col style="width: 95px;">
-              <col style="width: 130px;">
-              <col class="no-print" style="width: 45px;">
+              <col style="width: 50px;">
+              <col style="width: 490px;">
+              <col style="width: 65px;">
+              <col style="width: 65px;">
+              <col style="width: 90px;">
+              <col style="width: 100px;">
+              <col style="width: 160px;">
+              <col class="no-print" style="width: 40px;">
             </colgroup>
             <thead>
               <tr class="vp-thead-row">
@@ -4474,9 +4546,9 @@
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td style="text-align: center; font-weight: bold; width: 45px;">${idx + 1}</td>
-        <td><input type="text" class="vp-cell-input" value="${(item.name || '').replace(/"/g, '&quot;')}" oninput="updateVpItem(${idx}, 'name', this.value)"></td>
+        <td style="padding: 4px 6px;"><textarea class="vp-cell-textarea" rows="2" oninput="updateVpItem(${idx}, 'name', this.value)">${(item.name || '')}</textarea></td>
         <td style="text-align: center;"><input type="text" class="vp-cell-input" style="text-align: center;" value="${(item.jm || '').replace(/"/g, '&quot;')}" oninput="updateVpItem(${idx}, 'jm', this.value)"></td>
-        <td style="text-align: center;"><input type="text" class="vp-cell-input" style="text-align: center;" value="${(item.qty !== undefined ? item.qty : '').replace(/"/g, '&quot;')}" oninput="updateVpItem(${idx}, 'qty', this.value)"></td>
+        <td style="text-align: center;"><input type="text" class="vp-cell-input" style="text-align: center; font-weight: bold;" value="${(item.qty !== undefined ? item.qty : '').replace(/"/g, '&quot;')}" oninput="updateVpItem(${idx}, 'qty', this.value)"></td>
         <td style="text-align: center;"><input type="text" class="vp-cell-input" style="text-align: center;" value="${(item.element || '').replace(/"/g, '&quot;')}" oninput="updateVpItem(${idx}, 'element', this.value)"></td>
         <td style="text-align: center;"><input type="text" class="vp-cell-input" style="text-align: center;" value="${(item.montaz || '').replace(/"/g, '&quot;')}" oninput="updateVpItem(${idx}, 'montaz', this.value)"></td>
         <td><input type="text" class="vp-cell-input" value="${(item.opis || '').replace(/"/g, '&quot;')}" oninput="updateVpItem(${idx}, 'opis', this.value)"></td>
@@ -4713,7 +4785,13 @@
 
   // --- DRUK I EKSPORT VERPACKUNG DO EXCELA ---
   function printVerpackung() {
-    window.print();
+    document.body.classList.add('printing-vp');
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        document.body.classList.remove('printing-vp');
+      }, 500);
+    }, 50);
   }
 
   function exportVerpackungToExcel() {
