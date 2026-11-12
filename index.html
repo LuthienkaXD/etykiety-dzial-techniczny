@@ -5465,7 +5465,17 @@
       if (res.ok) {
         const cloudOpts = await res.json();
         if (Array.isArray(cloudOpts) && cloudOpts.length > 0) {
-          packingOptions = cloudOpts;
+          // Automatyczne usuwanie ewentualnych duplikatów przy pobieraniu
+          const unique = [];
+          const seen = new Set();
+          for (const item of cloudOpts) {
+            const key = `${(item.name || '').trim().toLowerCase()}|${(item.element || '').trim().toLowerCase()}|${(item.montaz || '').trim().toLowerCase()}|${(item.opis || '').trim().toLowerCase()}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              unique.push(item);
+            }
+          }
+          packingOptions = unique;
           localStorage.setItem('order_app_options', JSON.stringify(packingOptions));
           renderOptionsTable();
           populateVpSelects();
