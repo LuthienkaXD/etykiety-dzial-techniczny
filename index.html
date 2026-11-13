@@ -1079,6 +1079,23 @@
       body.printing-vp #subpageVerpackung {
         display: block !important;
       }
+      
+      body.printing-wm #subpageLabels,
+      body.printing-wm #subpageVerpackung,
+      body.printing-wm #subpageWeights {
+        display: none !important;
+      }
+      body.printing-wm #subpageMaterials {
+        display: block !important;
+      }
+      body.printing-wm #viewWmSheet {
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+      }
 
       .top-bar, .panel, .tabs, .actions-bar, .no-print {
         display: none !important;
@@ -1976,16 +1993,127 @@
 <!-- PODSTRONA 3: Wykaz materiałów -->
 <!-- PODSTRONA 3: Wykaz materiałów i Waga profili -->
 <!-- PODSTRONA 3: Wykaz materiałów -->
+<!-- PODSTRONA 3: Wykaz materiałów (Zgodny z plikiem Excel: Arkusz 2025) -->
 <div id="subpageMaterials" class="subpage-view">
-  <div class="subpage-placeholder" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 40px; text-align: center; margin-top: 15px;">
-    <div style="font-size: 48px; margin-bottom: 14px;">📋</div>
-    <h2 style="font-size: 22px; color: #1e3a8a; margin-bottom: 8px;">Wykaz materiałów</h2>
-    <p style="color: #64748b; font-size: 14px; max-width: 600px; margin: 0 auto 20px auto;">
-      Moduł specyfikacji i zestawień materiałowych. Do obliczania wagi profili aluminiowych, kątowników, ceowników, teowników, płaskowników i blach przejdź do zakładki <strong>⚖️ Wagi</strong>.
-    </p>
-    <button type="button" class="btn-primary" onclick="switchMainSubpage('weights')" style="padding: 10px 22px; font-size: 14px; font-weight: bold;">
-      ⚖️ Otwórz kalkulator: Wagi
-    </button>
+  <div class="workspace">
+    <!-- Panel boczny konfiguracji Wykazu Materiałów -->
+    <div class="panel no-print" style="width: 380px; min-width: 340px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <h2 style="margin: 0; font-size: 18px; color: #1e3a8a;">📋 Wykaz materiałów</h2>
+        <button type="button" class="btn-secondary" onclick="openProfilesModal()" style="font-size: 11px; padding: 4px 8px;">🧱 Magazyn profili</button>
+      </div>
+      <p style="font-size: 13px; color: #64748b; margin-bottom: 14px;">
+        Zestawienie materiałów do zamówienia. Formularz i eksport odwzorowują arkusz Excel.
+      </p>
+
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label for="wmOrderNumber">Numer zamówienia ($):</label>
+        <div style="display: flex; gap: 6px;">
+          <input type="text" id="wmOrderNumber" class="form-control" placeholder="np. 0870_26" oninput="handleWmOrderNumberInput(this.value)" style="font-weight: bold; font-size: 16px;">
+          <button type="button" class="btn-secondary" onclick="syncWmOrderFromEtykiety()" title="Pobierz dane z Etykiet" style="padding: 0 10px; font-size: 13px;">🔄</button>
+        </div>
+      </div>
+
+      <!-- Szybkie wstawianie z bazy profili -->
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 14px;">
+        <label style="font-weight: 700; font-size: 12px; color: #1e293b; margin-bottom: 6px; display: block;">
+          🧱 Dodaj materiał z Magazynu Profili:
+        </label>
+        <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+          <select id="wmSelectSavedProfile" class="form-control" style="flex: 1; font-size: 12px;">
+            <option value="">-- Wybierz profil z bazy --</option>
+          </select>
+          <button type="button" class="btn-primary" onclick="addProfileFromWhToWm()" style="padding: 6px 12px; font-size: 13px;">+ Wstaw</button>
+        </div>
+        <button type="button" class="btn-secondary" onclick="addEmptyRowToWm()" style="width: 100%; font-size: 12px; padding: 6px;">
+          ➕ Dodaj pusty wiersz ręcznie
+        </button>
+      </div>
+
+      <!-- Akcje eksportu i zapisu -->
+      <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <button class="btn-primary" onclick="exportWykazMaterialowToExcel()" style="flex: 1; padding: 12px; font-size: 14px; background: #16a34a; border-color: #15803d; font-weight: bold;" title="Eksportuj dokładnie w formacie Excel">
+          📊 Eksport do Excel (.xls)
+        </button>
+        <button class="btn-secondary" onclick="printWykazMaterialow()" style="padding: 12px 16px; font-size: 14px;">
+          🖨️ Drukuj / PDF
+        </button>
+      </div>
+
+      <div style="margin-top: 8px;">
+        <button class="btn-success" onclick="saveWykazMaterialowToWarehouse()" style="width: 100%; padding: 12px; font-size: 14px; font-weight: bold;">
+          💾 Zapisz Wykaz w Magazynie Zamówień
+        </button>
+      </div>
+    </div>
+
+    <!-- Arkusz Wykaz Materiałów - Podgląd 1:1 jak w pliku Excel -->
+    <div style="flex: 1; overflow-x: auto;">
+      <div class="actions-bar no-print" style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+        <div style="font-weight: bold; color: #334155; font-size: 14px;">
+          📄 Podgląd dokumentu: Wykaz materiałów
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn-secondary" onclick="addEmptyRowToWm()" style="font-size: 12px;">
+            ➕ Dodaj wiersz
+          </button>
+          <button type="button" class="btn-secondary" onclick="clearWmItems()" style="font-size: 12px; color: #dc2626;">
+            🗑️ Wyczyść pozycje
+          </button>
+        </div>
+      </div>
+
+      <!-- Kontener arkusza -->
+      <div id="viewWmSheet" class="pdf-page-container" style="background: #ffffff; padding: 25px 35px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); max-width: 950px; margin: 0 auto; border: 1px solid #cbd5e1; font-family: Calibri, 'Segoe UI', Arial, sans-serif;">
+        
+        <!-- Nagłówek arkusza (odwzorowanie wierszy 2, 3, 4 w Excelu) -->
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 0;">
+          <colgroup>
+            <col style="width: 45%;">
+            <col style="width: 20%;">
+            <col style="width: 12%;">
+            <col style="width: 23%;">
+          </colgroup>
+          <tr>
+            <td colspan="4" style="border: 1px solid #000000; border-bottom: none; font-size: 16pt; font-weight: bold; padding: 6px 10px; color: #000000;">
+              Wykaz materiałów:
+            </td>
+          </tr>
+          <tr>
+            <td colspan="4" style="border-left: 1px solid #000000; border-right: 1px solid #000000; border-top: none; border-bottom: none; font-size: 16pt; font-weight: bold; padding: 6px 10px; color: #000000;">
+              Zamówienie: <span id="wmViewOrderNum">_26</span>
+            </td>
+          </tr>
+          <tr>
+            <td colspan="4" style="border: 1px solid #000000; border-top: none; height: 18px;"></td>
+          </tr>
+        </table>
+
+        <!-- Tabela pozycji (Nagłówek wiersz 5, dane od wiersza 6) -->
+        <table class="warehouse-table" style="width: 100%; border-collapse: collapse; margin-top: 0; margin-bottom: 0;">
+          <colgroup>
+            <col style="width: 45%;">
+            <col style="width: 20%;">
+            <col style="width: 12%;">
+            <col style="width: 23%;">
+            <col class="no-print" style="width: 40px;">
+          </colgroup>
+          <thead>
+            <tr style="height: 38px;">
+              <th style="border: 1px solid #000000; text-align: center; vertical-align: middle; font-size: 13pt; font-weight: bold; background: #ffffff; color: #000000; padding: 6px;">Materiał</th>
+              <th style="border: 1px solid #000000; text-align: center; vertical-align: middle; font-size: 13pt; font-weight: bold; background: #ffffff; color: #000000; padding: 6px;">Długość [mm]</th>
+              <th style="border: 1px solid #000000; text-align: center; vertical-align: middle; font-size: 13pt; font-weight: bold; background: #ffffff; color: #000000; padding: 6px;">Ilość</th>
+              <th style="border: 1px solid #000000; text-align: center; vertical-align: middle; font-size: 13pt; font-weight: bold; background: #ffffff; color: #000000; padding: 6px;">Uwagi</th>
+              <th class="no-print" style="border: 1px solid #cbd5e1; text-align: center; width: 40px; background: #f8fafc; font-size: 11px;">✕</th>
+            </tr>
+          </thead>
+          <tbody id="wmItemsTbody">
+            <!-- Dynamiczne wiersze -->
+          </tbody>
+        </table>
+
+      </div>
+    </div>
   </div>
 </div>
 
@@ -3282,6 +3410,18 @@
     const existingIndex = savedOrders.findIndex(o => (o.orderNumber || '').trim().toLowerCase() === orderNum.toLowerCase());
 
     if (existingIndex >= 0) {
+      if (savedOrders[existingIndex].wykazMaterialow) {
+        orderConfig.wykazMaterialow = savedOrders[existingIndex].wykazMaterialow;
+        orderConfig.hasWykazMaterialow = true;
+      }
+      if (savedOrders[existingIndex].verpackung) {
+        orderConfig.verpackung = savedOrders[existingIndex].verpackung;
+        orderConfig.hasVerpackung = true;
+      }
+      if (savedOrders[existingIndex].materials) {
+        orderConfig.materials = savedOrders[existingIndex].materials;
+        orderConfig.hasMaterials = true;
+      }
       savedOrders[existingIndex] = orderConfig;
       alert(`Zamówienie nr ${orderNum} zostało zaktualizowane (nadpisane) w magazynie zamówień!`);
     } else {
@@ -5419,7 +5559,11 @@
     // 2. Wczytaj do Verpackung (pakowanie)
     loadVerpackungForEdit(orderNum);
 
-    // 3. Wczytaj do Wykazu Materiałów (gdy zapisano moduł)
+    // 3. Wczytaj do Wykazu Materiałów
+    if (typeof loadWykazMaterialowForEdit === 'function') {
+      loadWykazMaterialowForEdit(orderNum);
+    }
+    // 4. Wczytaj do Wagi Profili (gdy zapisano moduł)
     if (ord.materials && typeof loadMaterialsForEdit === 'function') {
       loadMaterialsForEdit(orderNum);
     }
@@ -6757,6 +6901,318 @@
   }
 
   // --- GŁÓWNE PODSTRONY (Etykiety / Verpackung / Wykaz materiałów) ---
+  
+  // =========================================================================
+  // MODUŁ: WYKAZ MATERIAŁÓW (W OPARCIU O ARKUSZ EXCEL)
+  // =========================================================================
+
+  let wykazMaterialowState = {
+    orderNumber: '',
+    items: [
+      { material: '', length: '', qty: '', remarks: '' },
+      { material: '', length: '', qty: '', remarks: '' }
+    ]
+  };
+
+  function initWmModule() {
+    updateWmProfilesSelect();
+    renderWmView();
+  }
+
+  function handleWmOrderNumberInput(val) {
+    wykazMaterialowState.orderNumber = val;
+    const viewNum = document.getElementById('wmViewOrderNum');
+    if (viewNum) viewNum.textContent = val.trim() || '_26';
+  }
+
+  function syncWmOrderFromEtykiety() {
+    const etyNum = (document.getElementById('orderNumber').value || '').trim();
+    if (etyNum) {
+      document.getElementById('wmOrderNumber').value = etyNum;
+      handleWmOrderNumberInput(etyNum);
+    } else {
+      // Sprawdź czy jest w Verpackung
+      const vpNum = (document.getElementById('vpOrderNumber').value || '').trim();
+      if (vpNum) {
+        document.getElementById('wmOrderNumber').value = vpNum;
+        handleWmOrderNumberInput(vpNum);
+      }
+    }
+  }
+
+  function updateWmProfilesSelect() {
+    const sel = document.getElementById('wmSelectSavedProfile');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">-- Wybierz profil z bazy --</option>';
+    if (Array.isArray(materialsProfiles)) {
+      materialsProfiles.forEach((p, idx) => {
+        const opt = document.createElement('option');
+        opt.value = idx;
+        opt.textContent = p.name + (p.length ? ` (${p.length} mm)` : '');
+        sel.appendChild(opt);
+      });
+    }
+  }
+
+  function addProfileFromWhToWm() {
+    const sel = document.getElementById('wmSelectSavedProfile');
+    if (!sel || sel.value === '') {
+      alert('Wybierz profil z bazy!');
+      return;
+    }
+    const idx = parseInt(sel.value);
+    const prof = materialsProfiles[idx];
+    if (prof) {
+      // Usuwamy puste wiersze początkowe jeśli są tylko 2 puste
+      if (wykazMaterialowState.items.length === 2 && !wykazMaterialowState.items[0].material && !wykazMaterialowState.items[1].material) {
+        wykazMaterialowState.items = [];
+      }
+      wykazMaterialowState.items.push({
+        material: prof.name || '',
+        length: prof.length || '6000',
+        qty: '1',
+        remarks: ''
+      });
+      renderWmView();
+    }
+  }
+
+  function addEmptyRowToWm() {
+    wykazMaterialowState.items.push({ material: '', length: '', qty: '', remarks: '' });
+    renderWmView();
+  }
+
+  function removeWmItem(idx) {
+    wykazMaterialowState.items.splice(idx, 1);
+    renderWmView();
+  }
+
+  function clearWmItems() {
+    if (confirm('Czy na pewno wyczyścić pozycje Wykazu materiałów?')) {
+      wykazMaterialowState.items = [
+        { material: '', length: '', qty: '', remarks: '' },
+        { material: '', length: '', qty: '', remarks: '' }
+      ];
+      renderWmView();
+    }
+  }
+
+  function updateWmItemField(idx, field, val) {
+    if (wykazMaterialowState.items[idx]) {
+      wykazMaterialowState.items[idx][field] = val;
+    }
+  }
+
+  function renderWmView() {
+    const tbody = document.getElementById('wmItemsTbody');
+    const viewNum = document.getElementById('wmViewOrderNum');
+    if (viewNum) viewNum.textContent = wykazMaterialowState.orderNumber || '_26';
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+
+    if (wykazMaterialowState.items.length === 0) {
+      wykazMaterialowState.items.push({ material: '', length: '', qty: '', remarks: '' });
+    }
+
+    wykazMaterialowState.items.forEach((it, idx) => {
+      const tr = document.createElement('tr');
+      tr.style.height = '32px';
+      tr.innerHTML = `
+        <td style="border: 1px solid #000000; padding: 4px 6px;">
+          <input type="text" class="vp-cell-input" value="${(it.material || '').replace(/"/g, '&quot;')}" placeholder="Wpisz materiał / profil..." oninput="updateWmItemField(${idx}, 'material', this.value)" style="width: 100%; font-size: 13px; font-weight: 500;">
+        </td>
+        <td style="border: 1px solid #000000; padding: 4px 6px; text-align: center;">
+          <input type="text" class="vp-cell-input" style="text-align: center; font-size: 13px;" value="${(it.length !== undefined ? it.length : '').replace(/"/g, '&quot;')}" placeholder="np. 6000" oninput="updateWmItemField(${idx}, 'length', this.value)">
+        </td>
+        <td style="border: 1px solid #000000; padding: 4px 6px; text-align: center;">
+          <input type="text" class="vp-cell-input" style="text-align: center; font-weight: bold; font-size: 13px;" value="${(it.qty !== undefined ? it.qty : '').replace(/"/g, '&quot;')}" placeholder="np. 2" oninput="updateWmItemField(${idx}, 'qty', this.value)">
+        </td>
+        <td style="border: 1px solid #000000; padding: 4px 6px;">
+          <input type="text" class="vp-cell-input" value="${(it.remarks || '').replace(/"/g, '&quot;')}" placeholder="Opcjonalne uwagi..." oninput="updateWmItemField(${idx}, 'remarks', this.value)" style="width: 100%; font-size: 13px;">
+        </td>
+        <td class="no-print" style="border: 1px solid #e2e8f0; text-align: center;">
+          <button type="button" class="btn-danger" style="padding: 2px 6px; font-size: 11px;" onclick="removeWmItem(${idx})" title="Usuń pozycję">✕</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // --- EKSPORT DO EXCELA DOKŁADNIE TAKI JAK W OTRZYMANYM PLIKU ---
+  function exportWykazMaterialowToExcel() {
+    const orderNum = (wykazMaterialowState.orderNumber || document.getElementById('wmOrderNumber').value || '_26').trim();
+    
+    // Generujemy wiersze tabeli danych
+    let dataRowsHtml = '';
+    wykazMaterialowState.items.forEach(it => {
+      dataRowsHtml += `
+        <tr style="height: 18pt;">
+          <td style="border: 0.5pt solid #000000; text-align: center; vertical-align: middle; font-size: 11pt; font-family: Calibri;">${it.material || ''}</td>
+          <td style="border: 0.5pt solid #000000; text-align: center; vertical-align: middle; font-size: 11pt; font-family: Calibri;">${it.length || ''}</td>
+          <td style="border: 0.5pt solid #000000; text-align: center; vertical-align: middle; font-size: 11pt; font-family: Calibri;">${it.qty || ''}</td>
+          <td style="border: 0.5pt solid #000000; text-align: center; vertical-align: middle; font-size: 11pt; font-family: Calibri;">${it.remarks || ''}</td>
+        </tr>
+      `;
+    });
+
+    // Puste wiersze zachowujące estetykę szablonu jeśli jest mało pozycji
+    if (wykazMaterialowState.items.length < 5) {
+      for (let k = wykazMaterialowState.items.length; k < 5; k++) {
+        dataRowsHtml += `
+          <tr style="height: 18pt;">
+            <td style="border: 0.5pt solid #000000; text-align: center; vertical-align: middle; font-size: 11pt; font-family: Calibri;"></td>
+            <td style="border: 0.5pt solid #000000; text-align: center; vertical-align: middle; font-size: 11pt; font-family: Calibri;"></td>
+            <td style="border: 0.5pt solid #000000; text-align: center; vertical-align: middle; font-size: 11pt; font-family: Calibri;"></td>
+            <td style="border: 0.5pt solid #000000; text-align: center; vertical-align: middle; font-size: 11pt; font-family: Calibri;"></td>
+          </tr>
+        `;
+      }
+    }
+
+    const excelTemplate = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <!--[if gte mso 9]>
+        <xml>
+          <x:ExcelWorkbook>
+            <x:ExcelWorksheets>
+              <x:ExcelWorksheet>
+                <x:Name>2025</x:Name>
+                <x:WorksheetOptions>
+                  <x:DisplayGridlines/>
+                </x:WorksheetOptions>
+              </x:ExcelWorksheet>
+            </x:ExcelWorksheets>
+          </x:ExcelWorkbook>
+        </xml>
+        <![endif]-->
+        <style>
+          body { font-family: Calibri, Arial, sans-serif; }
+          table { border-collapse: collapse; width: 100%; }
+          .hdr-title { font-size: 14pt; font-weight: bold; border-left: 0.5pt solid #000000; border-top: 0.5pt solid #000000; border-right: 0.5pt solid #000000; padding: 4px 6px; }
+          .hdr-ord { font-size: 14pt; font-weight: bold; border-left: 0.5pt solid #000000; border-right: 0.5pt solid #000000; padding: 4px 6px; }
+          .hdr-space { font-size: 14pt; border-left: 0.5pt solid #000000; border-right: 0.5pt solid #000000; border-bottom: 0.5pt solid #000000; height: 18pt; }
+          .th-cell { font-size: 12pt; font-weight: bold; text-align: center; vertical-align: middle; border: 0.5pt solid #000000; padding: 6px; }
+        </style>
+      </head>
+      <body>
+        <table>
+          <colgroup>
+            <col style="width: 250pt;">
+            <col style="width: 115pt;">
+            <col style="width: 50pt;">
+            <col style="width: 210pt;">
+          </colgroup>
+          <!-- Wiersz 1 pusto jak w pliku -->
+          <tr style="height: 14.4pt;"><td colspan="4"></td></tr>
+          <!-- Wiersz 2: Wykaz materiałów: -->
+          <tr style="height: 18pt;">
+            <td colspan="4" class="hdr-title" style="text-align: left; vertical-align: middle;">Wykaz materiałów:</td>
+          </tr>
+          <!-- Wiersz 3: Zamówienie: _26 -->
+          <tr style="height: 18pt;">
+            <td colspan="4" class="hdr-ord" style="text-align: left; vertical-align: middle;">Zamówienie: ${orderNum}</td>
+          </tr>
+          <!-- Wiersz 4: Pusty wiersz łączony -->
+          <tr style="height: 18pt;">
+            <td colspan="4" class="hdr-space"></td>
+          </tr>
+          <!-- Wiersz 5: Nagłówki kolumn -->
+          <tr style="height: 31.2pt;">
+            <td class="th-cell">Materiał</td>
+            <td class="th-cell">Długość [mm]</td>
+            <td class="th-cell">Ilość</td>
+            <td class="th-cell">Uwagi</td>
+          </tr>
+          <!-- Wiersze z danymi -->
+          ${dataRowsHtml}
+        </table>
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob([excelTemplate], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `Wykaz_materialow_${orderNum}.xls`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function printWykazMaterialow() {
+    document.body.classList.add('printing-wm');
+    window.print();
+    setTimeout(() => {
+      document.body.classList.remove('printing-wm');
+    }, 500);
+  }
+
+  function saveWykazMaterialowToWarehouse() {
+    const orderNum = (document.getElementById('wmOrderNumber').value || '').trim();
+    if (!orderNum) {
+      alert('Wpisz numer zamówienia ($) przed zapisaniem Wykazu!');
+      document.getElementById('wmOrderNumber').focus();
+      return;
+    }
+
+    const activeWorker = (currentWorker || localStorage.getItem('order_app_current_worker') || 'Nieznany').trim();
+    const existingIndex = savedOrders.findIndex(o => (o.orderNumber || '').trim().toLowerCase() === orderNum.toLowerCase());
+
+    const wmData = {
+      orderNumber: orderNum,
+      items: JSON.parse(JSON.stringify(wykazMaterialowState.items)),
+      savedAt: new Date().toLocaleString('pl-PL'),
+      lastModifiedBy: activeWorker
+    };
+
+    let targetOrder;
+    if (existingIndex >= 0) {
+      targetOrder = savedOrders[existingIndex];
+      targetOrder.wykazMaterialow = wmData;
+      targetOrder.hasWykazMaterialow = true;
+      targetOrder.lastModifiedBy = activeWorker;
+      targetOrder.savedAt = new Date().toLocaleString('pl-PL');
+      alert(`Wykaz materiałów dla zamówienia nr ${orderNum} został pomyślnie zaktualizowany w Magazynie Zamówień!`);
+    } else {
+      targetOrder = {
+        orderNumber: orderNum,
+        orderDate: new Date().toISOString().split('T')[0],
+        workerName: activeWorker,
+        lastModifiedBy: activeWorker,
+        savedAt: new Date().toLocaleString('pl-PL'),
+        hasWykazMaterialow: true,
+        wykazMaterialow: wmData
+      };
+      savedOrders.unshift(targetOrder);
+      alert(`Utworzono nowe zamówienie nr ${orderNum} z Wykazem Materiałów w Magazynie Zamówień!`);
+    }
+
+    localStorage.setItem('order_app_saved_orders', JSON.stringify(savedOrders));
+    syncOrderWithCloud(targetOrder);
+    renderOrdersTable();
+  }
+
+  function loadWykazMaterialowForEdit(orderNum) {
+    const ord = savedOrders.find(o => o.orderNumber === orderNum);
+    if (!ord) return;
+
+    document.getElementById('wmOrderNumber').value = ord.orderNumber || '';
+    handleWmOrderNumberInput(ord.orderNumber || '');
+
+    if (ord.wykazMaterialow && Array.isArray(ord.wykazMaterialow.items)) {
+      wykazMaterialowState.items = JSON.parse(JSON.stringify(ord.wykazMaterialow.items));
+    } else {
+      wykazMaterialowState.items = [
+        { material: '', length: '', qty: '', remarks: '' },
+        { material: '', length: '', qty: '', remarks: '' }
+      ];
+    }
+    renderWmView();
+  }
+
   function switchMainSubpage(page) {
     const pages = ['labels', 'verpackung', 'materials', 'weights'];
     const tabMap = {
@@ -6792,7 +7248,11 @@
       populateVpSelects();
       syncVpOrderFromEtykiety();
       renderVerpackungView();
-    } else if (page === 'weights' || page === 'materials') {
+    } else if (page === 'materials') {
+      syncWmOrderFromEtykiety();
+      updateWmProfilesSelect();
+      renderWmView();
+    } else if (page === 'weights') {
       syncMaterialsOrderFromEtykiety();
       renderDynamicProfileFields(currentProfileType);
       recalcCurrentProfilePreview();
