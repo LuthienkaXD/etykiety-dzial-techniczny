@@ -4912,6 +4912,14 @@
   ];
 
   let materialsProfiles = JSON.parse(localStorage.getItem('order_app_profiles')) || defaultProfiles;
+  let currentProfileType = 'square';
+  let materialsOrderState = {
+    orderNumber: '',
+    client: '',
+    density: 2.713,
+    metalName: 'Aluminium EN AW-6061',
+    items: []
+  };
 
   // Bieżący stan formularza Verpackung
   let verpackungState = {
@@ -6220,9 +6228,7 @@
     localStorage.setItem('dt_active_subpage', page);
   }
 
-  // Wczytanie zapamiętanej podstrony przy starcie
-  const savedSubpage = localStorage.getItem('dt_active_subpage') || 'labels';
-  switchMainSubpage(savedSubpage);
+// switchMainSubpage przeniesione na koniec inicjalizacji
 
 
   // Inicjalizacja
@@ -6260,14 +6266,7 @@
   // MODUŁ 3: KALKULATOR WAGI PROFILI I WYKAZ MATERIAŁÓW
   // ========================================================
 
-  let currentProfileType = 'square';
-  let materialsOrderState = {
-    orderNumber: '',
-    client: '',
-    density: 2.713, // Aluminium EN AW-6061
-    metalName: 'Aluminium EN AW-6061',
-    items: []
-  };
+// materialsOrderState zadeklarowane globalnie na początku
 
   // Predefiniowana bogatsza baza standardowych i niestandardowych profili
   const initialDefaultProfiles = [
@@ -8308,73 +8307,81 @@
   }
 
   function parseSingleOcrLine(line) {
-    // Normalizacja separatorów i znaków
-    let clean = line.replace(/[,;\|\t]+/g, ' ').replace(/\s+/g, ' ').trim();
-    if (clean.length < 3) return null;
+    let raw = line.trim();
+    if (!raw || raw.length < 2) return null;
 
-    // Szukamy dwóch liczb na końcu wiersza (Długość oraz Ilość)
-    // Np: "Profil 100x100x3 6000 4" lub "Ceownik 25x25x2 2500 12" lub "Kątownik 40x40x2 6000x2"
-    // Rozpoznawanie liczb na końcu:
-    const endMatch = clean.match(/(\d+[\.,]?\d*)\s+(\d+)\s*$/);
+    // Ignoruj nagłówki
+    const low = raw.toLowerCase();
+    if (low.startsWith('nazwa') || low === 'profil' || low === 'dlugosc' || low === 'ilosc') return null;
 
+    // Zastąp wielokrotne spacje, kropki wielokropka (...) myślniki kolumny
+    let clean = raw.replace(/[|\t;]+/g, ' ').replace(/\.{2,}/g, ' - ').replace(/\s+/g, ' ').trim();
+
+    // Podział na tokeny/kolumny
+    // Typowy wiersz: "Profil 50x30 388,7 1" lub "Dekiel 80x50 (2) ... 1" lub "Zawias 80 ... 2"
     let parsedName = clean;
     let parsedLen = 6000;
     let parsedQty = 1;
+    let hasExplicitLen = false;
 
-    if (endMatch) {
-      parsedLen = parseFloat(endMatch[1].replace(',', '.')) || 6000;
-      parsedQty = parseInt(endMatch[2], 10) || 1;
-      parsedName = clean.substring(0, endMatch.index).trim();
-    } else {
-      // Alternatywny match: tylko jedna liczba na końcu (długość lub ilość)
-      const singleNumMatch = clean.match(/(\d+)\s*$/);
-      if (singleNumMatch) {
-        const num = parseInt(singleNumMatch[1], 10);
-        if (num > 200) {
-          parsedLen = num; // prawdopodobnie długość
-        } else {
-          parsedQty = num; // prawdopodobnie ilość
-        }
-        parsedName = clean.substring(0, singleNumMatch.index).trim();
-      }
+    // Sprawdzamy czy na końcu jest ilość (liczba całkowita)
+    const qtyMatch = clean.match(/\s+(\d+)\s*$/);
+    if (qtyMatch) {
+      parsedQty = parseInt(qtyMatch[1], 10);
+      clean = clean.substring(0, qtyMatch.index).trim();
     }
 
-    // Usunięcie zbędnych znaków z nazwy
-    parsedName = parsedName.replace(/^[-*•\d+\.\)]+\s*/, '').trim();
+    // Teraz sprawdzamy czy na końcu pozostałego tekstu jest długość (np. 1440, 388.7, 791,3 lub myślnik / brak dla akcesoriów)
+    const lenMatch = clean.match(/\s+(\d+([\.,]\d+)?)\s*$/);
+    if (lenMatch) {
+      parsedLen = parseFloat(lenMatch[1].replace(',', '.'));
+      clean = clean.substring(0, lenMatch.index).trim();
+      hasExplicitLen = true;
+    } else {
+      // Może być myślnik lub kropki na pozycji długości (np. dekiel, zawias)
+      clean = clean.replace(/\s+[-–—\.]+\s*$/, '').trim();
+      parsedLen = 0;
+    }
 
-    // Inteligentne dopasowanie do bazy profili
+    parsedName = clean.trim();
+    if (!parsedName) return null;
+
+    // Inteligentne dopasowanie profilu z bazy
     const match = findBestProfileMatch(parsedName);
 
     if (match) {
+      // Mamy pewne dopasowanie do bazy 109 profili
       return {
         id: Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-        name: match.profile.name,
+        name: parsedName,
         type: match.profile.profileCategory || match.profile.type || 'square',
         a: match.profile.a || 0,
         b: match.profile.b || 0,
         t: match.profile.t || 0,
-        length: parsedLen,
+        length: hasExplicitLen ? parsedLen : (parseFloat(match.profile.length) || 6000),
         qty: parsedQty,
-        isCustom: !!match.profile.isCustom,
+        isCustom: false,
         customMeterWeight: match.profile.weight || 0,
         isUnrecognized: false
       };
     } else {
-      // Nie rozpoznano z pewnością - tworzymy pozycję czerwoną do poprawy
-      // Sprawdzamy czy da się z samej nazwy wyciągnąć wymiary np. 80x20x1.2
+      // Sprawdzamy czy to profil z wymiarami, ale np. bez grubości ścianki (np. "Profil 50x30")
+      // lub niestandardowy element
       const dimExtracted = extractDimensionsFromString(parsedName);
+      const isRecognizableGeom = (dimExtracted.a > 0 && dimExtracted.b > 0 && dimExtracted.t > 0);
 
       return {
         id: Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-        name: parsedName || 'Nieznany profil',
-        type: dimExtracted.type || 'square',
+        name: parsedName,
+        type: dimExtracted.type || 'custom',
         a: dimExtracted.a || 0,
         b: dimExtracted.b || 0,
         t: dimExtracted.t || 0,
-        length: parsedLen,
+        length: parsedLen || 0,
         qty: parsedQty,
         isCustom: true,
         customMeterWeight: 0,
+        // Oznaczamy na CZERWONO pozycje, które nie mają jednoznacznej wagi w bazie (np. brak grubości ścianki, dekle, akcesoria)
         isUnrecognized: true
       };
     }
@@ -8499,6 +8506,11 @@
     renderMaterialsItemsTable();
   }
 
+  // Startowe przełączenie na zapamiętaną podstronę po pełnej inicjalizacji
+  setTimeout(() => {
+    const startSubpage = localStorage.getItem('dt_active_subpage') || 'labels';
+    switchMainSubpage(startSubpage);
+  }, 50);
 </script>
 
 </body>
