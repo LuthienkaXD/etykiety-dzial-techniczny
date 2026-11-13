@@ -5038,7 +5038,6 @@
 
     verpackungState.items.forEach((item, idx) => {
       const tr = document.createElement('tr');
-      if (isUnrecognized) tr.className = 'mat-row-unrecognized';
       tr.innerHTML = `
         <td style="text-align: center; font-weight: bold; width: 45px;">${idx + 1}</td>
         <td style="padding: 4px 6px;"><textarea class="vp-cell-textarea" rows="2" oninput="updateVpItem(${idx}, 'name', this.value)">${(item.name || '')}</textarea></td>
@@ -7669,6 +7668,7 @@
 
     materialsOrderState.items.forEach((it, idx) => {
       const weights = calculateItemWeights(it, density);
+      const isUnrecognized = !!it.isUnrecognized;
       const totalLenRowM = ((it.length || 0) * (it.qty || 1)) / 1000;
 
       sumQty += (it.qty || 1);
@@ -7691,6 +7691,7 @@
       else dimStr = `Własna waga`;
 
       const tr = document.createElement('tr');
+      if (isUnrecognized) tr.className = 'mat-row-unrecognized';
       tr.innerHTML = `
         <td style="text-align: center; font-weight: 700; color: #64748b;">${idx + 1}</td>
         <td>${typeBadge}</td>
