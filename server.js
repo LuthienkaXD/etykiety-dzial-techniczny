@@ -33,6 +33,20 @@ if (DATABASE_URL && pg) {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS etykiety_profiles (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      type VARCHAR(100),
+      length VARCHAR(50),
+      weight NUMERIC(10, 4),
+      a NUMERIC(10, 2),
+      b NUMERIC(10, 2),
+      t NUMERIC(10, 2),
+      profile_category VARCHAR(50),
+      is_custom BOOLEAN DEFAULT FALSE,
+      created_at BIGINT
+    );
+
     CREATE TABLE IF NOT EXISTS etykiety_warehouse (
       id SERIAL PRIMARY KEY,
       name VARCHAR(255) NOT NULL,
@@ -483,6 +497,82 @@ const server = http.createServer(async (req, res) => {
           console.error('Błąd zapisu zbiorów:', e);
           res.writeHead(500, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Błąd zapisu zbiorów w chmurze' }));
+        }
+      });
+      return;
+    }
+  }
+
+  // --- API MAGAZYN PROFILI (WSPÓŁDZIELONY DLA WSZYSTKICH) ---
+  if (url.pathname === '/api/profiles') {
+    if (req.method === 'GET') {
+      try {
+        if (!pool) {
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify([]));
+          return;
+        }
+        const result = await pool.query('SELECT name, type, length, weight, a, b, t, profile_category as "profileCategory", is_custom as "isCustom", created_at as "createdAt" FROM etykiety_profiles ORDER BY id ASC');
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify(result.rows));
+      } catch (err) {
+        console.error('Błąd pobierania bazy profili:', err);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify([]));
+      }
+      return;
+    }
+
+    if (req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => body += chunk);
+      req.on('end', async () => {
+        try {
+          const profiles = JSON.parse(body);
+          if (!Array.isArray(profiles)) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Dane muszą być tablicą profili' }));
+            return;
+          }
+
+          if (pool) {
+            const client = await pool.connect();
+            try {
+              await client.query('BEGIN');
+              await client.query('DELETE FROM etykiety_profiles');
+              for (const p of profiles) {
+                if (!p.name) continue;
+                await client.query(
+                  'INSERT INTO etykiety_profiles (name, type, length, weight, a, b, t, profile_category, is_custom, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
+                  [
+                    p.name.trim(),
+                    p.type || 'Profil kwadrat/prost.',
+                    (p.length || '6000').toString(),
+                    (p.weight !== undefined && p.weight !== null && p.weight !== '') ? parseFloat(p.weight) : null,
+                    p.a ? parseFloat(p.a) : null,
+                    p.b ? parseFloat(p.b) : null,
+                    p.t ? parseFloat(p.t) : null,
+                    p.profileCategory || '',
+                    !!p.isCustom,
+                    p.createdAt || Date.now()
+                  ]
+                );
+              }
+              await client.query('COMMIT');
+            } catch (txErr) {
+              await client.query('ROLLBACK');
+              throw txErr;
+            } finally {
+              client.release();
+            }
+          }
+
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: true, count: profiles.length }));
+        } catch (e) {
+          console.error('Błąd zapisu profili w chmurze:', e);
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Błąd zapisu bazy profili w chmurze' }));
         }
       });
       return;
