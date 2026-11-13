@@ -3417,6 +3417,18 @@
       if (savedOrders[existingIndex].verpackung) {
         orderConfig.verpackung = savedOrders[existingIndex].verpackung;
         orderConfig.hasVerpackung = true;
+      } else if (verpackungState.orderNumber && verpackungState.orderNumber.trim().toLowerCase() === orderNum.toLowerCase() && verpackungState.items.length > 2) {
+        // Jeśli w pamięci podręcznej jest wypełniony verpackung dla tego zamówienia, dołącz go!
+        orderConfig.verpackung = {
+          orderNumber: orderNum,
+          client: document.getElementById('vpClientInput').value || document.getElementById('clientData').value,
+          ral: document.getElementById('vpRalInput').value || cleanColors.join(', '),
+          model: document.getElementById('vpModelInput').value || cleanModels.join(', '),
+          items: JSON.parse(JSON.stringify(verpackungState.items)),
+          savedAt: new Date().toLocaleString('pl-PL'),
+          lastModifiedBy: activeWorker
+        };
+        orderConfig.hasVerpackung = true;
       }
       if (savedOrders[existingIndex].materials) {
         orderConfig.materials = savedOrders[existingIndex].materials;
@@ -5309,7 +5321,22 @@
   // --- OBSŁUGA PÓL VERPACKUNG ---
   function handleVpOrderNumberInput(val) {
     verpackungState.orderNumber = val;
-    // Auto-uzupełnienie RAL i Model z Etykiet jeśli istnieje zamówienie o tym numerze lub jest już wpisane w Etykietach
+    const cleanNum = (val || '').trim();
+    if (cleanNum) {
+      const foundOrd = savedOrders.find(o => (o.orderNumber || '').trim().toLowerCase() === cleanNum.toLowerCase());
+      if (foundOrd && foundOrd.verpackung && Array.isArray(foundOrd.verpackung.items) && foundOrd.verpackung.items.length > 0) {
+        // Jeśli zamówienie ma zapisany swój verpackung, wczytaj go od razu
+        verpackungState.client = foundOrd.verpackung.client || foundOrd.clientData || '';
+        verpackungState.ral = foundOrd.verpackung.ral || foundOrd.color || '';
+        verpackungState.model = foundOrd.verpackung.model || foundOrd.model || '';
+        verpackungState.items = JSON.parse(JSON.stringify(foundOrd.verpackung.items));
+        document.getElementById('vpClientInput').value = verpackungState.client;
+        document.getElementById('vpRalInput').value = verpackungState.ral;
+        document.getElementById('vpModelInput').value = verpackungState.model;
+        renderVerpackungView();
+        return;
+      }
+    }
     syncVpOrderFromEtykiety();
     renderVerpackungView();
   }
@@ -7246,8 +7273,19 @@
 
     if (page === 'verpackung') {
       populateVpSelects();
-      syncVpOrderFromEtykiety();
-      renderVerpackungView();
+      const currentVpNum = (document.getElementById('vpOrderNumber').value || document.getElementById('orderNumber').value || '').trim();
+      if (currentVpNum) {
+        const foundOrd = savedOrders.find(o => (o.orderNumber || '').trim().toLowerCase() === currentVpNum.toLowerCase());
+        if (foundOrd && foundOrd.verpackung && Array.isArray(foundOrd.verpackung.items) && foundOrd.verpackung.items.length > 0) {
+          loadVerpackungForEdit(foundOrd.orderNumber);
+        } else {
+          syncVpOrderFromEtykiety();
+          renderVerpackungView();
+        }
+      } else {
+        syncVpOrderFromEtykiety();
+        renderVerpackungView();
+      }
     } else if (page === 'materials') {
       syncWmOrderFromEtykiety();
       updateWmProfilesSelect();
