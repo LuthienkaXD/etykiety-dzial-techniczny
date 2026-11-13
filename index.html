@@ -1612,6 +1612,11 @@
         <textarea id="clientData" class="form-control" rows="3" placeholder="Imię, nazwisko, adres, telefon..." oninput="renderAll()"></textarea>
       </div>
 
+      
+  <!-- Sugestie modeli i kolorów -->
+  <datalist id="suggestedModelsList"></datalist>
+  <datalist id="suggestedColorsList"></datalist>
+
       <!-- Modele (możliwość wielu modeli +) i Kolor -->
       <div class="row-2">
         <div class="form-group">
@@ -1816,11 +1821,11 @@
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
         <div class="form-group">
           <label for="vpRalInput">RAL (Kolor):</label>
-          <input type="text" id="vpRalInput" class="form-control" placeholder="np. 7016 str" oninput="handleVpRalInput(this.value)">
+          <input type="text" id="vpRalInput" list="suggestedColorsList" class="form-control" placeholder="np. 7016 str" oninput="handleVpRalInput(this.value)">
         </div>
         <div class="form-group">
           <label for="vpModelInput">Model:</label>
-          <input type="text" id="vpModelInput" class="form-control" placeholder="np. Modern" oninput="handleVpModelInput(this.value)">
+          <input type="text" id="vpModelInput" list="suggestedModelsList" class="form-control" placeholder="np. Modern" oninput="handleVpModelInput(this.value)">
         </div>
       </div>
 
@@ -1842,6 +1847,9 @@
         <label style="font-weight: 700; font-size: 13px; color: #1e293b; margin-bottom: 6px; display: block;">
           ⚙️ Dodaj pozycję z Magazynu Opcji:
         </label>
+        <div style="margin-bottom: 6px;">
+          <input type="text" id="vpSearchOptionInput" class="form-control" placeholder="🔍 Szukaj opcji po frazie..." style="width: 100%; font-size: 12px; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 4px;" oninput="filterVpOptionsSelect(this.value)">
+        </div>
         <div style="display: flex; gap: 6px; margin-bottom: 8px;">
           <select id="vpSelectOption" class="form-control" style="flex: 1; font-size: 13px;" onchange="onVpSelectOptionChange()">
             <option value="">-- Wybierz opcję z bazy --</option>
@@ -2935,7 +2943,58 @@
   }
 
   // --- MAGAZYN ---
+  
+  // --- DYNAMICZNE SUGESTIE MODELI I KOLORÓW (NAJCZĘŚCIEJ WPISYWANE) ---
+  const defaultPopularModels = ['Comb', 'Modern', 'Nu', 'Sunny', 'Comfort', 'Blacha', 'Zadaszenie', 'Carport'];
+  const defaultPopularColors = ['7016 str', '7016 mat', '7021 str', '7021 mat', '9005 mat', '9005 str', '581-7016', '581-7021', '8019 mat', '9016'];
+
+  function updateModelAndColorSuggestions() {
+    const modelCounts = {};
+    const colorCounts = {};
+
+    defaultPopularModels.forEach(m => { modelCounts[m] = (modelCounts[m] || 0) + 1; });
+    defaultPopularColors.forEach(c => { colorCounts[c] = (colorCounts[c] || 0) + 1; });
+
+    if (Array.isArray(savedOrders)) {
+      savedOrders.forEach(o => {
+        if (Array.isArray(o.orderModels)) {
+          o.orderModels.forEach(m => { if (m && m.trim()) modelCounts[m.trim()] = (modelCounts[m.trim()] || 0) + 2; });
+        } else if (o.model && o.model.trim()) {
+          modelCounts[o.model.trim()] = (modelCounts[o.model.trim()] || 0) + 2;
+        }
+        if (Array.isArray(o.orderColors)) {
+          o.orderColors.forEach(c => { if (c && c.trim()) colorCounts[c.trim()] = (colorCounts[c.trim()] || 0) + 2; });
+        } else if (o.color && o.color.trim()) {
+          colorCounts[o.color.trim()] = (colorCounts[o.color.trim()] || 0) + 2;
+        }
+        if (o.verpackung) {
+          if (o.verpackung.model && o.verpackung.model.trim()) {
+            modelCounts[o.verpackung.model.trim()] = (modelCounts[o.verpackung.model.trim()] || 0) + 2;
+          }
+          if (o.verpackung.ral && o.verpackung.ral.trim()) {
+            colorCounts[o.verpackung.ral.trim()] = (colorCounts[o.verpackung.ral.trim()] || 0) + 2;
+          }
+        }
+      });
+    }
+
+    // Sortujemy malejąco wg częstości
+    const sortedModels = Object.keys(modelCounts).sort((a, b) => modelCounts[b] - modelCounts[a]);
+    const sortedColors = Object.keys(colorCounts).sort((a, b) => colorCounts[b] - colorCounts[a]);
+
+    const mList = document.getElementById('suggestedModelsList');
+    if (mList) {
+      mList.innerHTML = sortedModels.map(m => `<option value="${m}">`).join('');
+    }
+
+    const cList = document.getElementById('suggestedColorsList');
+    if (cList) {
+      cList.innerHTML = sortedColors.map(c => `<option value="${c}">`).join('');
+    }
+  }
+
   function updateWarehouseDatalist() {
+    updateModelAndColorSuggestions();
     const datalist = document.getElementById('warehouseItemsDatalist');
     datalist.innerHTML = '';
     warehouse.forEach(whItem => {
@@ -3143,6 +3202,7 @@
         const cloudOrders = await res.json();
         if (Array.isArray(cloudOrders)) {
           savedOrders = cloudOrders;
+        updateModelAndColorSuggestions();
           localStorage.setItem('order_app_saved_orders', JSON.stringify(savedOrders));
           renderOrdersTable();
         }
@@ -3952,7 +4012,7 @@
       row.style.alignItems = 'center';
 
       row.innerHTML = `
-        <input type="text" class="form-control" placeholder="Model ${mIdx + 1}" value="${modVal}" 
+        <input type="text" list="suggestedModelsList" class="form-control" placeholder="Model ${mIdx + 1}" value="${modVal}" 
                oninput="updateModelValue(${mIdx}, this.value)" style="flex: 1;">
         ${orderModels.length > 1 ? `
           <button type="button" class="btn-danger" style="padding: 5px 8px; font-size: 11px;" onclick="removeModelField(${mIdx})">✕</button>
@@ -4002,7 +4062,7 @@
       row.style.alignItems = 'center';
 
       row.innerHTML = `
-        <input type="text" class="form-control" placeholder="Kolor ${cIdx + 1} (np. 581-7016)" value="${colVal}" 
+        <input type="text" list="suggestedColorsList" class="form-control" placeholder="Kolor ${cIdx + 1} (np. 581-7016)" value="${colVal}" 
                oninput="updateColorValue(${cIdx}, this.value)" style="flex: 1;">
         ${orderColors.length > 1 ? `
           <button type="button" class="btn-danger" style="padding: 5px 8px; font-size: 11px;" onclick="removeColorField(${cIdx})">✕</button>
@@ -5229,6 +5289,24 @@
     }
   }
 
+  function filterVpOptionsSelect(query = '') {
+    const selOpt = document.getElementById('vpSelectOption');
+    if (!selOpt) return;
+
+    const q = (query || '').toLowerCase().trim();
+    selOpt.innerHTML = '<option value="">-- Wybierz opcję z bazy --</option>';
+
+    packingOptions.forEach((o, idx) => {
+      const fullText = (o.name + ' ' + (o.element || '') + ' ' + (o.montaz || '') + ' ' + (o.opis || '')).toLowerCase();
+      if (!q || fullText.includes(q)) {
+        const opt = document.createElement('option');
+        opt.value = idx;
+        opt.textContent = o.name + (o.element ? ` [${o.element}]` : (o.montaz ? ` [${o.montaz}]` : ''));
+        selOpt.appendChild(opt);
+      }
+    });
+  }
+
   function populateVpSelects() {
     const selSet = document.getElementById('vpSelectSet');
     if (selSet) {
@@ -5241,16 +5319,9 @@
       });
     }
 
-    const selOpt = document.getElementById('vpSelectOption');
-    if (selOpt) {
-      selOpt.innerHTML = '<option value="">-- Wybierz opcję z bazy --</option>';
-      packingOptions.forEach((o, idx) => {
-        const opt = document.createElement('option');
-        opt.value = idx;
-        opt.textContent = o.name + (o.element ? ` [${o.element}]` : '');
-        selOpt.appendChild(opt);
-      });
-    }
+    const searchInput = document.getElementById('vpSearchOptionInput');
+    const curQuery = searchInput ? searchInput.value : '';
+    filterVpOptionsSelect(curQuery);
   }
 
 
