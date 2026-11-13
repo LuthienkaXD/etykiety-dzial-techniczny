@@ -2466,7 +2466,7 @@
 
 <!-- Modal Magazynu Zbiorów -->
 <div class="modal-overlay" id="setsModal">
-  <div class="modal-box" style="width: 1400px; max-width: 98%;">
+  <div class="modal-box" style="width: 1400px; max-width: 98%; max-height: 94vh; display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; padding: 16px 20px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
       <h3 style="margin: 0;">📚 Magazyn zbiorów pakowania</h3>
       <button class="btn-secondary" onclick="closeSetsModal()" style="padding: 4px 10px;">✕</button>
@@ -2496,9 +2496,9 @@
     </div>
 
     <!-- Lista zbiorów -->
-    <div style="display: grid; grid-template-columns: 340px 1fr; gap: 16px; min-height: 420px;">
+    <div style="display: grid; grid-template-columns: 340px 1fr; gap: 16px; flex: 1; min-height: 280px; overflow: hidden;">
       <!-- Kolumna lewa: lista zbiorów -->
-      <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow-y: auto; max-height: 420px; background: #ffffff;">
+      <div style="border: 1px solid #e2e8f0; border-radius: 8px; display: flex; flex-direction: column; background: #ffffff; overflow: hidden;">
         <div style="padding: 8px; background: #f1f5f9; border-bottom: 1px solid #e2e8f0;">
           <div style="font-weight: 600; font-size: 12px; margin-bottom: 6px;">Dostępne zbiory:</div>
           <input type="text" id="searchSetsInput" class="form-control" placeholder="🔍 Szukaj zbioru..." oninput="renderSetsList()" style="width: 100%; font-size: 11px; padding: 4px 6px; margin-bottom: 5px;">
@@ -2509,7 +2509,7 @@
             <option value="oldest">📅 Data dodania (najstarsze)</option>
           </select>
         </div>
-        <div id="setsListContainer">
+        <div id="setsListContainer" style="flex: 1; overflow-y: auto; max-height: 52vh;">
           <!-- Kafelki zbiorów -->
         </div>
       </div>
@@ -2521,7 +2521,7 @@
           <div id="setDetailsMeta" style="font-size: 11px; color: #64748b;"></div>
         </div>
 
-        <div id="setItemsTableWrapper" style="flex: 1; max-height: 450px; overflow-y: auto; display: none; border-bottom: 1px solid #e2e8f0;">
+        <div id="setItemsTableWrapper" style="flex: 1; max-height: 48vh; overflow-y: auto; display: none; border-bottom: 1px solid #e2e8f0;">
           <table class="warehouse-table" style="margin-top: 0;">
             <thead>
               <tr>
@@ -2576,7 +2576,12 @@
     </p>
 
     <!-- Pasek z suwakiem/listą wszystkich dostępnych opcji -->
-    <div style="font-size: 11px; font-weight: 600; color: #475569; margin-bottom: 4px;">Lista dostępnych opcji:</div>
+    
+    <div style="margin-bottom: 8px;">
+      <label style="display: block; font-size: 12px; font-weight: 600; color: #1e293b; margin-bottom: 4px;">🔍 Wyszukaj opcję po nazwie / elemencie:</label>
+      <input type="text" id="pickOptionSearchInput" class="form-control" placeholder="Wpisz szukaną frazę (np. kotwa, śruba, wózek, furtka)..." style="width: 100%; padding: 7px 10px; font-size: 13px; border: 1px solid #94a3b8; border-radius: 6px;" oninput="filterPickOptions(this.value)">
+    </div>
+    <div style="font-size: 11px; font-weight: 600; color: #475569; margin-bottom: 4px;">Dostępne opcje (kliknij wybraną lub wpisz jej numer poniżej):</div>
     <div id="pickOptionScrollList" style="max-height: 220px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px; background: #f8fafc; padding: 6px; margin-bottom: 12px; font-family: monospace; font-size: 12px; line-height: 1.5;">
       <!-- Generowane pozycje 1. 2. 3. ... -->
     </div>
@@ -5910,7 +5915,7 @@
       return;
     }
 
-    document.getElementById('setDetailsTitle').innerHTML = `${currentSet.title} <button type="button" class="btn-secondary" style="font-size: 11px; padding: 2px 6px;" onclick="renameCurrentSet()">✏️ Zmień nazwę</button>`;
+    document.getElementById('setDetailsTitle').innerHTML = `${currentSet.title} <button type="button" class="btn-secondary" style="font-size: 11px; padding: 2px 6px; margin-left: 4px;" onclick="renameCurrentSet()">✏️ Zmień nazwę</button> <button type="button" class="btn-secondary" style="font-size: 11px; padding: 2px 8px; margin-left: 4px; background: #f0fdf4; border-color: #86efac; color: #166534;" onclick="copyCurrentSet()" title="Skopiuj ten zbiór do nowego zbioru">📋 Kopiuj zbiór</button>`;
     document.getElementById('setDetailsMeta').textContent = `Ostatnia edycja: ${currentSet.lastModifiedAt || '-'} przez ${currentSet.lastModifiedBy || 'Nieznany'} | Element: ${currentSet.element || '-'}, Model: ${currentSet.model || '-'}`;
     document.getElementById('setItemsTableWrapper').style.display = 'block';
     document.getElementById('setDetailsActions').style.display = 'flex';
@@ -5974,6 +5979,41 @@
     } else {
       clearSetDetails();
     }
+  }
+
+  
+  function copyCurrentSet() {
+    const s = getSetObjectById(selectedSetId) || packingSets[selectedSetIndex];
+    if (!s) return;
+
+    const defaultNewTitle = (s.title || 'Zbiór') + ' (Kopia)';
+    const newTitle = prompt('Podaj nazwę dla skopiowanego nowego zbioru:', defaultNewTitle);
+    if (!newTitle || !newTitle.trim()) return;
+
+    const currentWorkerName = (currentWorker || localStorage.getItem('order_app_current_worker') || 'Nieznany').trim();
+    const clonedItems = s.items ? JSON.parse(JSON.stringify(s.items)) : [];
+
+    const newSet = {
+      id: Date.now(),
+      title: newTitle.trim(),
+      element: s.element || '',
+      model: s.model || '',
+      items: clonedItems,
+      createdAt: new Date().toLocaleString('pl-PL'),
+      createdBy: currentWorkerName,
+      lastModifiedAt: new Date().toLocaleString('pl-PL'),
+      lastModifiedBy: currentWorkerName
+    };
+
+    packingSets.push(newSet);
+    localStorage.setItem('order_app_sets', JSON.stringify(packingSets));
+    syncSetsWithCloud();
+
+    selectedSetId = String(newSet.id);
+    renderSetsList();
+    renderSetDetailsById(selectedSetId);
+    populateVpSelects();
+    alert('Skopiowano zbiór jako: "' + newSet.title + '"!');
   }
 
   function renameCurrentSet() {
@@ -6058,17 +6098,47 @@
     }
   }
 
+  function renderPickOptionList(filterQuery = '') {
+    const listDiv = document.getElementById('pickOptionScrollList');
+    if (!listDiv) return;
+
+    const q = (filterQuery || '').toLowerCase().trim();
+    let matchesCount = 0;
+
+    let htmlStr = '';
+    packingOptions.forEach((o, i) => {
+      const num = i + 1;
+      const name = o.name || '';
+      const elem = o.element || '';
+      const montaz = o.montaz || '';
+      const combined = (num + ' ' + name + ' ' + elem + ' ' + montaz).toLowerCase();
+
+      if (!q || combined.includes(q)) {
+        matchesCount++;
+        const elemStr = o.element ? ` [${o.element}]` : (o.montaz ? ` [${o.montaz}]` : ' [-]');
+        htmlStr += `<div class="pick-opt-row" data-opt-num="${num}" style="padding: 4px 6px; cursor: pointer; border-radius: 4px; transition: background 0.15s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='transparent'" onclick="selectOptionNumberDirectly(${num})"><strong>${num}.</strong> ${o.name}${elemStr}</div>`;
+      }
+    });
+
+    if (matchesCount === 0) {
+      htmlStr = '<div style="padding: 10px; color: #94a3b8; text-align: center;">Brak opcji pasujących do wyszukiwania "' + filterQuery + '"</div>';
+    }
+
+    listDiv.innerHTML = htmlStr;
+  }
+
+  function filterPickOptions(query) {
+    renderPickOptionList(query);
+  }
+
   function openAddOptionToCurrentSetModal() {
     const s = getSetObjectById(selectedSetId) || packingSets[selectedSetIndex];
     if (!s) return;
 
-    const listDiv = document.getElementById('pickOptionScrollList');
-    if (listDiv) {
-      listDiv.innerHTML = packingOptions.map((o, i) => {
-        const elemStr = o.element ? ` [${o.element}]` : (o.montaz ? ` [${o.montaz}]` : ' [-]');
-        return `<div style="padding: 3px 6px; cursor: pointer; border-radius: 4px; transition: background 0.15s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='transparent'" onclick="selectOptionNumberDirectly(${i + 1})">${i + 1}. ${o.name}${elemStr}</div>`;
-      }).join('');
-    }
+    const searchInput = document.getElementById('pickOptionSearchInput');
+    if (searchInput) searchInput.value = '';
+
+    renderPickOptionList('');
 
     const input = document.getElementById('pickOptionNumberInput');
     if (input) {
@@ -6085,7 +6155,7 @@
     if (modal) {
       modal.style.display = 'flex';
       setTimeout(() => {
-        if (input) input.focus();
+        if (searchInput) searchInput.focus();
       }, 50);
     }
   }
