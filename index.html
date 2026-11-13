@@ -2458,7 +2458,10 @@
 <div class="modal-overlay" id="profilesModal">
   <div class="modal-box" style="width: 1200px; max-width: 96%;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-      <h3 style="margin: 0;">🧱 Magazyn profili (Wykaz materiałów)</h3>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <h3 style="margin: 0;">🧱 Magazyn profili</h3>
+        <button type="button" class="btn-secondary" onclick="restoreDefaultProfiles()" style="font-size: 11px; padding: 3px 8px; background: #e0f2fe; color: #0369a1; border-color: #bae6fd; font-weight: 600;" title="Załaduj gotową bazę 109 profili">🔄 Wczytaj bazę 109 profili</button>
+      </div>
       <button class="btn-secondary" onclick="closeProfilesModal()" style="padding: 4px 10px;">✕</button>
     </div>
     <p style="font-size: 13px; color: #64748b; margin-bottom: 14px;">
@@ -5995,7 +5998,18 @@
   }
 
   // --- MAGAZYN PROFILI (Wykaz materiałów) ---
+  function restoreDefaultProfiles() {
+    materialsProfiles = JSON.parse(JSON.stringify(initialDefaultProfiles));
+    localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
+    localStorage.setItem('order_app_profiles_ver', 'profiles_v2_6000');
+    renderProfilesTable();
+    updateMatProfilesSelect();
+  }
+
   function openProfilesModal() {
+    if (!Array.isArray(materialsProfiles) || materialsProfiles.length === 0) {
+      restoreDefaultProfiles();
+    }
     renderProfilesTable();
     document.getElementById('profilesModal').style.display = 'flex';
   }
@@ -8000,6 +8014,14 @@
     const tbody = document.getElementById('profilesTableBody');
     if (!tbody) return;
     tbody.innerHTML = '';
+
+    if (!Array.isArray(materialsProfiles) || materialsProfiles.length === 0) {
+      if (typeof initialDefaultProfiles !== 'undefined' && initialDefaultProfiles.length > 0) {
+        materialsProfiles = JSON.parse(JSON.stringify(initialDefaultProfiles));
+        localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
+        localStorage.setItem('order_app_profiles_ver', 'profiles_v2_6000');
+      }
+    }
 
     const query = (document.getElementById('searchProfilesInput') ? document.getElementById('searchProfilesInput').value : '').toLowerCase().trim();
     const sortVal = document.getElementById('sortProfilesSelect') ? document.getElementById('sortProfilesSelect').value : 'alpha_asc';
