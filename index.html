@@ -1032,9 +1032,13 @@
       body.printing-vp {
         page: vpLandscape;
       }
+      @page vpLandscape {
+        size: A4 landscape;
+        margin: 5mm 6mm;
+      }
       body.printing-vp @page {
         size: A4 landscape;
-        margin: 6mm 8mm;
+        margin: 5mm 6mm;
       }
 
       html, body {
@@ -1096,24 +1100,41 @@
       .verpackung-a4-page {
         box-shadow: none !important;
         background: #ffffff !important;
-        width: 282mm !important;
-        min-width: 282mm !important;
-        max-width: 282mm !important;
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
         height: auto !important;
         min-height: auto !important;
         padding: 0 !important;
-        margin: 0 auto !important;
+        margin: 0 !important;
         page-break-after: avoid !important;
         break-after: avoid !important;
+        box-sizing: border-box !important;
       }
       .verpackung-a4-page .vp-excel-table {
         width: 100% !important;
+        max-width: 100% !important;
+        table-layout: fixed !important;
+        box-sizing: border-box !important;
+      }
+      .verpackung-a4-page .vp-excel-table th,
+      .verpackung-a4-page .vp-excel-table td {
+        padding: 4px 6px !important;
+        font-size: 11px !important;
+        box-sizing: border-box !important;
+      }
+      .verpackung-a4-page .vp-cell-input {
+        font-size: 11px !important;
+        padding: 1px 2px !important;
       }
       .verpackung-a4-page .vp-cell-textarea {
         border: none !important;
         background: transparent !important;
         resize: none !important;
         overflow: visible !important;
+        font-size: 11px !important;
+        line-height: 1.25 !important;
+        padding: 1px 2px !important;
       }
 
       /* Karta główna oraz etykiety łączą się w jeden dokument do druku/PDF */
@@ -2460,7 +2481,7 @@
           <div id="setDetailsMeta" style="font-size: 11px; color: #64748b;"></div>
         </div>
 
-        <div id="setItemsTableWrapper" style="flex: 1; overflow-y: auto; display: none;">
+        <div id="setItemsTableWrapper" style="flex: 1; max-height: 450px; overflow-y: auto; display: none; border-bottom: 1px solid #e2e8f0;">
           <table class="warehouse-table" style="margin-top: 0;">
             <thead>
               <tr>
