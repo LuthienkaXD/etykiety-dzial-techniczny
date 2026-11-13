@@ -2681,20 +2681,20 @@
             <option value="oldest">📅 Data dodania (najstarsze)</option>
           </select>
         </div>
-        <div id="setsListContainer" style="flex: 1; overflow-y: auto; max-height: 52vh;">
+        <div id="setsListContainer" style="flex: 1; overflow-y: auto;">
           <!-- Kafelki zbiorów -->
         </div>
       </div>
 
-      <!-- Kolumna prawa: zawartość wybranego zbioru -->
-      <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; background: #ffffff; display: flex; flex-direction: column;">
+      <!-- Kolumna prawa: zawartość wybranego zbioru z ogólnym suwakiem obejmującym pozycje i przyciski akcji -->
+      <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; background: #ffffff; display: flex; flex-direction: column; overflow-y: auto; flex: 1; min-height: 0;">
         <div id="setDetailsHeader" style="margin-bottom: 10px;">
           <h4 id="setDetailsTitle" style="font-size: 16px; color: #1e3a8a; margin-bottom: 4px;">Wybierz zbiór z listy po lewej</h4>
           <div id="setDetailsMeta" style="font-size: 11px; color: #64748b;"></div>
         </div>
 
-        <div id="setItemsTableWrapper" style="flex: 1; max-height: 48vh; overflow-y: auto; display: none; border-bottom: 1px solid #e2e8f0;">
-          <table class="warehouse-table" style="margin-top: 0;">
+        <div id="setItemsTableWrapper" style="display: none; border-bottom: 1px solid #e2e8f0;">
+          <table class="warehouse-table" style="margin-top: 0; margin-bottom: 8px;">
             <thead>
               <tr>
                 <th style="width: 60px; text-align: center;">Kolejność</th>
