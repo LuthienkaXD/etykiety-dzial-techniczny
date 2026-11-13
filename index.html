@@ -1431,6 +1431,31 @@
       50% { opacity: 0.65; }
     }
 
+  
+    /* Wiersze z zerową wagą całkowitą - podświetlenie na różowo */
+    .mat-row-zero-weight {
+      background-color: #fff1f2 !important;
+      border-left: 4px solid #f43f5e !important;
+    }
+    .mat-row-zero-weight td {
+      border-color: #fecdd3 !important;
+      color: #9f1239 !important;
+    }
+    .mat-row-zero-weight input {
+      border-color: #fda4af !important;
+      background: #ffffff !important;
+    }
+    .mat-badge-zero-weight {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 800;
+      background: #ffe4e6;
+      color: #be123c;
+      border: 1px solid #fda4af;
+    }
+
   </style>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
@@ -2612,7 +2637,7 @@
       <input type="hidden" id="editUserId">
       <div style="display: flex; gap: 8px; margin-bottom: 8px;">
         <input type="text" id="editUsernameInput" class="form-control" placeholder="Nowy login...">
-        <input type="password" id="editUserNewPassword" class="form-control" placeholder="Nowe hasło (opcjonalnie)">
+        <input type="password" id="editUserNewPassword" class="form-control" placeholder="Nowe hasło (opcjonalnie)" autocomplete="new-password">
       </div>
       <div style="display: flex; justify-content: flex-end; gap: 8px;">
         <button class="btn-secondary" onclick="cancelAdminEditUser()">Anuluj</button>
@@ -2693,41 +2718,42 @@
     </div>
 
     <!-- Zakładka LOGOWANIE -->
-    <div id="authLoginSection">
+    <form id="authLoginSection" autocomplete="off" onsubmit="submitLogin(); return false;">
       <div class="form-group">
         <label for="loginUserInput">Login pracownika:</label>
-        <input type="text" id="loginUserInput" class="form-control" placeholder="Wpisz login...">
+        <input type="text" id="loginUserInput" class="form-control" placeholder="Wpisz login..." autocomplete="username">
       </div>
       <div class="form-group">
         <label for="loginPasswordInput">Hasło:</label>
-        <input type="password" id="loginPasswordInput" class="form-control" placeholder="Wpisz hasło...">
+        <input type="password" id="loginPasswordInput" class="form-control" placeholder="Wpisz hasło..." autocomplete="current-password">
       </div>
       <div id="loginErrorMsg" style="color: #ef4444; font-size: 13px; margin-bottom: 10px; display: none;"></div>
       <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px;">
-        <button class="btn-secondary" onclick="closeWorkerModal()">Anuluj</button>
-        <button class="btn-primary" onclick="submitLogin()">Zaloguj się</button>
+        <button type="button" class="btn-secondary" onclick="closeWorkerModal()">Anuluj</button>
+        <button type="submit" class="btn-primary">Zaloguj się</button>
       </div>
-    </div>
+    </form>
 
     <!-- Zakładka REJESTRACJA -->
-    <div id="authRegisterSection" style="display: none;">
+    <form id="authRegisterSection" style="display: none;" autocomplete="off" onsubmit="submitRegister(); return false;">
       <div class="form-group">
         <label for="regUserInput">Nowy login pracownika:</label>
-        <input type="text" id="regUserInput" class="form-control" placeholder="np. Marek">
+        <input type="text" id="regUserInput" class="form-control" placeholder="np. Marek" autocomplete="username">
       </div>
       <div class="form-group">
         <label for="regPasswordInput">Hasło:</label>
-        <input type="password" id="regPasswordInput" class="form-control" placeholder="Utwórz hasło...">
+        <input type="password" id="regPasswordInput" class="form-control" placeholder="Utwórz hasło..." autocomplete="new-password">
       </div>
       <div class="form-group">
         <label for="regPasswordConfirmInput">Powtórz hasło:</label>
-        <input type="password" id="regPasswordConfirmInput" class="form-control" placeholder="Powtórz hasło...">
+        <input type="password" id="regPasswordConfirmInput" class="form-control" placeholder="Powtórz hasło..." autocomplete="new-password">
       </div>
       <div id="regErrorMsg" style="color: #ef4444; font-size: 13px; margin-bottom: 10px; display: none;"></div>
       <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px;">
-        <button class="btn-secondary" onclick="closeWorkerModal()">Anuluj</button>
-        <button class="btn-success" onclick="submitRegister()">Zarejestruj konto</button>
+        <button type="button" class="btn-secondary" onclick="closeWorkerModal()">Anuluj</button>
+        <button type="submit" class="btn-primary">Zarejestruj konto</button>
       </div>
+    </form>
     </div>
   </div>
 </div>
@@ -7699,7 +7725,12 @@
       else dimStr = `Własna waga`;
 
       const tr = document.createElement('tr');
-      if (isUnrecognized) tr.className = 'mat-row-unrecognized';
+      const isZeroWeight = (weights.totalWeight <= 0);
+      if (isZeroWeight) {
+        tr.className = 'mat-row-zero-weight';
+      } else if (isUnrecognized) {
+        tr.className = 'mat-row-unrecognized';
+      }
       tr.innerHTML = `
         <td style="text-align: center; font-weight: 700; color: #64748b;">${idx + 1}</td>
         <td>${typeBadge}</td>
@@ -7761,7 +7792,7 @@
             ${weights.unitWeight.toFixed(3)} kg
           `}
         </td>
-        <td style="text-align: right; font-weight: 800; color: #0284c7;">${weights.totalWeight.toFixed(3)} kg</td>
+        <td style="text-align: right; font-weight: 800; color: ${weights.totalWeight <= 0 ? '#e11d48' : '#0284c7'};">${weights.totalWeight.toFixed(3)} kg</td>
         <td class="no-print" style="text-align: center;">
           <button type="button" class="btn-danger" style="padding: 2px 6px; font-size: 11px;" onclick="removeMaterialItem(${idx})" title="Usuń pozycję">✕</button>
         </td>
