@@ -2026,12 +2026,12 @@
       </div>
 
       <!-- Ilość sztuk i długość -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
-        <div>
+      <div id="matQtyLengthGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+        <div id="matFormLengthWrapper">
           <label style="font-size: 11px; font-weight: 600;">Długość pojedyncza [mm]:</label>
           <input type="number" id="matFormLength" class="form-control" placeholder="np. 6000 lub 1500" value="6000" min="1" step="1" style="font-size: 12px; padding: 6px;" oninput="recalcCurrentProfilePreview()">
         </div>
-        <div>
+        <div id="matFormQtyWrapper">
           <label style="font-size: 11px; font-weight: 600;">Ilość sztuk:</label>
           <input type="number" id="matFormQty" class="form-control" placeholder="1" value="1" min="1" step="1" style="font-size: 12px; padding: 6px;" oninput="recalcCurrentProfilePreview()">
         </div>
@@ -7483,6 +7483,20 @@
     });
 
     renderDynamicProfileFields(type);
+    
+    // Dla blach ukrywamy pole 'Długość pojedyncza', ponieważ długość podaje się w wymiarach arkusza
+    const lenWrapper = document.getElementById('matFormLengthWrapper');
+    const gridEl = document.getElementById('matQtyLengthGrid');
+    if (lenWrapper && gridEl) {
+      if (type === 'sheet') {
+        lenWrapper.style.display = 'none';
+        gridEl.style.gridTemplateColumns = '1fr';
+      } else {
+        lenWrapper.style.display = 'block';
+        gridEl.style.gridTemplateColumns = '1fr 1fr';
+      }
+    }
+
     recalcCurrentProfilePreview();
   }
 
@@ -7621,7 +7635,10 @@
 
   function onCustomMeterWeightInput() {
     const meterW = parseFloat(document.getElementById('matCustomMeterWeight').value);
-    const len = parseFloat(document.getElementById('matFormLength').value) || 0;
+    let len = parseFloat(document.getElementById('matFormLength').value) || 0;
+    if (type === 'sheet') {
+      len = b; // Dla blachy długość to wymiar B (Długość arkusza)
+    }
     if (!isNaN(meterW) && meterW > 0 && len > 0) {
       document.getElementById('matCustomUnitWeight').value = (meterW * (len / 1000)).toFixed(3);
     }
@@ -7738,7 +7755,10 @@
     const a = parseFloat(document.getElementById('matDimA') ? document.getElementById('matDimA').value : 0) || 0;
     const b = parseFloat(document.getElementById('matDimB') ? document.getElementById('matDimB').value : 0) || 0;
     const t = parseFloat(document.getElementById('matDimT') ? document.getElementById('matDimT').value : 0) || 0;
-    const len = parseFloat(document.getElementById('matFormLength') ? document.getElementById('matFormLength').value : 6000) || 0;
+    let len = parseFloat(document.getElementById('matFormLength') ? document.getElementById('matFormLength').value : 6000) || 0;
+    if (type === 'sheet') {
+      len = b; // Dla blachy długość pojedyncza to wymiar B (Długość arkusza)
+    }
     const qty = parseInt(document.getElementById('matFormQty') ? document.getElementById('matFormQty').value : 1) || 1;
     const customMeter = parseFloat(document.getElementById('matCustomMeterWeight') ? document.getElementById('matCustomMeterWeight').value : 0) || 0;
     const customUnit = parseFloat(document.getElementById('matCustomUnitWeight') ? document.getElementById('matCustomUnitWeight').value : 0) || 0;
@@ -7907,7 +7927,7 @@
         </td>
         <td style="text-align: center;">${it.t ? it.t + ' mm' : '-'}</td>
         <td style="text-align: center;">
-          ${isPiece ? '<span style="color: #94a3b8; font-size: 11px;">-</span>' : `
+          ${isPiece || it.type === 'sheet' ? '<span style="color: #94a3b8; font-size: 11px;">-</span>' : `
             <input type="number" class="form-control" style="font-size: 11px; padding: 3px 4px; text-align: center; width: 70px;" value="${it.length}" onchange="updateRowLength(${idx}, this.value)">
           `}
         </td>
