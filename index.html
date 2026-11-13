@@ -6216,14 +6216,24 @@
 
   // --- SYNCHRONIZACJA WSPÓŁDZIELONEJ BAZY PROFILI Z CHMURĄ (DLA WSZYSTKICH PRZYSTAWIANYCH UŻYTKOWNIKÓW) ---
   let isProfilesSyncing = false;
+  let lastProfileLocalSaveTime = 0;
 
   async function fetchCloudProfiles(notify = false) {
     if (!CLOUD_API_URL || isProfilesSyncing) return;
+    // Ochrona przed natychmiastowym nadpisaniem lokalnie dodanych profili przez polling / focus
+    if (Date.now() - lastProfileLocalSaveTime < 8000) return;
     try {
       const res = await fetch(`${CLOUD_API_URL}/api/profiles`);
       if (res.ok) {
         const cloudProfiles = await res.json();
         if (Array.isArray(cloudProfiles) && cloudProfiles.length > 0) {
+          // Upewnij się, że liczby są sparsowane do float
+          cloudProfiles.forEach(p => {
+            if (p.weight !== undefined && p.weight !== null && p.weight !== '') p.weight = parseFloat(p.weight);
+            if (p.a) p.a = parseFloat(p.a);
+            if (p.b) p.b = parseFloat(p.b);
+            if (p.t) p.t = parseFloat(p.t);
+          });
           materialsProfiles = cloudProfiles;
           localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
           renderProfilesTable();
@@ -6238,21 +6248,23 @@
 
   async function syncProfilesWithCloud() {
     if (!CLOUD_API_URL) return;
+    lastProfileLocalSaveTime = Date.now();
     try {
       isProfilesSyncing = true;
-      await fetch(`${CLOUD_API_URL}/api/profiles`, {
+      const res = await fetch(`${CLOUD_API_URL}/api/profiles`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(materialsProfiles)
       });
+      if (res.ok) {
+        lastProfileLocalSaveTime = Date.now();
+      }
     } catch (e) {
       console.warn('Nie udało się zsynchronizować bazy profili z chmurą:', e);
     } finally {
-      setTimeout(() => { isProfilesSyncing = false; }, 1000);
+      setTimeout(() => { isProfilesSyncing = false; }, 3000);
     }
   }
-
-
 
   // --- GŁÓWNE PODSTRONY (Etykiety / Verpackung / Wykaz materiałów) ---
   function switchMainSubpage(page) {
@@ -8171,7 +8183,7 @@
     materialsProfiles.forEach((p, idx) => {
       const opt = document.createElement('option');
       opt.value = idx;
-      const wInfo = p.weight ? ` (~ ${p.weight.toFixed(3)} kg/m)` : '';
+      const wInfo = (p.weight !== undefined && p.weight !== null && p.weight !== '') ? ` (~ ${parseFloat(p.weight).toFixed(3)} kg/m)` : '';
       opt.textContent = `${p.name}${wInfo}`;
       sel.appendChild(opt);
     });
@@ -8237,7 +8249,7 @@
   }
 
   // Zapisanie aktualnie skonfigurowanego profilu na stałe w bazie magazynu profili
-  function saveCurrentProfileToWarehouseDb() {
+  async function saveCurrentProfileToWarehouseDb() {
     const name = (document.getElementById('matFormName').value || '').trim();
     if (!name) {
       alert('Wpisz nazwę profilu przed zapisem do bazy!');
@@ -8273,15 +8285,21 @@
       createdAt: Date.now()
     };
 
-    materialsProfiles.push(newProfile);
+    // Aktualizuj lub dodaj profil
+    const existIdx = materialsProfiles.findIndex(p => (p.name || '').toLowerCase().trim() === name.toLowerCase());
+    if (existIdx >= 0) {
+      materialsProfiles[existIdx] = { ...materialsProfiles[existIdx], ...newProfile, updatedAt: Date.now() };
+    } else {
+      materialsProfiles.push(newProfile);
+    }
+
     localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
     updateMatProfilesSelect();
     renderProfilesTable();
-    syncProfilesWithCloud();
+    await syncProfilesWithCloud();
     alert(`Profil "${name}" został pomyślnie dodany do Magazynu Profili i zsynchronizowany u wszystkich pracowników!`);
   }
 
-  // Zapis całego wykazu materiałów w zamówieniu (Magazyn Zamówień)
   function saveMaterialsOrderToWarehouse() {
     const orderNum = (document.getElementById('matOrderNumber').value || '').trim();
     if (!orderNum) {
@@ -8860,20 +8878,24 @@
     // 4. Inteligentne dopasowanie profilu z bazy 109 profili
     const match = findBestProfileMatch(parsedName);
 
-    if (match && !isAccessory) {
+    if (match) {
+      const p = match.profile;
+      const isMatchPiece = isAccessory || !!p.isPiece || (p.type && p.type.toLowerCase().includes('jednostk'));
+      const parsedWeight = parseFloat(p.weight) || 0;
       return {
         id: Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-        name: match.profile.name,
-        type: match.profile.profileCategory || match.profile.type || 'square',
-        a: match.profile.a || 0,
-        b: match.profile.b || 0,
-        t: match.profile.t || 0,
-        length: finalLength,
+        name: p.name,
+        type: p.profileCategory || p.type || (isMatchPiece ? 'custom' : 'square'),
+        a: parseFloat(p.a) || 0,
+        b: parseFloat(p.b) || 0,
+        t: parseFloat(p.t) || 0,
+        length: isMatchPiece ? 0 : (finalLength > 0 ? finalLength : (parseFloat(p.length) || 6000)),
         qty: parsedQty,
-        isCustom: false,
-        isPiece: false,
-        customMeterWeight: match.profile.weight || 0,
-        isUnrecognized: false
+        isCustom: !!p.isCustom || isMatchPiece,
+        isPiece: isMatchPiece,
+        customMeterWeight: isMatchPiece ? 0 : parsedWeight,
+        customUnitWeight: isMatchPiece ? parsedWeight : 0,
+        isUnrecognized: (parsedWeight <= 0)
       };
     } else {
       const dimExtracted = extractDimensionsFromString(parsedName);
@@ -8932,6 +8954,9 @@
 
           // Musi zgadzać się liczba wymiarów (żeby np. Profil 50x30 bez ścianki nie brał w ciemno 50x30x2)
           if (qDims.length === pDims.length && arraysEqual(qDims, pDims)) {
+            return { profile: p, score: 0.95 };
+          }
+          if (qDims.length === 2 && pDims.length >= 2 && Math.abs(qDims[0] - pDims[0]) < 0.05 && Math.abs(qDims[1] - pDims[1]) < 0.05) {
             return { profile: p, score: 0.95 };
           }
         }
