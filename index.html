@@ -2070,74 +2070,73 @@
       </div>
 
       <!-- Kontener arkusza -->
-      <div id="viewWmSheet" class="pdf-page-container" style="background: #ffffff; padding: 25px 35px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); max-width: 950px; margin: 0 auto; border: 1px solid #cbd5e1; font-family: Calibri, 'Segoe UI', Arial, sans-serif;">
+      <div id="viewWmSheet" class="pdf-page-container" style="background: #ffffff; padding: 30px 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); width: 100%; max-width: 1100px; margin: 0 auto; border: 1px solid #cbd5e1; box-sizing: border-box; font-family: Calibri, 'Segoe UI', Arial, sans-serif;">
         
-        <!-- Nagłówek arkusza (odwzorowanie wierszy 2, 3, 4 w Excelu) -->
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 0;">
+        <!-- Cała tabela arkusza: nagłówek na całą szerokość góry tabeli + kolumny pod spodem -->
+        <table class="warehouse-table" style="width: 100%; border-collapse: collapse; margin-top: 0; margin-bottom: 0; table-layout: fixed;">
           <colgroup>
-            <col style="width: 50%;">
+            <col style="width: 52%;">
             <col style="width: 15%;">
             <col style="width: 7%;">
-            <col style="width: 28%;">
+            <col style="width: 26%;">
+            <col class="no-print" style="width: 38px;">
           </colgroup>
-          <tr style="height: 26px;">
-            <td colspan="4" style="border: 1px solid #000000; border-bottom: none; font-size: 14pt; font-weight: bold; padding: 5px 12px; color: #000000; text-align: left; vertical-align: middle;">
-              Wykaz materiałów:
-            </td>
-          </tr>
-          <tr style="height: 26px;">
-            <td colspan="4" style="border-left: 1px solid #000000; border-right: 1px solid #000000; border-top: none; border-bottom: none; font-size: 14pt; font-weight: bold; padding: 3px 12px; color: #000000; text-align: center; vertical-align: middle;">
-              Zamówienie: <span id="wmViewOrderNum">_26</span>
-            </td>
-          </tr>
-          <tr style="height: 24px;">
-            <td colspan="4" style="border-left: 1px solid #000000; border-right: 1px solid #000000; border-top: none; border-bottom: none; font-size: 12pt; font-weight: 600; padding: 2px 12px; color: #334155; text-align: center; vertical-align: middle;">
-              Kolor: <span id="wmViewColor">-</span>
-            </td>
-          </tr>
-          <tr style="height: 18px;">
-            <td colspan="4" style="border: 1px solid #000000; border-top: none; height: 18px;"></td>
-          </tr>
-        </table>
+          
+          <!-- Górny nagłówek rozciągnięty na całą szerokość arkusza -->
+          <tbody>
+            <tr style="height: 32px;">
+              <td colspan="4" style="border: 1px solid #000000; border-bottom: none; font-size: 15pt; font-weight: bold; padding: 6px 14px; color: #000000; text-align: left; vertical-align: middle;">
+                Wykaz materiałów:
+              </td>
+              <td class="no-print" style="border: none;"></td>
+            </tr>
+            <tr style="height: 32px;">
+              <td colspan="4" style="border-left: 1px solid #000000; border-right: 1px solid #000000; border-top: none; border-bottom: none; font-size: 15pt; font-weight: bold; padding: 4px 14px; color: #000000; text-align: center; vertical-align: middle;">
+                Zamówienie: <span id="wmViewOrderNum">_26</span>
+              </td>
+              <td class="no-print" style="border: none;"></td>
+            </tr>
+            <tr style="height: 28px;">
+              <td colspan="4" style="border-left: 1px solid #000000; border-right: 1px solid #000000; border-top: none; border-bottom: none; font-size: 13pt; font-weight: bold; padding: 2px 14px; color: #1e3a8a; text-align: center; vertical-align: middle;">
+                Kolor: <span id="wmViewColor">-</span>
+              </td>
+              <td class="no-print" style="border: none;"></td>
+            </tr>
+            <tr style="height: 16px;">
+              <td colspan="4" style="border: 1px solid #000000; border-top: none; height: 16px;"></td>
+              <td class="no-print" style="border: none;"></td>
+            </tr>
 
-        <!-- Tabela pozycji (Nagłówek z filtrami, dane poniżej) -->
-        <table class="warehouse-table" style="width: 100%; border-collapse: collapse; margin-top: 0; margin-bottom: 0;">
-          <colgroup>
-            <col style="width: 50%;">
-            <col style="width: 15%;">
-            <col style="width: 7%;">
-            <col style="width: 28%;">
-            <col class="no-print" style="width: 35px;">
-          </colgroup>
-          <thead>
-            <tr style="height: 38px;">
-              <th style="border: 1px solid #000000; text-align: center; vertical-align: middle; font-size: 12pt; font-weight: bold; background: #ffffff; color: #000000; padding: 4px 6px;">
+            <!-- Nagłówek kolumn tabeli (Materiał rozszerzony, Długość, Ilość, Uwagi) -->
+            <tr style="height: 42px;">
+              <th style="border: 1px solid #000000; text-align: center; vertical-align: middle; font-size: 13pt; font-weight: bold; background: #ffffff; color: #000000; padding: 6px;">
                 <div style="display: flex; justify-content: center; align-items: center; position: relative;">
                   <span>Materiał</span>
-                  <span style="font-size: 10px; color: #64748b; margin-left: 6px; padding: 1px 3px; border: 1px solid #cbd5e1; border-radius: 2px; background: #f8fafc;" title="W pliku Excel aktywny filtr">▼</span>
+                  <span style="font-size: 10px; color: #64748b; margin-left: 8px; padding: 1px 4px; border: 1px solid #cbd5e1; border-radius: 3px; background: #f8fafc;" title="W pliku Excel aktywny filtr">▼</span>
                 </div>
               </th>
-              <th style="border: 1px solid #000000; text-align: center; vertical-align: middle; font-size: 12pt; font-weight: bold; background: #ffffff; color: #000000; padding: 4px 6px;">
+              <th style="border: 1px solid #000000; text-align: center; vertical-align: middle; font-size: 12pt; font-weight: bold; background: #ffffff; color: #000000; padding: 6px;">
                 <div style="display: flex; justify-content: center; align-items: center; position: relative;">
                   <span>Długość [mm]</span>
-                  <span style="font-size: 10px; color: #64748b; margin-left: 4px; padding: 1px 3px; border: 1px solid #cbd5e1; border-radius: 2px; background: #f8fafc;" title="W pliku Excel aktywny filtr">▼</span>
+                  <span style="font-size: 10px; color: #64748b; margin-left: 4px; padding: 1px 3px; border: 1px solid #cbd5e1; border-radius: 3px; background: #f8fafc;" title="W pliku Excel aktywny filtr">▼</span>
                 </div>
               </th>
-              <th style="border: 1px solid #000000; text-align: center; vertical-align: middle; font-size: 12pt; font-weight: bold; background: #ffffff; color: #000000; padding: 4px 6px;">
+              <th style="border: 1px solid #000000; text-align: center; vertical-align: middle; font-size: 12pt; font-weight: bold; background: #ffffff; color: #000000; padding: 6px;">
                 <div style="display: flex; justify-content: center; align-items: center; position: relative;">
                   <span>Ilość</span>
-                  <span style="font-size: 10px; color: #64748b; margin-left: 4px; padding: 1px 3px; border: 1px solid #cbd5e1; border-radius: 2px; background: #f8fafc;" title="W pliku Excel aktywny filtr">▼</span>
+                  <span style="font-size: 10px; color: #64748b; margin-left: 4px; padding: 1px 3px; border: 1px solid #cbd5e1; border-radius: 3px; background: #f8fafc;" title="W pliku Excel aktywny filtr">▼</span>
                 </div>
               </th>
-              <th style="border: 1px solid #000000; text-align: center; vertical-align: middle; font-size: 12pt; font-weight: bold; background: #ffffff; color: #000000; padding: 4px 6px;">
+              <th style="border: 1px solid #000000; text-align: center; vertical-align: middle; font-size: 13pt; font-weight: bold; background: #ffffff; color: #000000; padding: 6px;">
                 <div style="display: flex; justify-content: center; align-items: center; position: relative;">
                   <span>Uwagi</span>
-                  <span style="font-size: 10px; color: #64748b; margin-left: 6px; padding: 1px 3px; border: 1px solid #cbd5e1; border-radius: 2px; background: #f8fafc;" title="W pliku Excel aktywny filtr">▼</span>
+                  <span style="font-size: 10px; color: #64748b; margin-left: 8px; padding: 1px 4px; border: 1px solid #cbd5e1; border-radius: 3px; background: #f8fafc;" title="W pliku Excel aktywny filtr">▼</span>
                 </div>
               </th>
-              <th class="no-print" style="border: 1px solid #cbd5e1; text-align: center; width: 35px; background: #f8fafc; font-size: 11px;">✕</th>
+              <th class="no-print" style="border: 1px solid #cbd5e1; text-align: center; width: 38px; background: #f8fafc; font-size: 11px;">✕</th>
             </tr>
-          </thead>
+          </tbody>
+          
           <tbody id="wmItemsTbody">
             <!-- Dynamiczne wiersze -->
           </tbody>
