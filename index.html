@@ -6095,7 +6095,7 @@
   function restoreDefaultProfiles() {
     materialsProfiles = JSON.parse(JSON.stringify(initialDefaultProfiles));
     localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
-    localStorage.setItem('order_app_profiles_ver', 'profiles_v2_6000');
+    localStorage.setItem('order_app_profiles_ver', 'profiles_v3_added');
     renderProfilesTable();
     updateMatProfilesSelect();
   }
@@ -7277,12 +7277,75 @@
     "b": 0,
     "t": 10,
     "profileCategory": "flat"
+  },
+  {
+    "name": "Profil 80x48 z kanałami",
+    "length": "6000",
+    "weight": 2.450,
+    "a": 80,
+    "b": 48,
+    "t": 2.5,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Trega 60x30",
+    "length": "6000",
+    "weight": 1.350,
+    "a": 60,
+    "b": 30,
+    "t": 2.0,
+    "profileCategory": "square"
+  },
+  {
+    "name": "C-listwa 22x10",
+    "length": "6000",
+    "weight": 0.380,
+    "a": 22,
+    "b": 10,
+    "t": 1.5,
+    "profileCategory": "channel"
+  },
+  {
+    "name": "C-listwa 22x6",
+    "length": "6000",
+    "weight": 0.290,
+    "a": 22,
+    "b": 6,
+    "t": 1.5,
+    "profileCategory": "channel"
+  },
+  {
+    "name": "Kątownik montażowy 30x20x3",
+    "length": "6000",
+    "weight": 0.380,
+    "a": 30,
+    "b": 20,
+    "t": 3.0,
+    "profileCategory": "angle"
+  },
+  {
+    "name": "Profil u-boczny 30x30",
+    "length": "6000",
+    "weight": 0.720,
+    "a": 30,
+    "b": 30,
+    "t": 2.0,
+    "profileCategory": "channel"
+  },
+  {
+    "name": "Kątownik zasłonowy 60x20",
+    "length": "6000",
+    "weight": 0.680,
+    "a": 60,
+    "b": 20,
+    "t": 2.0,
+    "profileCategory": "angle"
   }
 ];
 
   // Inicjalizacja bazy profili
   // Zawsze wczytujemy zaktualizowaną bazę profili o długości 6000 mm z obliczonymi wagami
-  const currentDbVersion = 'profiles_v2_6000';
+  const currentDbVersion = 'profiles_v3_added';
   if (localStorage.getItem('order_app_profiles_ver') !== currentDbVersion) {
     materialsProfiles = initialDefaultProfiles;
     localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
@@ -7709,11 +7772,25 @@
       sumLengthM += totalLenRowM;
       sumWeightKg += weights.totalWeight;
 
-      let typeBadge = '';
-      if (isUnrecognized) typeBadge = '<span class="mat-badge-unrecognized">⚠️ Do poprawy</span>';
-      else if (it.isCustom) typeBadge = '<span class="mat-badge-custom">Niestandardowy</span>';
-      else if (it.type === 'sheet') typeBadge = '<span class="mat-badge-sheet">Blacha 2mm</span>';
-      else typeBadge = '<span class="mat-badge-std">' + formatTypeNice(it.type) + '</span>';
+      const curType = it.type || (it.isCustom ? 'custom' : 'square');
+      let typeBadge = `
+        <select class="form-control" 
+          style="font-size: 10.5px; font-weight: 700; padding: 2px 4px; border-radius: 4px; height: 26px; cursor: pointer; ${
+            isUnrecognized ? 'background: #fef2f2; color: #dc2626; border: 1.5px solid #ef4444;' :
+            curType === 'custom' ? 'background: #fef3c7; color: #92400e; border: 1px solid #fde68a;' :
+            'background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd;'
+          }" 
+          onchange="changeItemType(${idx}, this.value)" 
+          title="Zmień typ profilu, aby program automatycznie obliczał wagę ze wzoru geometrycznego">
+          <option value="square" ${curType === 'square' ? 'selected' : ''}>Profil kw./prost.</option>
+          <option value="angle" ${curType === 'angle' ? 'selected' : ''}>Kątownik (L)</option>
+          <option value="channel" ${curType === 'channel' ? 'selected' : ''}>Ceownik (C)</option>
+          <option value="tee" ${curType === 'tee' ? 'selected' : ''}>Teownik (T)</option>
+          <option value="flat" ${curType === 'flat' ? 'selected' : ''}>Płaskownik</option>
+          <option value="sheet" ${curType === 'sheet' ? 'selected' : ''}>Blacha 2mm</option>
+          <option value="custom" ${curType === 'custom' ? 'selected' : ''}>Niestandardowy</option>
+        </select>
+      `;
 
       let dimStr = '-';
       if (it.type === 'square') dimStr = `${it.a}x${it.b}x${it.t} mm`;
@@ -7766,7 +7843,7 @@
                   style="width: 72px; font-size: 11px; padding: 3px 4px; text-align: right; font-weight: 700; color: #b91c1c; border: 1.5px solid #ef4444; background: #fff5f5;" 
                   placeholder="0.000" 
                   value="${(it.customMeterWeight || weights.meterWeight || 0) > 0 ? (it.customMeterWeight || weights.meterWeight).toFixed(3) : ''}" 
-                  oninput="updateRowMeterWeight(${idx}, this.value)" 
+                  onchange="updateRowMeterWeight(${idx}, this.value)" oninput="updateRowMeterWeightLive(${idx}, this.value)" 
                   title="Wpisz wagę 1 metra bieżącego [kg/m]">
                 <span style="font-size: 10px; color: #b91c1c;">kg</span>
               </div>
@@ -7784,7 +7861,7 @@
                 style="width: 76px; font-size: 11px; padding: 3px 4px; text-align: right; font-weight: 700; color: #0284c7; border: 1.5px solid #38bdf8; background: #f0f9ff;" 
                 placeholder="0.000" 
                 value="${(it.customUnitWeight || weights.unitWeight || 0) > 0 ? (it.customUnitWeight || weights.unitWeight).toFixed(3) : ''}" 
-                oninput="updateRowUnitWeight(${idx}, this.value)" 
+                onchange="updateRowUnitWeight(${idx}, this.value)" oninput="updateRowUnitWeightLive(${idx}, this.value)" 
                 title="Wpisz wagę pojedynczej 1 sztuki [kg]">
               <span style="font-size: 10px; color: #0284c7; font-weight: 600;">kg</span>
             </div>
@@ -7815,7 +7892,23 @@
   }
 
   
-  // Aktualizacja wagi 1m wprowadzonej ręcznie w tabeli - natychmiastowe przeliczenie reszty wag
+  // Szybka aktualizacja wagi podczas pisania bez niszczenia fokusu w inpucie
+  function updateRowMeterWeightLive(idx, val) {
+    if (!materialsOrderState.items[idx]) return;
+    const cleanVal = (val || '').toString().replace(',', '.').trim();
+    const w = parseFloat(cleanVal);
+    if (!isNaN(w) && w >= 0) {
+      materialsOrderState.items[idx].customMeterWeight = w;
+      materialsOrderState.items[idx].isCustom = true;
+      if (w > 0) {
+        materialsOrderState.items[idx].isUnrecognized = false;
+      }
+    }
+    // Przeliczenie sumarycznych wag na dole bez przeładowywania całej tabeli
+    recalcOnlySummaries();
+  }
+
+  // Pełna aktualizacja wagi 1m po zatwierdzeniu / opuszczeniu pola
   function updateRowMeterWeight(idx, val) {
     if (!materialsOrderState.items[idx]) return;
     const cleanVal = (val || '').toString().replace(',', '.').trim();
@@ -7833,7 +7926,23 @@
     renderMaterialsItemsTable();
   }
 
-  // Aktualizacja wagi 1 sztuki wprowadzonej ręcznie w tabeli
+  // Szybka aktualizacja wagi 1 sztuki podczas pisania
+  function updateRowUnitWeightLive(idx, val) {
+    if (!materialsOrderState.items[idx]) return;
+    const cleanVal = (val || '').toString().replace(',', '.').trim();
+    const w = parseFloat(cleanVal);
+    if (!isNaN(w) && w >= 0) {
+      materialsOrderState.items[idx].customUnitWeight = w;
+      materialsOrderState.items[idx].isPiece = true;
+      materialsOrderState.items[idx].isCustom = true;
+      if (w > 0) {
+        materialsOrderState.items[idx].isUnrecognized = false;
+      }
+    }
+    recalcOnlySummaries();
+  }
+
+  // Pełna aktualizacja wagi 1 sztuki po zatwierdzeniu
   function updateRowUnitWeight(idx, val) {
     if (!materialsOrderState.items[idx]) return;
     const cleanVal = (val || '').toString().replace(',', '.').trim();
@@ -7850,6 +7959,52 @@
       materialsOrderState.items[idx].customUnitWeight = 0;
     }
     renderMaterialsItemsTable();
+  }
+
+  // Zmiana typu profilu z poziomu wiersza tabeli (np. z Niestandardowy na Profil kwadratowy, Kątownik, Ceownik itp.)
+  function changeItemType(idx, newType) {
+    if (!materialsOrderState.items[idx]) return;
+    const it = materialsOrderState.items[idx];
+    it.type = newType;
+    if (newType === 'custom') {
+      it.isCustom = true;
+    } else {
+      it.isCustom = false;
+      // Jeśli brak wymiarów geometrycznych a lub t, spróbuj wyciągnąć je z nazwy profilu
+      if (!it.a || it.a <= 0 || !it.t || it.t <= 0) {
+        const dims = extractDimensionsFromString(it.name || '');
+        if (dims.a > 0) it.a = dims.a;
+        if (dims.b > 0) it.b = dims.b;
+        if (dims.t > 0) it.t = dims.t;
+      }
+      // Domyślna grubość jeśli nadal nieznana
+      if (!it.t || it.t <= 0) it.t = 2.0;
+
+      // Sprawdź czy po ustawieniu wymiarów waga wychodzi > 0
+      const w = calculateItemWeights(it, getCurrentDensity());
+      if (w.meterWeight > 0) {
+        it.isUnrecognized = false;
+        it.customMeterWeight = w.meterWeight;
+      }
+    }
+    renderMaterialsItemsTable();
+  }
+
+  // Przeliczenie podsumowań wagowych na bieżąco
+  function recalcOnlySummaries() {
+    const density = getCurrentDensity();
+    let sumQty = 0;
+    let sumLengthM = 0;
+    let sumWeightKg = 0;
+    materialsOrderState.items.forEach(it => {
+      const weights = calculateItemWeights(it, density);
+      const isPiece = !!it.isPiece;
+      const totalLenRowM = isPiece ? 0 : (((it.length || 0) * (it.qty || 1)) / 1000);
+      sumQty += (it.qty || 1);
+      sumLengthM += totalLenRowM;
+      sumWeightKg += weights.totalWeight;
+    });
+    updateMaterialsSummary(materialsOrderState.items.length, sumQty, sumLengthM, sumWeightKg);
   }
 
   // Przełączanie trybu pozycji pomiędzy metrami bieżącymi (mb) a pojedynczą sztuką (1 szt.)
@@ -8225,7 +8380,7 @@
       if (typeof initialDefaultProfiles !== 'undefined' && initialDefaultProfiles.length > 0) {
         materialsProfiles = JSON.parse(JSON.stringify(initialDefaultProfiles));
         localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
-        localStorage.setItem('order_app_profiles_ver', 'profiles_v2_6000');
+        localStorage.setItem('order_app_profiles_ver', 'profiles_v3_added');
       }
     }
 
@@ -8622,7 +8777,7 @@
     }
   }
 
-  // Inteligentne dopasowywanie stringa do bazy 109 profili
+  // Inteligentne dopasowywanie stringa do bazy magazynowej profili
   function findBestProfileMatch(queryName) {
     if (!queryName) return null;
     const qNorm = normalizeProfileString(queryName);
@@ -8634,12 +8789,19 @@
       }
     }
 
-    // 2. Dopasowanie po wymiarach liczbowych (np. "100x100x3" lub "100 100 3")
-    // UWAGA: Nie dopasowujemy akcesoriów (dekiel, zawias, zaślepka) do profili głównych!
+    // 2. Obsługa akcesoriów i dekli: jeśli w bazie dodano np. "Dekiel 80x50"
     const qLow = queryName.toLowerCase();
     const isAccessory = qLow.includes('dekiel') || qLow.includes('zawias') || qLow.includes('zaslepk') || qLow.includes('plyta') || qLow.includes('montazow');
 
-    if (!isAccessory) {
+    if (isAccessory) {
+      for (const p of materialsProfiles) {
+        const pNorm = normalizeProfileString(p.name);
+        if (pNorm === qNorm || (qNorm.length > 5 && pNorm.includes(qNorm))) {
+          return { profile: p, score: 1.0 };
+        }
+      }
+    } else {
+      // Dopasowanie profili po wymiarach liczbowych (np. "100x100x3" lub "100 100 3")
       const qDims = extractNumericDimensions(queryName);
       if (qDims.length >= 2) {
         const qPrefix = getCategoryPrefix(queryName); // profil, katownik, ceownik, plaskownik
@@ -8657,7 +8819,7 @@
       }
     }
 
-    // 3. Dopasowanie częściowe / rozmyte (np. drobna literówka OCR)
+    // 3. Dopasowanie częściowe / rozmyte
     for (const p of materialsProfiles) {
       const pNorm = normalizeProfileString(p.name);
       if (qNorm.length > 5 && (pNorm.includes(qNorm) || qNorm.includes(pNorm))) {
@@ -8726,23 +8888,34 @@
 
   // Ręczna edycja nazwy wiersza (jeśli użytkownik poprawia pozycję na czerwono)
   function updateRowNameManual(idx, newName) {
-    materialsOrderState.items[idx].name = newName;
+    if (!materialsOrderState.items[idx]) return;
+    const it = materialsOrderState.items[idx];
+    it.name = newName.trim();
     const match = findBestProfileMatch(newName);
     if (match) {
-      materialsOrderState.items[idx].name = match.profile.name;
-      materialsOrderState.items[idx].type = match.profile.profileCategory || match.profile.type || 'square';
-      materialsOrderState.items[idx].a = match.profile.a || 0;
-      materialsOrderState.items[idx].b = match.profile.b || 0;
-      materialsOrderState.items[idx].t = match.profile.t || 0;
-      materialsOrderState.items[idx].customMeterWeight = match.profile.weight || 0;
-      materialsOrderState.items[idx].isUnrecognized = false;
+      it.name = match.profile.name;
+      it.type = match.profile.profileCategory || match.profile.type || it.type || 'square';
+      it.a = match.profile.a || 0;
+      it.b = match.profile.b || 0;
+      it.t = match.profile.t || 0;
+      if (match.profile.weight && match.profile.weight > 0) {
+        if (it.isPiece) {
+          it.customUnitWeight = match.profile.weight;
+        } else {
+          it.customMeterWeight = match.profile.weight;
+        }
+        it.isUnrecognized = false;
+      }
     } else {
       const dims = extractDimensionsFromString(newName);
-      materialsOrderState.items[idx].a = dims.a;
-      materialsOrderState.items[idx].b = dims.b;
-      materialsOrderState.items[idx].t = dims.t;
-      if (dims.a > 0 && dims.t > 0) {
-        materialsOrderState.items[idx].isUnrecognized = false;
+      if (dims.a > 0) it.a = dims.a;
+      if (dims.b > 0) it.b = dims.b;
+      if (dims.t > 0) it.t = dims.t;
+      if (dims.type && dims.type !== 'custom') it.type = dims.type;
+      
+      const w = calculateItemWeights(it, getCurrentDensity());
+      if (w.meterWeight > 0 || w.unitWeight > 0) {
+        it.isUnrecognized = false;
       }
     }
     renderMaterialsItemsTable();
