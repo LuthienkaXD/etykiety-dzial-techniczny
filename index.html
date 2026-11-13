@@ -2051,6 +2051,47 @@
           💾 Zapisz Wykaz w Magazynie Zamówień
         </button>
       </div>
+
+      <!-- KROK / MODUŁ: Obliczenia Cięcia Sztang (Optymalizator rozkroju) -->
+      <div id="wmBarCuttingCalculatorCard" style="margin-top: 18px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <h3 style="margin: 0; font-size: 15px; color: #1e3a8a; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+            <span>🪚</span> Obliczenia Cięcia Sztang
+          </h3>
+          <span style="font-size: 11px; background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: 600;">Rozkrój</span>
+        </div>
+        <p style="font-size: 11.5px; color: #64748b; margin-bottom: 10px; line-height: 1.4;">
+          Wprowadź kawałki do wycięcia i długość sztangi bazowej. Algorytm wyliczy minimalną liczbę sztang oraz pełną rozpiskę cięcia.
+        </p>
+
+        <div style="margin-bottom: 8px; display: flex; gap: 6px;">
+          <button type="button" class="btn-secondary" onclick="addBarCuttingSection()" style="flex: 1; font-size: 12px; padding: 6px 10px; background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; font-weight: 600;">
+            ➕ Dodaj profil / sztangę
+          </button>
+          <button type="button" class="btn-secondary" onclick="importFromWykazToBarCutting()" title="Wczytaj pozycje z powyższego Wykazu Materiałów" style="font-size: 12px; padding: 6px 10px; background: #f1f5f9; color: #334155;">
+            📥 Z wykazu
+          </button>
+        </div>
+
+        <!-- Kontener poszczególnych rodzajów sztang / profili -->
+        <div id="barCuttingContainer" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;">
+          <!-- Generowane sekcje sztang -->
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+          <button type="button" class="btn-primary" onclick="calculateBarCutting()" style="flex: 1; padding: 9px 14px; font-size: 13px; font-weight: bold; background: #2563eb; border-color: #1d4ed8;">
+            ⚡ Oblicz cięcie sztang
+          </button>
+          <button type="button" id="btnExportBarCuttingExcel" class="btn-secondary" onclick="exportBarCuttingToExcel()" style="display: none; padding: 9px 12px; font-size: 12px; background: #16a34a; color: #ffffff; border-color: #15803d; font-weight: 600;" title="Pobierz wynik rozkroju do Excela">
+            📊 Excel
+          </button>
+        </div>
+
+        <!-- Wyniki obliczeń cięcia sztang -->
+        <div id="barCuttingResults" style="display: none;">
+          <!-- Tutaj dynamicznie renderowane podsumowanie i tabele -->
+        </div>
+      </div>
     </div>
 
     <!-- Arkusz Wykaz Materiałów - Podgląd 1:1 jak w pliku Excel -->
@@ -7456,6 +7497,368 @@
     renderWmView();
   }
 
+  // =========================================================================
+  // MODUŁ: OBLICZENIA CIĘCIA SZTANG (Optymalizator rozkroju profili)
+  // =========================================================================
+  let barCuttingSections = [];
+  let barCuttingLastResults = [];
+
+  function initBarCuttingCalculator() {
+    if (barCuttingSections.length === 0) {
+      addBarCuttingSection();
+    }
+  }
+
+  function addBarCuttingSection(initialRodzaj = '', initialDlugosc = 6000, initialProfile = '') {
+    const sId = 'cut_sec_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+    const newSec = {
+      id: sId,
+      rodzaj: initialRodzaj || '',
+      dlugosc: initialDlugosc || 6000,
+      profileStr: initialProfile || ''
+    };
+    barCuttingSections.push(newSec);
+    renderBarCuttingSections();
+  }
+
+  function removeBarCuttingSection(secId) {
+    barCuttingSections = barCuttingSections.filter(s => s.id !== secId);
+    if (barCuttingSections.length === 0) {
+      addBarCuttingSection();
+    } else {
+      renderBarCuttingSections();
+    }
+  }
+
+  function renderBarCuttingSections() {
+    const container = document.getElementById('barCuttingContainer');
+    if (!container) return;
+    container.innerHTML = '';
+
+    barCuttingSections.forEach((sec, idx) => {
+      const card = document.createElement('div');
+      card.className = 'bar-cut-section-card';
+      card.style.background = '#ffffff';
+      card.style.border = '1px solid #e2e8f0';
+      card.style.borderRadius = '6px';
+      card.style.padding = '10px';
+      card.style.boxShadow = '0 1px 2px rgba(0,0,0,0.03)';
+
+      card.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;">
+          <strong style="font-size: 12px; color: #1e293b;">Profil / Sztanga #${idx + 1}</strong>
+          ${barCuttingSections.length > 1 ? `<button type="button" class="btn-danger" onclick="removeBarCuttingSection('${sec.id}')" style="padding: 1px 6px; font-size: 11px;" title="Usuń tę sekcję">✕</button>` : ''}
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px;">
+          <div>
+            <label style="font-size: 10.5px; font-weight: 600; color: #475569; display: block; margin-bottom: 2px;">Rodzaj / Profil:</label>
+            <input type="text" class="form-control" placeholder="np. 40x60, Cechownik" value="${(sec.rodzaj || '').replace(/"/g, '&quot;')}" oninput="updateBarCutField('${sec.id}', 'rodzaj', this.value)" style="font-size: 11.5px; padding: 4px 6px;">
+          </div>
+          <div>
+            <label style="font-size: 10.5px; font-weight: 600; color: #475569; display: block; margin-bottom: 2px;">Długość sztangi (mm):</label>
+            <input type="number" class="form-control" min="1" value="${sec.dlugosc || 6000}" oninput="updateBarCutField('${sec.id}', 'dlugosc', this.value)" style="font-size: 11.5px; padding: 4px 6px; font-weight: bold; color: #1e3a8a;">
+          </div>
+        </div>
+        <div>
+          <label style="font-size: 10.5px; font-weight: 600; color: #475569; display: block; margin-bottom: 2px;">
+            Kawałki do wycięcia (długość:ilość, np. <span style="font-family: monospace; color: #0284c7;">1296:2, 1500:4</span>):
+          </label>
+          <textarea class="form-control" rows="2" placeholder="np. 1296:2, 1500:4, 850:1" oninput="updateBarCutField('${sec.id}', 'profileStr', this.value)" style="width: 100%; font-size: 11.5px; font-family: monospace; padding: 4px 6px; box-sizing: border-box; resize: vertical;">${sec.profileStr || ''}</textarea>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  function updateBarCutField(secId, field, val) {
+    const sec = barCuttingSections.find(s => s.id === secId);
+    if (!sec) return;
+    if (field === 'dlugosc') {
+      sec[field] = parseFloat(val) || 6000;
+    } else {
+      sec[field] = val;
+    }
+  }
+
+  function importFromWykazToBarCutting() {
+    const validItems = wykazMaterialowState.items.filter(it => it.length && it.qty && !isNaN(parseFloat(it.length)) && !isNaN(parseFloat(it.qty)));
+    if (validItems.length === 0) {
+      alert('Brak poprawnie uzupełnionych pozycji z długością i ilością w bieżącym Wykazie Materiałów.');
+      return;
+    }
+
+    // Grupujemy po nazwie materiału
+    const groups = {};
+    validItems.forEach(it => {
+      const matName = (it.material || 'Profil ogólny').trim();
+      if (!groups[matName]) groups[matName] = [];
+      const len = Math.round(parseFloat(it.length));
+      const qty = Math.round(parseFloat(it.qty));
+      if (len > 0 && qty > 0) {
+        groups[matName].push(`${len}:${qty}`);
+      }
+    });
+
+    const groupKeys = Object.keys(groups);
+    if (groupKeys.length === 0) {
+      alert('Nie znaleziono pozycji z prawidłową długością i ilością.');
+      return;
+    }
+
+    barCuttingSections = [];
+    groupKeys.forEach(k => {
+      barCuttingSections.push({
+        id: 'cut_sec_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+        rodzaj: k,
+        dlugosc: 6000,
+        profileStr: groups[k].join(', ')
+      });
+    });
+
+    renderBarCuttingSections();
+    calculateBarCutting();
+  }
+
+  function calculateBarCutting() {
+    const resultsContainer = document.getElementById('barCuttingResults');
+    const btnExcel = document.getElementById('btnExportBarCuttingExcel');
+    if (!resultsContainer) return;
+
+    resultsContainer.innerHTML = '';
+    barCuttingLastResults = [];
+
+    let hasAnyData = false;
+
+    barCuttingSections.forEach((sec, sIdx) => {
+      const barLen = parseFloat(sec.dlugosc) || 6000;
+      const rodzaj = (sec.rodzaj || '').trim() || `Profil ${sIdx + 1}`;
+      const rawStr = (sec.profileStr || '').trim();
+
+      if (!rawStr) return;
+
+      // Rozbicie po przecinkach lub spacjach lub nowej linii
+      const parts = rawStr.split(/[\n,;]+/).map(p => p.trim()).filter(Boolean);
+      const pieceList = [];
+
+      parts.forEach(p => {
+        // Obsługa formatu długość:ilość lub długość*ilość lub długośćxilość lub sama długość
+        let len = 0;
+        let qty = 1;
+        if (p.includes(':')) {
+          const splitP = p.split(':');
+          len = parseFloat(splitP[0]);
+          qty = parseInt(splitP[1]);
+        } else if (p.includes('*')) {
+          const splitP = p.split('*');
+          len = parseFloat(splitP[0]);
+          qty = parseInt(splitP[1]);
+        } else if (p.includes('x') || p.includes('X')) {
+          const splitP = p.split(/x|X/);
+          len = parseFloat(splitP[0]);
+          qty = parseInt(splitP[1]);
+        } else {
+          len = parseFloat(p);
+          qty = 1;
+        }
+
+        if (!isNaN(len) && len > 0 && !isNaN(qty) && qty > 0) {
+          for (let i = 0; i < qty; i++) {
+            pieceList.push(len);
+          }
+        }
+      });
+
+      if (pieceList.length === 0) return;
+      hasAnyData = true;
+
+      // Sprawdzenie czy jakiś kawałek nie jest większy niż długość sztangi
+      const oversized = pieceList.filter(l => l > barLen);
+      if (oversized.length > 0) {
+        alert(`Uwaga: W sekcji "${rodzaj}" kawałek o długości ${oversized[0]} mm przekracza długość sztangi bazowej (${barLen} mm)!`);
+      }
+
+      // Algorytm First Fit Decreasing (optymalizator cięcia 1D)
+      const sortedPieces = pieceList.slice().sort((a, b) => b - a);
+      const sztangi = [];
+
+      while (sortedPieces.length > 0) {
+        const currentBar = [];
+        let remaining = barLen;
+
+        for (let i = 0; i < sortedPieces.length; i++) {
+          if (sortedPieces[i] <= remaining) {
+            currentBar.push(sortedPieces[i]);
+            remaining -= sortedPieces[i];
+          }
+        }
+
+        currentBar.forEach(item => {
+          const idx = sortedPieces.indexOf(item);
+          if (idx > -1) {
+            sortedPieces.splice(idx, 1);
+          }
+        });
+
+        sztangi.push(currentBar);
+      }
+
+      barCuttingLastResults.push({
+        rodzaj,
+        barLen,
+        sztangi,
+        totalPieces: pieceList.length
+      });
+    });
+
+    if (!hasAnyData) {
+      alert('Wpisz przynajmniej jeden wymiar profilu i ilość (np. 1200:2)!');
+      resultsContainer.style.display = 'none';
+      if (btnExcel) btnExcel.style.display = 'none';
+      return;
+    }
+
+    // Renderowanie wyników
+    renderBarCuttingResultsView();
+    resultsContainer.style.display = 'block';
+    if (btnExcel) btnExcel.style.display = 'inline-block';
+  }
+
+  function renderBarCuttingResultsView() {
+    const resultsContainer = document.getElementById('barCuttingResults');
+    if (!resultsContainer) return;
+    resultsContainer.innerHTML = '';
+
+    barCuttingLastResults.forEach((res, resIdx) => {
+      const secDiv = document.createElement('div');
+      secDiv.style.marginBottom = '14px';
+      secDiv.style.background = '#ffffff';
+      secDiv.style.border = '1px solid #93c5fd';
+      secDiv.style.borderRadius = '6px';
+      secDiv.style.padding = '8px 10px';
+
+      let totalUsedSum = 0;
+      let totalWasteSum = 0;
+
+      res.sztangi.forEach(sz => {
+        const u = sz.reduce((a, b) => a + b, 0);
+        totalUsedSum += u;
+        totalWasteSum += (res.barLen - u);
+      });
+
+      const totalBarMaterial = res.sztangi.length * res.barLen;
+      const efficiencyPct = totalBarMaterial > 0 ? ((totalUsedSum / totalBarMaterial) * 100).toFixed(1) : 0;
+
+      secDiv.innerHTML = `
+        <div style="background: #eff6ff; border-radius: 4px; padding: 6px 8px; margin-bottom: 8px; border-left: 3px solid #2563eb;">
+          <div style="font-weight: 700; font-size: 13px; color: #1e3a8a;">
+            ${res.rodzaj}
+          </div>
+          <div style="font-size: 11px; color: #475569; margin-top: 2px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px;">
+            <span>Potrzebnych sztang: <strong style="color: #16a34a; font-size: 13px;">${res.sztangi.length} szt.</strong> (dł. ${res.barLen} mm)</span>
+            <span>Wykorzystanie: <strong>${efficiencyPct}%</strong></span>
+          </div>
+          <div style="font-size: 10.5px; color: #64748b; margin-top: 2px;">
+            Suma elementów: ${totalUsedSum} mm | Całkowity odpad: ${totalWasteSum} mm
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          ${res.sztangi.map((sz, szIdx) => {
+            const sumLen = sz.reduce((a, b) => a + b, 0);
+            const odpad = res.barLen - sumLen;
+            return `
+              <div style="border: 1px solid #e2e8f0; border-radius: 4px; padding: 5px 8px; font-size: 11.5px; background: #fafafa;">
+                <div style="display: flex; justify-content: space-between; font-weight: 600; color: #334155; margin-bottom: 3px;">
+                  <span>Sztanga ${szIdx + 1}:</span>
+                  <span style="font-size: 10.5px; color: #64748b;">Kawałki: <strong>${sz.length} szt.</strong></span>
+                </div>
+                <div style="font-family: monospace; font-size: 12px; color: #0f172a; background: #ffffff; border: 1px dashed #cbd5e1; border-radius: 3px; padding: 3px 6px; margin-bottom: 4px; word-break: break-all;">
+                  ${sz.join(' + ')} = <strong style="color: #2563eb;">${sumLen} mm</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 10.5px; color: #475569;">
+                  <span>Suma: <strong>${sumLen} mm</strong></span>
+                  <span style="color: ${odpad > 0 ? '#b91c1c' : '#16a34a'};">Odpad: <strong>${odpad} mm</strong></span>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+      resultsContainer.appendChild(secDiv);
+    });
+  }
+
+  function exportBarCuttingToExcel() {
+    if (!barCuttingLastResults || barCuttingLastResults.length === 0) {
+      alert('Najpierw wykonaj obliczenia cięcia sztang!');
+      return;
+    }
+
+    const orderNum = (wykazMaterialowState.orderNumber || document.getElementById('wmOrderNumber').value || 'zamowienie').trim();
+    const dateStr = new Date().toISOString().split('T')[0];
+
+    // Budujemy arkusz HTML kompatybilny z Excel (.xls)
+    let excelRows = '';
+    barCuttingLastResults.forEach((res, idx) => {
+      excelRows += `
+        <tr>
+          <td colspan="4" style="background-color: #1e3a8a; color: #ffffff; font-weight: bold; font-size: 13pt; padding: 6px;">
+            ${res.rodzaj} - Liczba potrzebnych sztang: ${res.sztangi.length} (długość sztangi: ${res.barLen} mm)
+          </td>
+        </tr>
+        <tr style="background-color: #f1f5f9; font-weight: bold;">
+          <th style="border: 1px solid #cbd5e1; padding: 4px;">Nr sztangi</th>
+          <th style="border: 1px solid #cbd5e1; padding: 4px;">Profile (elementy do wycięcia)</th>
+          <th style="border: 1px solid #cbd5e1; padding: 4px;">Suma długości (mm)</th>
+          <th style="border: 1px solid #cbd5e1; padding: 4px;">Odpad (mm)</th>
+        </tr>
+      `;
+
+      res.sztangi.forEach((sz, szIdx) => {
+        const sumLen = sz.reduce((a, b) => a + b, 0);
+        const odpad = res.barLen - sumLen;
+        excelRows += `
+          <tr>
+            <td style="border: 1px solid #cbd5e1; text-align: center; font-weight: bold; padding: 4px;">Sztanga ${szIdx + 1}</td>
+            <td style="border: 1px solid #cbd5e1; padding: 4px;">${sz.join(', ')}</td>
+            <td style="border: 1px solid #cbd5e1; text-align: center; padding: 4px;">${sumLen}</td>
+            <td style="border: 1px solid #cbd5e1; text-align: center; color: ${odpad > 0 ? '#b91c1c' : '#16a34a'}; font-weight: bold; padding: 4px;">${odpad}</td>
+          </tr>
+        `;
+      });
+
+      excelRows += `<tr><td colspan="4" style="height: 12px; border: none;"></td></tr>`;
+    });
+
+    const excelHtml = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="utf-8">
+        <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Rozkrój sztang</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+        <style>
+          body { font-family: Calibri, Arial, sans-serif; }
+          table { border-collapse: collapse; width: 100%; }
+          th, td { font-size: 11pt; }
+        </style>
+      </head>
+      <body>
+        <h2>Rozkrój i Cięcie Sztang - Zamówienie: ${orderNum}</h2>
+        <p>Data wygenerowania: ${new Date().toLocaleString('pl-PL')}</p>
+        <table border="1">
+          ${excelRows}
+        </table>
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob(['\ufeff' + excelHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `Ciecie_sztang_${orderNum}_${dateStr}.xls`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
   function switchMainSubpage(page) {
     const pages = ['labels', 'verpackung', 'materials', 'weights'];
     const tabMap = {
@@ -7506,6 +7909,7 @@
       syncWmOrderFromEtykiety();
       updateWmProfilesSelect();
       renderWmView();
+      initBarCuttingCalculator();
     } else if (page === 'weights') {
       syncMaterialsOrderFromEtykiety();
       renderDynamicProfileFields(currentProfileType);
