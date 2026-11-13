@@ -2541,27 +2541,23 @@
 
 <!-- Modal Magazynu Profili (Wykaz materiałów) -->
 <div class="modal-overlay" id="profilesModal">
-  <div class="modal-box" style="width: 1200px; max-width: 96%;">
+  <div class="modal-box" style="width: 1250px; max-width: 96%;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-        <h3 style="margin: 0;">🧱 Magazyn profili</h3>
-        <span id="profilesSyncBadge" style="font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 4px; background: #dcfce7; color: #166534; border: 1px solid #bbf7d0;" title="Magazyn profili jest zsynchronizowany z chmurą">☁️ Współdzielony w chmurze</span>
-        <button type="button" class="btn-secondary" onclick="pushProfilesToCloud()" style="font-size: 11px; padding: 3px 8px; background: #fef3c7; color: #92400e; border-color: #fcd34d; font-weight: 700;" title="Wyślij bieżącą bazę profili z tego komputera do chmury dla wszystkich użytkowników">⬆️ Wyślij do chmury dla wszystkich</button>
-        <button type="button" class="btn-secondary" onclick="fetchCloudProfiles(true)" style="font-size: 11px; padding: 3px 8px; background: #e0f2fe; color: #0369a1; border-color: #bae6fd; font-weight: 600;" title="Pobierz najnowszą bazę profili z chmury">⬇️ Pobierz z chmury</button>
-        <button type="button" class="btn-secondary" onclick="restoreDefaultProfiles()" style="font-size: 11px; padding: 3px 8px; background: #f1f5f9; color: #475569; border-color: #cbd5e1; font-weight: 600;" title="Przywróć pełną domyślną bazę profili">🔄 Domyślna baza</button>
-      </div>
+      <h3 style="margin: 0;">🧱 Magazyn profili</h3>
       <button class="btn-secondary" onclick="closeProfilesModal()" style="padding: 4px 10px;">✕</button>
     </div>
-    <p style="font-size: 13px; color: #64748b; margin-bottom: 14px;">
-      Baza profili i materiałów konstrukcyjnych. Moduł przygotowany do rozbudowy w podstronie Wykaz materiałów.
+    <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">
+      Baza wszystkich profili, materiałów i akcesoriów. Każda zmiana jest automatycznie zapisywana i synchronizowana.
     </p>
 
-    <!-- Formularz dodawania profilu -->
-    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 14px;">
-      <div style="display: grid; grid-template-columns: 2.5fr 1fr 1fr auto; gap: 10px; align-items: flex-end;">
+    <!-- Formularz dodawania/edycji profilu (taki sam jak w magazynie opcji) -->
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 14px;">
+      <h4 id="profileFormTitle" style="font-size: 13px; margin-bottom: 8px; color: #1e293b;">Dodaj nowy profil:</h4>
+      <input type="hidden" id="editProfileIndex" value="-1">
+      <div style="display: grid; grid-template-columns: 2.5fr 1fr 1fr; gap: 10px; margin-bottom: 10px;">
         <div>
           <label style="font-size: 11px; font-weight: 600;">Nazwa profilu:</label>
-          <input type="text" id="newProfileName" class="form-control" placeholder="np. Profil 100x100x3" style="font-size: 12px; padding: 6px;">
+          <input type="text" id="newProfileName" class="form-control" placeholder="np. Profil 100x100x3 lub Dekiel 80x50" style="font-size: 12px; padding: 6px;">
         </div>
         <div>
           <label style="font-size: 11px; font-weight: 600;">Dł. handlowa [mm]:</label>
@@ -2569,9 +2565,12 @@
         </div>
         <div>
           <label style="font-size: 11px; font-weight: 600;">Waga [kg/m]:</label>
-          <input type="number" step="0.001" id="newProfileWeight" class="form-control" placeholder="np. 3.142" style="font-size: 12px; padding: 6px;">
+          <input type="text" id="newProfileWeight" class="form-control" placeholder="np. 3.142 lub 0,26" style="font-size: 12px; padding: 6px;">
         </div>
-        <button type="button" class="btn-primary" onclick="addProfileFromForm()" style="padding: 7px 16px; font-size: 12px; font-weight: bold;">+ Dodaj profil</button>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px;">
+        <button type="button" class="btn-secondary" id="cancelEditProfileBtn" onclick="cancelEditProfile()" style="display: none; padding: 6px 14px; font-size: 12px;">Anuluj edycję</button>
+        <button type="button" class="btn-primary" id="saveProfileBtn" onclick="saveProfileFromModalForm()" style="padding: 6px 18px; font-size: 12px; font-weight: bold;">+ Dodaj profil</button>
       </div>
     </div>
 
@@ -6229,15 +6228,6 @@
           localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
           renderProfilesTable();
           updateMatProfilesSelect();
-          const badge = document.getElementById('profilesSyncBadge');
-          if (badge) {
-            badge.textContent = `☁️ W chmurze: ${materialsProfiles.length} profili`;
-          }
-          if (notify) {
-            alert(`Pomyślnie pobrano najnowszą bazę ${materialsProfiles.length} profili z chmury!`);
-          }
-        } else if (notify) {
-          alert('Baza w chmurze jest pusta. Kliknij "⬆️ Wyślij do chmury dla wszystkich", aby wysłać swoje profile.');
         }
       }
     } catch (e) {
@@ -6262,34 +6252,7 @@
     }
   }
 
-  async function pushProfilesToCloud() {
-    if (!CLOUD_API_URL) {
-      alert('Brak adresu serwera w chmurze.');
-      return;
-    }
-    if (!confirm(`Czy na pewno chcesz wysłać aktualną bazę (${materialsProfiles.length} profili) do chmury? Zastąpi ona magazyn profili u wszystkich pracowników.`)) {
-      return;
-    }
-    try {
-      isProfilesSyncing = true;
-      const res = await fetch(`${CLOUD_API_URL}/api/profiles`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(materialsProfiles)
-      });
-      if (res.ok) {
-        alert(`Sukces! Wysłano ${materialsProfiles.length} profili do chmury. Wszyscy użytkownicy będą mieli identyczny magazyn profili!`);
-        const badge = document.getElementById('profilesSyncBadge');
-        if (badge) badge.textContent = `☁️ W chmurze: ${materialsProfiles.length} profili`;
-      } else {
-        alert('Błąd podczas zapisywania profili w chmurze.');
-      }
-    } catch (e) {
-      alert('Błąd połączenia: ' + e.message);
-    } finally {
-      setTimeout(() => { isProfilesSyncing = false; }, 1000);
-    }
-  }
+
 
   // --- GŁÓWNE PODSTRONY (Etykiety / Verpackung / Wykaz materiałów) ---
   function switchMainSubpage(page) {
@@ -8539,8 +8502,9 @@
         <td style="text-align: right; font-weight: 700; color: #0284c7;">${meterW.toFixed(3)} kg/m</td>
         <td style="text-align: right; font-weight: 800; color: #166534;">${unitW.toFixed(3)} kg</td>
         <td style="text-align: center; white-space: nowrap;">
-          <button type="button" class="btn-primary" style="padding: 3px 10px; font-size: 11px; margin-right: 4px; font-weight: 600;" onclick="selectSavedProfileFromDbModal(${idx})">Wstaw</button>
-          <button type="button" class="btn-danger" style="padding: 3px 7px; font-size: 11px;" onclick="deleteProfile(${idx})">✕</button>
+          <button type="button" class="btn-primary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px;" onclick="selectSavedProfileFromDbModal(${idx})" title="Wstaw do formularza">Wstaw</button>
+          <button type="button" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px;" onclick="startEditProfile(${idx})" title="Edytuj profil">✏️</button>
+          <button type="button" class="btn-danger" style="padding: 3px 8px; font-size: 11px;" onclick="deleteProfile(${idx})" title="Usuń profil">✕</button>
         </td>
       `;
       tbody.appendChild(tr);
@@ -8557,31 +8521,67 @@
     switchMainSubpage('weights');
   }
 
-  // Nadpisanie addProfileFromForm dla nowej bazy
-  function addProfileFromForm() {
-    const name = document.getElementById('newProfileName').value.trim();
-    const len = (document.getElementById('newProfileLen').value || '6000').trim();
-    const weightVal = parseFloat(document.getElementById('newProfileWeight').value);
-
+  // Zarządzanie dodawaniem i edycją profilu w modalu (dokładnie jak w Magazynie Opcji)
+  function saveProfileFromModalForm() {
+    const name = (document.getElementById('newProfileName').value || '').trim();
     if (!name) {
       alert('Podaj nazwę profilu!');
+      document.getElementById('newProfileName').focus();
       return;
     }
+    const len = (document.getElementById('newProfileLen').value || '6000').trim();
+    const weightRaw = document.getElementById('newProfileWeight').value;
+    const weightVal = parseCustomWeightVal(weightRaw);
 
-    materialsProfiles.push({
-      name,
-      length: len,
-      weight: isNaN(weightVal) ? null : weightVal,
-      createdAt: Date.now()
-    });
+    const editIdx = parseInt(document.getElementById('editProfileIndex').value);
+
+    if (editIdx >= 0 && materialsProfiles[editIdx]) {
+      materialsProfiles[editIdx].name = name;
+      materialsProfiles[editIdx].length = len;
+      materialsProfiles[editIdx].weight = (weightVal > 0) ? weightVal : null;
+      materialsProfiles[editIdx].updatedAt = Date.now();
+    } else {
+      materialsProfiles.push({
+        name,
+        length: len,
+        weight: (weightVal > 0) ? weightVal : null,
+        createdAt: Date.now()
+      });
+    }
 
     localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
+    syncProfilesWithCloud();
+    cancelEditProfile();
+    renderProfilesTable();
+    updateMatProfilesSelect();
+  }
+
+  function startEditProfile(idx) {
+    const p = materialsProfiles[idx];
+    if (!p) return;
+    document.getElementById('editProfileIndex').value = idx;
+    document.getElementById('newProfileName').value = p.name || '';
+    document.getElementById('newProfileLen').value = p.length || '6000';
+    document.getElementById('newProfileWeight').value = (p.weight !== undefined && p.weight !== null) ? p.weight : '';
+    
+    document.getElementById('profileFormTitle').textContent = 'Edytuj profil: ' + (p.name || '');
+    document.getElementById('saveProfileBtn').textContent = '💾 Zapisz zmiany';
+    document.getElementById('cancelEditProfileBtn').style.display = 'inline-block';
+    document.getElementById('newProfileName').focus();
+  }
+
+  function cancelEditProfile() {
+    document.getElementById('editProfileIndex').value = '-1';
     document.getElementById('newProfileName').value = '';
     document.getElementById('newProfileLen').value = '6000';
     document.getElementById('newProfileWeight').value = '';
-    renderProfilesTable();
-    updateMatProfilesSelect();
-    syncProfilesWithCloud();
+    document.getElementById('profileFormTitle').textContent = 'Dodaj nowy profil:';
+    document.getElementById('saveProfileBtn').textContent = '+ Dodaj profil';
+    document.getElementById('cancelEditProfileBtn').style.display = 'none';
+  }
+
+  function addProfileFromForm() {
+    saveProfileFromModalForm();
   }
 
 
