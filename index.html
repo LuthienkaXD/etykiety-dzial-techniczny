@@ -2543,9 +2543,12 @@
 <div class="modal-overlay" id="profilesModal">
   <div class="modal-box" style="width: 1200px; max-width: 96%;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-      <div style="display: flex; align-items: center; gap: 10px;">
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
         <h3 style="margin: 0;">🧱 Magazyn profili</h3>
-        <button type="button" class="btn-secondary" onclick="restoreDefaultProfiles()" style="font-size: 11px; padding: 3px 8px; background: #e0f2fe; color: #0369a1; border-color: #bae6fd; font-weight: 600;" title="Załaduj gotową bazę 109 profili">🔄 Wczytaj bazę 109 profili</button>
+        <span id="profilesSyncBadge" style="font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 4px; background: #dcfce7; color: #166534; border: 1px solid #bbf7d0;" title="Magazyn profili jest zsynchronizowany z chmurą">☁️ Współdzielony w chmurze</span>
+        <button type="button" class="btn-secondary" onclick="pushProfilesToCloud()" style="font-size: 11px; padding: 3px 8px; background: #fef3c7; color: #92400e; border-color: #fcd34d; font-weight: 700;" title="Wyślij bieżącą bazę profili z tego komputera do chmury dla wszystkich użytkowników">⬆️ Wyślij do chmury dla wszystkich</button>
+        <button type="button" class="btn-secondary" onclick="fetchCloudProfiles(true)" style="font-size: 11px; padding: 3px 8px; background: #e0f2fe; color: #0369a1; border-color: #bae6fd; font-weight: 600;" title="Pobierz najnowszą bazę profili z chmury">⬇️ Pobierz z chmury</button>
+        <button type="button" class="btn-secondary" onclick="restoreDefaultProfiles()" style="font-size: 11px; padding: 3px 8px; background: #f1f5f9; color: #475569; border-color: #cbd5e1; font-weight: 600;" title="Przywróć pełną domyślną bazę profili">🔄 Domyślna baza</button>
       </div>
       <button class="btn-secondary" onclick="closeProfilesModal()" style="padding: 4px 10px;">✕</button>
     </div>
@@ -6093,11 +6096,13 @@
 
   // --- MAGAZYN PROFILI (Wykaz materiałów) ---
   function restoreDefaultProfiles() {
+    if (!confirm('Czy przywrócić fabryczną bazę profili i zaktualizować ją dla wszystkich?')) return;
     materialsProfiles = JSON.parse(JSON.stringify(initialDefaultProfiles));
     localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
     localStorage.setItem('order_app_profiles_ver', 'profiles_v3_added');
     renderProfilesTable();
     updateMatProfilesSelect();
+    syncProfilesWithCloud();
   }
 
   function openProfilesModal() {
@@ -6119,6 +6124,8 @@
       materialsProfiles.splice(idx, 1);
       localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
       renderProfilesTable();
+      updateMatProfilesSelect();
+      syncProfilesWithCloud();
     }
   }
 
@@ -6208,6 +6215,82 @@
     }
   }
 
+  // --- SYNCHRONIZACJA WSPÓŁDZIELONEJ BAZY PROFILI Z CHMURĄ (DLA WSZYSTKICH PRZYSTAWIANYCH UŻYTKOWNIKÓW) ---
+  let isProfilesSyncing = false;
+
+  async function fetchCloudProfiles(notify = false) {
+    if (!CLOUD_API_URL || isProfilesSyncing) return;
+    try {
+      const res = await fetch(`${CLOUD_API_URL}/api/profiles`);
+      if (res.ok) {
+        const cloudProfiles = await res.json();
+        if (Array.isArray(cloudProfiles) && cloudProfiles.length > 0) {
+          materialsProfiles = cloudProfiles;
+          localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
+          renderProfilesTable();
+          updateMatProfilesSelect();
+          const badge = document.getElementById('profilesSyncBadge');
+          if (badge) {
+            badge.textContent = `☁️ W chmurze: ${materialsProfiles.length} profili`;
+          }
+          if (notify) {
+            alert(`Pomyślnie pobrano najnowszą bazę ${materialsProfiles.length} profili z chmury!`);
+          }
+        } else if (notify) {
+          alert('Baza w chmurze jest pusta. Kliknij "⬆️ Wyślij do chmury dla wszystkich", aby wysłać swoje profile.');
+        }
+      }
+    } catch (e) {
+      console.warn('Błąd pobierania magazynu profili z chmury:', e);
+      if (notify) alert('Nie udało się połączyć z chmurą: ' + e.message);
+    }
+  }
+
+  async function syncProfilesWithCloud() {
+    if (!CLOUD_API_URL) return;
+    try {
+      isProfilesSyncing = true;
+      await fetch(`${CLOUD_API_URL}/api/profiles`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(materialsProfiles)
+      });
+    } catch (e) {
+      console.warn('Nie udało się zsynchronizować bazy profili z chmurą:', e);
+    } finally {
+      setTimeout(() => { isProfilesSyncing = false; }, 1000);
+    }
+  }
+
+  async function pushProfilesToCloud() {
+    if (!CLOUD_API_URL) {
+      alert('Brak adresu serwera w chmurze.');
+      return;
+    }
+    if (!confirm(`Czy na pewno chcesz wysłać aktualną bazę (${materialsProfiles.length} profili) do chmury? Zastąpi ona magazyn profili u wszystkich pracowników.`)) {
+      return;
+    }
+    try {
+      isProfilesSyncing = true;
+      const res = await fetch(`${CLOUD_API_URL}/api/profiles`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(materialsProfiles)
+      });
+      if (res.ok) {
+        alert(`Sukces! Wysłano ${materialsProfiles.length} profili do chmury. Wszyscy użytkownicy będą mieli identyczny magazyn profili!`);
+        const badge = document.getElementById('profilesSyncBadge');
+        if (badge) badge.textContent = `☁️ W chmurze: ${materialsProfiles.length} profili`;
+      } else {
+        alert('Błąd podczas zapisywania profili w chmurze.');
+      }
+    } catch (e) {
+      alert('Błąd połączenia: ' + e.message);
+    } finally {
+      setTimeout(() => { isProfilesSyncing = false; }, 1000);
+    }
+  }
+
   // --- GŁÓWNE PODSTRONY (Etykiety / Verpackung / Wykaz materiałów) ---
   function switchMainSubpage(page) {
     const pages = ['labels', 'verpackung', 'materials', 'weights'];
@@ -6275,11 +6358,15 @@
   fetchCloudOrders();
 
   // Ciągła synchronizacja magazynu pozycji i zamówień pomiędzy wszystkimi pracownikami
+  fetchCloudProfiles();
+
+  // Ciągła synchronizacja magazynów, profili i zamówień pomiędzy wszystkimi pracownikami
   setInterval(() => {
     fetchCloudWarehouse();
     fetchCloudOrders();
     fetchCloudOptions();
     fetchCloudSets();
+    fetchCloudProfiles();
   }, 5000);
 
   window.addEventListener('focus', () => {
@@ -6287,6 +6374,7 @@
     fetchCloudOrders();
     fetchCloudOptions();
     fetchCloudSets();
+    fetchCloudProfiles();
   });
 
   // ========================================================
@@ -8197,7 +8285,8 @@
     localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
     updateMatProfilesSelect();
     renderProfilesTable();
-    alert(`Profil "${name}" został pomyślnie dodany do Magazynu Profili z wagą ${profileWeight.toFixed(3)} kg/m!`);
+    syncProfilesWithCloud();
+    alert(`Profil "${name}" został pomyślnie dodany do Magazynu Profili i zsynchronizowany u wszystkich pracowników!`);
   }
 
   // Zapis całego wykazu materiałów w zamówieniu (Magazyn Zamówień)
@@ -8463,6 +8552,7 @@
     document.getElementById('newProfileWeight').value = '';
     renderProfilesTable();
     updateMatProfilesSelect();
+    syncProfilesWithCloud();
   }
 
 
