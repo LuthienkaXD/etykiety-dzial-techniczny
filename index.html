@@ -2542,8 +2542,9 @@
 
         <div id="setDetailsActions" style="display: none; justify-content: space-between; align-items: center; margin-top: 10px; border-top: 1px solid #e2e8f0; padding-top: 10px;">
           <!-- Przycisk dodawania opcji widoczny tylko w trybie edycji -->
-          <div id="setEditActionsLeft" style="display: none;">
+          <div id="setEditActionsLeft" style="display: none; display: flex; gap: 8px;">
             <button type="button" class="btn-secondary" onclick="openAddOptionToCurrentSetModal()" style="font-size: 12px;">+ Przypisz kolejną opcję do tego zbioru</button>
+            <button type="button" class="btn-secondary" onclick="openCopyFromSetModal()" style="font-size: 12px; background: #eff6ff; border-color: #93c5fd; color: #1d4ed8;">📋 Kopiuj wzór z innego zbioru</button>
           </div>
           <div id="setViewActionsLeft">
             <button type="button" class="btn-primary" onclick="startEditingCurrentSet()" style="font-size: 13px; padding: 6px 14px; font-weight: bold;">✏️ Edytuj zbiór</button>
@@ -2601,6 +2602,53 @@
     <div style="display: flex; justify-content: flex-end; gap: 8px;">
       <button type="button" class="btn-secondary" onclick="closePickOptionModal()" style="padding: 6px 14px;">Anuluj</button>
       <button type="button" class="btn-primary" onclick="confirmPickOptionForCurrentSet()" style="padding: 6px 18px; font-weight: bold;">OK</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Modal Kopiowania Zawartości ze Zbioru (Wzoru) -->
+<div class="modal-overlay" id="copyFromSetModal" style="z-index: 10006;">
+  <div class="modal-box" style="width: 540px; max-width: 95%; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <h3 style="margin: 0; font-size: 16px; color: #1e3a8a;">📋 Kopiuj zawartość ze zbioru (wzoru)</h3>
+      <button type="button" class="btn-secondary" onclick="closeCopyFromSetModal()" style="padding: 3px 8px; font-size: 13px;">✕</button>
+    </div>
+    
+    <p style="font-size: 12px; color: #64748b; margin-bottom: 12px;">
+      Wybierz zbiór źródłowy, którego pozycje chcesz skopiować do aktualnego zbioru: <strong id="copyTargetSetName" style="color: #1e293b;"></strong>.
+    </p>
+
+    <div style="margin-bottom: 12px;">
+      <label style="display: block; font-size: 12px; font-weight: 600; color: #1e293b; margin-bottom: 4px;">Wybierz zbiór źródłowy:</label>
+      <select id="sourceSetSelect" class="form-control" style="width: 100%; padding: 8px 10px; font-size: 13px; border: 1px solid #94a3b8; border-radius: 6px;" onchange="onSourceSetSelectedChange()">
+        <!-- Opcje zbiorów -->
+      </select>
+    </div>
+
+    <!-- Podgląd pozycji ze zbioru źródłowego -->
+    <div style="font-size: 11px; font-weight: 600; color: #475569; margin-bottom: 4px;">Pozycje w wybranym zbiorze do skopiowania (<span id="sourceSetItemsCount">0</span>):</div>
+    <div id="sourceSetPreviewList" style="max-height: 190px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px; background: #f8fafc; padding: 8px; margin-bottom: 14px; font-size: 12px;">
+      <!-- Lista pozycji ze zbioru źródłowego -->
+    </div>
+
+    <!-- Tryb kopiowania: dołącz czy zastąp -->
+    <div style="background: #f1f5f9; padding: 10px 12px; border-radius: 6px; margin-bottom: 16px; font-size: 12px;">
+      <div style="font-weight: 600; margin-bottom: 6px; color: #334155;">Jak chcesz skopiować pozycje?</div>
+      <label style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px; cursor: pointer;">
+        <input type="radio" name="copySetMode" value="append" checked>
+        <span><strong>Dołącz</strong> pozycje do istniejących w tym zbiorze</span>
+      </label>
+      <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+        <input type="radio" name="copySetMode" value="replace">
+        <span style="color: #b91c1c;"><strong>Zastąp</strong> (usuń dotychczasowe pozycje i wstaw te z wybranego zbioru)</span>
+      </label>
+    </div>
+
+    <!-- Przyciski akcji -->
+    <div style="display: flex; justify-content: flex-end; gap: 8px;">
+      <button type="button" class="btn-secondary" onclick="closeCopyFromSetModal()" style="padding: 6px 14px;">Anuluj</button>
+      <button type="button" class="btn-primary" onclick="confirmCopyFromSourceSet()" style="padding: 6px 18px; font-weight: bold; background: #16a34a; border-color: #15803d;">📋 Kopiuj pozycje</button>
     </div>
   </div>
 </div>
@@ -5915,7 +5963,7 @@
       return;
     }
 
-    document.getElementById('setDetailsTitle').innerHTML = `${currentSet.title} <button type="button" class="btn-secondary" style="font-size: 11px; padding: 2px 6px; margin-left: 4px;" onclick="renameCurrentSet()">✏️ Zmień nazwę</button> <button type="button" class="btn-secondary" style="font-size: 11px; padding: 2px 8px; margin-left: 4px; background: #f0fdf4; border-color: #86efac; color: #166534;" onclick="copyCurrentSet()" title="Skopiuj ten zbiór do nowego zbioru">📋 Kopiuj zbiór</button>`;
+    document.getElementById('setDetailsTitle').innerHTML = `${currentSet.title} <button type="button" class="btn-secondary" style="font-size: 11px; padding: 2px 6px; margin-left: 4px;" onclick="renameCurrentSet()">✏️ Zmień nazwę</button> <button type="button" class="btn-secondary" style="font-size: 11px; padding: 2px 8px; margin-left: 4px; background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; font-weight: 600;" onclick="openCopyFromSetModal()" title="Kopiuj wzór (pozycje) z innego zbioru do tego zbioru">📋 Kopiuj wzór</button>`;
     document.getElementById('setDetailsMeta').textContent = `Ostatnia edycja: ${currentSet.lastModifiedAt || '-'} przez ${currentSet.lastModifiedBy || 'Nieznany'} | Element: ${currentSet.element || '-'}, Model: ${currentSet.model || '-'}`;
     document.getElementById('setItemsTableWrapper').style.display = 'block';
     document.getElementById('setDetailsActions').style.display = 'flex';
@@ -5982,6 +6030,123 @@
   }
 
   
+  
+  // --- KOPIOWANIE WZORU Z INNEGO ZBIORU ---
+  function openCopyFromSetModal() {
+    const targetSet = getSetObjectById(selectedSetId) || packingSets[selectedSetIndex];
+    if (!targetSet) {
+      alert('Najpierw wybierz zbiór z listy po lewej!');
+      return;
+    }
+
+    const titleTarget = document.getElementById('copyTargetSetName');
+    if (titleTarget) titleTarget.textContent = targetSet.title;
+
+    const select = document.getElementById('sourceSetSelect');
+    if (!select) return;
+
+    select.innerHTML = '';
+    const otherSets = packingSets.filter(s => {
+      const sId = (s.id !== undefined && s.id !== null) ? String(s.id) : null;
+      return sId !== String(selectedSetId) && s !== targetSet;
+    });
+
+    if (otherSets.length === 0) {
+      select.innerHTML = '<option value="">-- Brak innych zbiorów do wyboru --</option>';
+    } else {
+      // Sortujemy alfabetycznie
+      otherSets.sort((a, b) => (a.title || '').localeCompare(b.title || '', 'pl', { sensitivity: 'base' }));
+      otherSets.forEach(s => {
+        const sId = (s.id !== undefined && s.id !== null) ? String(s.id) : '';
+        const count = Array.isArray(s.items) ? s.items.length : 0;
+        const opt = document.createElement('option');
+        opt.value = sId;
+        opt.textContent = `${s.title} (pozycji: ${count})`;
+        select.appendChild(opt);
+      });
+    }
+
+    onSourceSetSelectedChange();
+
+    const modal = document.getElementById('copyFromSetModal');
+    if (modal) modal.style.display = 'flex';
+  }
+
+  function closeCopyFromSetModal() {
+    const modal = document.getElementById('copyFromSetModal');
+    if (modal) modal.style.display = 'none';
+  }
+
+  function onSourceSetSelectedChange() {
+    const select = document.getElementById('sourceSetSelect');
+    const previewDiv = document.getElementById('sourceSetPreviewList');
+    const countSpan = document.getElementById('sourceSetItemsCount');
+    if (!select || !previewDiv) return;
+
+    const sourceSetId = select.value;
+    const sourceSet = getSetObjectById(sourceSetId);
+
+    if (!sourceSet || !Array.isArray(sourceSet.items) || sourceSet.items.length === 0) {
+      if (countSpan) countSpan.textContent = '0';
+      previewDiv.innerHTML = '<div style="color: #94a3b8; font-style: italic; text-align: center; padding: 10px;">Wybrany zbiór nie zawiera pozycji lub nie wybrano zbioru.</div>';
+      return;
+    }
+
+    if (countSpan) countSpan.textContent = sourceSet.items.length;
+    previewDiv.innerHTML = sourceSet.items.map((it, idx) => {
+      const elemStr = it.element ? ` [elem: ${it.element}]` : '';
+      const qtyStr = it.qty !== undefined && it.qty !== '' ? ` (ilość: ${it.qty} ${it.jm || ''})` : '';
+      return `<div style="padding: 2px 0; border-bottom: 1px dashed #e2e8f0;"><strong>${idx + 1}.</strong> ${it.name || '-'}${qtyStr}${elemStr}</div>`;
+    }).join('');
+  }
+
+  function confirmCopyFromSourceSet() {
+    const targetSet = getSetObjectById(selectedSetId) || packingSets[selectedSetIndex];
+    if (!targetSet) return;
+
+    const select = document.getElementById('sourceSetSelect');
+    if (!select || !select.value) {
+      alert('Wybierz zbiór z listy do skopiowania!');
+      return;
+    }
+
+    const sourceSet = getSetObjectById(select.value);
+    if (!sourceSet || !Array.isArray(sourceSet.items) || sourceSet.items.length === 0) {
+      alert('Wybrany zbiór źródłowy nie zawiera żadnych pozycji do skopiowania!');
+      return;
+    }
+
+    const modeRadio = document.querySelector('input[name="copySetMode"]:checked');
+    const mode = modeRadio ? modeRadio.value : 'append';
+
+    const clonedItems = JSON.parse(JSON.stringify(sourceSet.items));
+
+    if (isEditingCurrentSet && tempEditSetItems) {
+      if (mode === 'replace') {
+        tempEditSetItems = clonedItems;
+      } else {
+        tempEditSetItems = tempEditSetItems.concat(clonedItems);
+      }
+    } else {
+      if (!Array.isArray(targetSet.items)) targetSet.items = [];
+      if (mode === 'replace') {
+        targetSet.items = clonedItems;
+      } else {
+        targetSet.items = targetSet.items.concat(clonedItems);
+      }
+      targetSet.lastModifiedBy = (currentWorker || localStorage.getItem('order_app_current_worker') || 'Nieznany').trim();
+      targetSet.lastModifiedAt = new Date().toLocaleString('pl-PL');
+      localStorage.setItem('order_app_sets', JSON.stringify(packingSets));
+      syncSetsWithCloud();
+    }
+
+    closeCopyFromSetModal();
+    renderSetsList();
+    renderSetDetailsById(selectedSetId);
+    populateVpSelects();
+    alert(`Pomyślnie skopiowano ${clonedItems.length} pozycji ze zbioru "${sourceSet.title}" do "${targetSet.title}"!`);
+  }
+
   function copyCurrentSet() {
     const s = getSetObjectById(selectedSetId) || packingSets[selectedSetIndex];
     if (!s) return;
