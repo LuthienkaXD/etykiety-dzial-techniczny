@@ -1197,6 +1197,215 @@
         opacity: 0 !important;
       }
     }
+  
+    /* ========================================================
+       MODUŁ WAGA PROFILI I WYKAZ MATERIAŁÓW
+       ======================================================== */
+    .mat-workspace {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      margin-top: 15px;
+    }
+    .mat-panel {
+      width: 420px;
+      min-width: 400px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .mat-sheet-container {
+      flex: 1;
+      min-width: 0;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 18px 22px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .mat-section-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #1e3a8a;
+      margin-top: 14px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .mat-section-title:first-child {
+      margin-top: 0;
+    }
+    .mat-type-btn {
+      padding: 6px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #f8fafc;
+      color: #334155;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: center;
+      line-height: 1.2;
+    }
+    .mat-type-btn:hover {
+      background: #e2e8f0;
+      border-color: #94a3b8;
+    }
+    .mat-type-btn.active {
+      background: #0284c7;
+      color: #ffffff;
+      border-color: #0284c7;
+      box-shadow: 0 1px 3px rgba(2, 132, 199, 0.3);
+    }
+    .mat-types-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .mat-calc-preview-card {
+      background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+      border: 1px solid #86efac;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin: 12px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .mat-summary-banner {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+    }
+    .mat-summary-box {
+      text-align: center;
+    }
+    .mat-summary-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .mat-summary-val {
+      font-size: 20px;
+      font-weight: 800;
+      color: #0f172a;
+      margin-top: 2px;
+    }
+    .mat-summary-val.highlight {
+      color: #0284c7;
+    }
+    .mat-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .mat-table th {
+      background: #f1f5f9;
+      color: #334155;
+      font-weight: 700;
+      padding: 8px 6px;
+      border: 1px solid #cbd5e1;
+      text-align: left;
+      font-size: 11px;
+    }
+    .mat-table td {
+      padding: 6px 6px;
+      border: 1px solid #e2e8f0;
+      color: #1e293b;
+      vertical-align: middle;
+    }
+    .mat-table tbody tr:hover {
+      background: #f8fafc;
+    }
+    .mat-badge-custom {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fde68a;
+    }
+    .mat-badge-std {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      background: #e0f2fe;
+      color: #0369a1;
+      border: 1px solid #bae6fd;
+    }
+    .mat-badge-sheet {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      background: #fae8ff;
+      color: #86198f;
+      border: 1px solid #f5d0fe;
+    }
+
+    /* DRUKOWANIE WYKAZU MATERIAŁÓW / WAGI PROFILI */
+    body.printing-mat {
+      page: matLandscape;
+    }
+    @media print {
+      body.printing-mat {
+        page: matLandscape;
+      }
+      body.printing-mat @page {
+        size: A4 landscape;
+        margin: 8mm 10mm;
+      }
+      body.printing-mat #subpageLabels,
+      body.printing-mat #subpageVerpackung,
+      body.printing-mat #subpageMaterials {
+        display: none !important;
+      }
+      body.printing-mat #subpageWeights {
+        display: block !important;
+      }
+      body.printing-mat .mat-panel,
+      body.printing-mat .no-print {
+        display: none !important;
+      }
+      body.printing-mat .mat-sheet-container {
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        width: 100% !important;
+      }
+      body.printing-mat .mat-table th {
+        background: #e2e8f0 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      body.printing-mat .mat-print-header {
+        display: block !important;
+      }
+    }
+    .mat-print-header {
+      display: none;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #0f172a;
+    }
+
   </style>
 </head>
 <body>
@@ -1257,6 +1466,9 @@
     </button>
     <button class="main-nav-tab" id="tabNavMaterials" onclick="switchMainSubpage('materials')">
       📋 Wykaz materiałów
+    </button>
+    <button class="main-nav-tab" id="tabNavWeights" onclick="switchMainSubpage('weights')">
+      ⚖️ Wagi
     </button>
   </nav>
 
@@ -1636,13 +1848,231 @@
 
 
 <!-- PODSTRONA 3: Wykaz materiałów -->
+<!-- PODSTRONA 3: Wykaz materiałów i Waga profili -->
+<!-- PODSTRONA 3: Wykaz materiałów -->
 <div id="subpageMaterials" class="subpage-view">
-  <div class="subpage-placeholder">
+  <div class="subpage-placeholder" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 40px; text-align: center; margin-top: 15px;">
     <div style="font-size: 48px; margin-bottom: 14px;">📋</div>
-    <h2>Wykaz materiałów</h2>
-    <p>Moduł jest przygotowany do zaprojektowania. Zaraz rozpoczniemy dodawanie specyfikacji materiałowych, zestawień i profili.</p>
+    <h2 style="font-size: 22px; color: #1e3a8a; margin-bottom: 8px;">Wykaz materiałów</h2>
+    <p style="color: #64748b; font-size: 14px; max-width: 600px; margin: 0 auto 20px auto;">
+      Moduł specyfikacji i zestawień materiałowych. Do obliczania wagi profili aluminiowych, kątowników, ceowników, teowników, płaskowników i blach przejdź do zakładki <strong>⚖️ Wagi</strong>.
+    </p>
+    <button type="button" class="btn-primary" onclick="switchMainSubpage('weights')" style="padding: 10px 22px; font-size: 14px; font-weight: bold;">
+      ⚖️ Otwórz kalkulator: Wagi
+    </button>
   </div>
 </div>
+
+<!-- PODSTRONA 4: Wagi profili (Kalkulator) -->
+<div id="subpageWeights" class="subpage-view">
+  <div class="workspace mat-workspace">
+    
+    <!-- Lewy panel: Kalkulator i dodawanie pozycji -->
+    <div class="panel mat-panel no-print">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h2 style="font-size: 18px; margin: 0; color: #1e3a8a;">⚖️ Waga Profili & Materiał</h2>
+        <button type="button" class="btn-secondary" onclick="openProfilesModal()" style="font-size: 11px; padding: 4px 8px;">🧱 Magazyn profili</button>
+      </div>
+      <p style="font-size: 12px; color: #64748b; margin-bottom: 12px;">
+        Obliczanie wagi profili aluminiowych i blach wg wymiarów lub dodawanie profili niestandardowych z indywidualną wagą.
+      </p>
+
+      <!-- Dane zlecenia -->
+      <div style="background: #f1f5f9; border-radius: 8px; padding: 10px; margin-bottom: 12px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px;">
+          <div>
+            <label style="font-size: 11px; font-weight: 600; color: #334155;">Nr zamówienia ($):</label>
+            <input type="text" id="matOrderNumber" class="form-control" placeholder="np. 0870_26" style="font-size: 12px; padding: 5px;" oninput="onMatOrderNumberInput(this.value)">
+          </div>
+          <div>
+            <label style="font-size: 11px; font-weight: 600; color: #334155;">Stop metalu / Gęstość:</label>
+            <select id="matMetalSelect" class="form-control" style="font-size: 11px; padding: 5px;" onchange="onMatMetalSelectChange()">
+              <option value="2.713" selected>Aluminium EN AW-6061 (2,713 kg/dm³)</option>
+              <option value="2.700">Aluminium EN AW-6060 (2,700 kg/dm³)</option>
+              <option value="2.680">Aluminium EN AW-6082 (2,680 kg/dm³)</option>
+              <option value="2.700">Aluminium ogólne (2,700 kg/dm³)</option>
+              <option value="7.850">Stal węglowa (7,850 kg/dm³)</option>
+              <option value="7.930">Stal nierdzewna AISI 304 (7,930 kg/dm³)</option>
+              <option value="custom">Inny metal (wpisz gęstość ręcznie)...</option>
+            </select>
+          </div>
+        </div>
+        <div id="matCustomDensityRow" style="display: none; margin-top: 6px;">
+          <label style="font-size: 11px; font-weight: 600; color: #b45309;">Własna gęstość metalu [kg/dm³]:</label>
+          <input type="number" id="matCustomDensityInput" class="form-control" step="0.001" placeholder="np. 2.713" style="font-size: 12px; padding: 5px;" oninput="recalcCurrentProfilePreview()">
+        </div>
+      </div>
+
+      <!-- Szybkie wstawienie z Magazynu Profili -->
+      <div style="background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 8px; padding: 10px; margin-bottom: 12px;">
+        <label style="font-size: 11px; font-weight: 700; color: #3730a3; display: block; margin-bottom: 4px;">
+          🧱 Wczytaj profil z bazy magazynu:
+        </label>
+        <div style="display: flex; gap: 6px;">
+          <select id="matSelectSavedProfile" class="form-control" style="flex: 1; font-size: 12px; padding: 5px;" onchange="onSelectSavedProfileChange()">
+            <option value="">-- Wybierz profil z bazy --</option>
+          </select>
+          <button type="button" class="btn-primary" onclick="loadSelectedSavedProfileToForm()" style="padding: 5px 10px; font-size: 12px;">Wstaw</button>
+        </div>
+      </div>
+
+      <!-- Wybór typu profilu -->
+      <div class="mat-section-title">1. Wybierz rodzaj profilu:</div>
+      <div class="mat-types-grid">
+        <button type="button" class="mat-type-btn active" id="btnMatType_square" onclick="selectProfileType('square')">Profil kwadratowy / prostokątny</button>
+        <button type="button" class="mat-type-btn" id="btnMatType_angle" onclick="selectProfileType('angle')">Kątownik (L)</button>
+        <button type="button" class="mat-type-btn" id="btnMatType_channel" onclick="selectProfileType('channel')">Ceownik (C)</button>
+        <button type="button" class="mat-type-btn" id="btnMatType_tee" onclick="selectProfileType('tee')">Teownik (T)</button>
+        <button type="button" class="mat-type-btn" id="btnMatType_flat" onclick="selectProfileType('flat')">Płaskownik</button>
+        <button type="button" class="mat-type-btn" id="btnMatType_sheet" onclick="selectProfileType('sheet')">Blacha aluminiowa 2mm</button>
+        <button type="button" class="mat-type-btn" id="btnMatType_custom" onclick="selectProfileType('custom')" style="grid-column: span 3; background: #fffbeb; border-color: #fde68a; color: #92400e;">⭐ Profil niestandardowy (własna waga z ręki / bazy)</button>
+      </div>
+
+      <!-- Formularz parametrów dla wybranego typu -->
+      <div class="mat-section-title">2. Parametry i wymiary:</div>
+      
+      <div class="form-group" style="margin-bottom: 8px;">
+        <label style="font-size: 11px; font-weight: 600;">Nazwa / Opis profilu:</label>
+        <input type="text" id="matFormName" class="form-control" placeholder="np. Profil 80x20x1.2 rama" style="font-size: 12px; padding: 6px;" oninput="updateProfileNameAutoPrompt()">
+      </div>
+
+      <!-- Dynamiczne pola wymiarów -->
+      <div id="matFieldsDynamic" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 10px;">
+        <!-- Wstrzykiwane przez JS w zależności od typu profilu -->
+      </div>
+
+      <!-- Ilość sztuk i długość -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+        <div>
+          <label style="font-size: 11px; font-weight: 600;">Długość pojedyncza [mm]:</label>
+          <input type="number" id="matFormLength" class="form-control" placeholder="np. 6000 lub 1500" value="6000" min="1" step="1" style="font-size: 12px; padding: 6px;" oninput="recalcCurrentProfilePreview()">
+        </div>
+        <div>
+          <label style="font-size: 11px; font-weight: 600;">Ilość sztuk:</label>
+          <input type="number" id="matFormQty" class="form-control" placeholder="1" value="1" min="1" step="1" style="font-size: 12px; padding: 6px;" oninput="recalcCurrentProfilePreview()">
+        </div>
+      </div>
+
+      <!-- Karta natychmiastowego podglądu wagi -->
+      <div class="mat-calc-preview-card">
+        <div>
+          <div style="font-size: 10px; font-weight: 700; color: #166534; text-transform: uppercase;">Podgląd wyliczenia:</div>
+          <div style="font-size: 12px; color: #15803d;" id="matPreviewUnitWeight">Waga 1 szt.: <strong>0.000 kg</strong></div>
+          <div style="font-size: 11px; color: #64748b;" id="matPreviewMeterWeight">Waga metra (kg/m): 0.000 kg/m</div>
+        </div>
+        <div style="text-align: right;">
+          <div style="font-size: 10px; font-weight: 700; color: #166534; text-transform: uppercase;">Waga łączna pozycji:</div>
+          <div style="font-size: 20px; font-weight: 900; color: #15803d;" id="matPreviewTotalWeight">0.000 kg</div>
+        </div>
+      </div>
+
+      <!-- Przyciski dodawania -->
+      <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+        <button type="button" class="btn-primary" onclick="addCurrentProfileToOrder()" style="flex: 1; padding: 10px; font-size: 13px; font-weight: bold;">
+          ➕ Dodaj do zamówienia
+        </button>
+        <button type="button" class="btn-secondary" onclick="saveCurrentProfileToWarehouseDb()" title="Zapisz ten profil na stałe w bazie magazynu profili" style="padding: 10px 12px; font-size: 12px; background: #f1f5f9;">
+          💾 Zapisz do bazy
+        </button>
+      </div>
+
+      <div style="display: flex; gap: 8px; margin-top: 14px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+        <button type="button" class="btn-success" onclick="saveMaterialsOrderToWarehouse()" style="flex: 1; padding: 10px; font-size: 13px; font-weight: bold;">
+          💾 Zapisz wykaz w Magazynie
+        </button>
+        <button type="button" class="btn-primary" onclick="printMaterialsOrder()" style="padding: 10px 16px; font-size: 13px;">
+          🖨️ Drukuj / PDF
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Prawy panel: Tabela zamówienia i zestawienie wag -->
+    <div class="mat-sheet-container">
+      
+      <!-- Nagłówek do druku -->
+      <div class="mat-print-header">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <div>
+            <h1 style="font-size: 20px; margin: 0; color: #0f172a;">ZAMÓWIENIE - WYKAZ MATERIAŁÓW I ZESTAWIENIE WAG</h1>
+            <div style="font-size: 14px; font-weight: 700; color: #0284c7; margin-top: 4px;">Zamówienie nr: <span id="matPrintOrderNum">-</span></div>
+          </div>
+          <div style="text-align: right; font-size: 12px; color: #475569;">
+            <div>Klient: <strong id="matPrintClient">-</strong></div>
+            <div>Stop aluminium: <strong id="matPrintAlloy">EN AW-6061 (2,713 kg/dm³)</strong></div>
+            <div>Data: <strong id="matPrintDate">-</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pasek akcji na ekranie -->
+      <div class="no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <div>
+          <h3 style="margin: 0; font-size: 17px; color: #0f172a;">📋 Wykaz profili w zamówieniu: <span id="matDisplayOrderNum" style="color: #0284c7; font-weight: 800;">-</span></h3>
+          <span id="matDisplayClient" style="font-size: 12px; color: #64748b;">(Wpisz lub wczytaj zamówienie w formularzu)</span>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn-secondary" onclick="exportMaterialsToCsv()" style="font-size: 12px; padding: 6px 12px; background: #0284c7; color: white;">📊 Eksportuj CSV / Excel</button>
+          <button type="button" class="btn-danger" onclick="clearMaterialsList()" style="font-size: 12px; padding: 6px 10px;">🗑️ Wyczyść listę</button>
+        </div>
+      </div>
+
+      <!-- Kafelki podsumowania wag -->
+      <div class="mat-summary-banner">
+        <div class="mat-summary-box">
+          <div class="mat-summary-label">Liczba pozycji / sztuk</div>
+          <div class="mat-summary-val" id="matSumItemsQty">0 poz. / 0 szt.</div>
+        </div>
+        <div class="mat-summary-box">
+          <div class="mat-summary-label">Suma długości profili</div>
+          <div class="mat-summary-val" id="matSumTotalLength">0.00 m</div>
+        </div>
+        <div class="mat-summary-box">
+          <div class="mat-summary-label">Waga całkowita zamówienia</div>
+          <div class="mat-summary-val highlight" id="matSumTotalWeight">0.00 kg</div>
+        </div>
+      </div>
+
+      <!-- Tabela profili w zamówieniu -->
+      <div style="overflow-x: auto;">
+        <table class="mat-table">
+          <thead>
+            <tr>
+              <th style="width: 35px; text-align: center;">Lp.</th>
+              <th style="width: 130px;">Typ profilu</th>
+              <th>Nazwa i wymiary profilu</th>
+              <th style="width: 75px; text-align: center;">Grubość t</th>
+              <th style="width: 85px; text-align: center;">Długość</th>
+              <th style="width: 60px; text-align: center;">Ilość</th>
+              <th style="width: 85px; text-align: right;">Waga 1m</th>
+              <th style="width: 85px; text-align: right;">Waga 1 szt.</th>
+              <th style="width: 95px; text-align: right;">Waga suma</th>
+              <th class="no-print" style="width: 70px; text-align: center;">Akcja</th>
+            </tr>
+          </thead>
+          <tbody id="matItemsTbody">
+            <tr>
+              <td colspan="10" style="text-align: center; color: #94a3b8; padding: 30px;">
+                Brak pozycji w zamówieniu. Wybierz profil po lewej stronie i dodaj go do listy.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Podsumowanie pod tabelą -->
+      <div style="display: flex; justify-content: flex-end; margin-top: 14px; padding-top: 10px; border-top: 2px solid #0f172a;">
+        <div style="text-align: right;">
+          <span style="font-size: 14px; font-weight: 600; color: #475569; margin-right: 12px;">ŁĄCZNA WAGA METALI / PROFILI:</span>
+          <span style="font-size: 22px; font-weight: 900; color: #0284c7;" id="matTableBottomTotalWeight">0.000 kg</span>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
 
 <!-- Modal Magazynu Zamówień -->
 <div class="modal-overlay" id="ordersModal">
@@ -2037,18 +2467,30 @@
 
     <!-- Formularz dodawania profilu -->
     <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 14px;">
-      <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr auto; gap: 8px; align-items: flex-end;">
+      <div style="display: grid; grid-template-columns: 2fr 1.2fr 1fr 1fr auto; gap: 8px; align-items: flex-end;">
         <div>
           <label style="font-size: 11px; font-weight: 600;">Nazwa profilu:</label>
           <input type="text" id="newProfileName" class="form-control" placeholder="np. Profil 80x20x1.2" style="font-size: 12px; padding: 6px;">
         </div>
         <div>
-          <label style="font-size: 11px; font-weight: 600;">Typ / Zastosowanie:</label>
-          <input type="text" id="newProfileType" class="form-control" placeholder="np. Sztacheta, Rama" style="font-size: 12px; padding: 6px;">
+          <label style="font-size: 11px; font-weight: 600;">Typ / Kategoria:</label>
+          <select id="newProfileType" class="form-control" style="font-size: 12px; padding: 6px;">
+            <option value="Profil kwadratowy/prostokątny">Profil kwadratowy/prostokątny</option>
+            <option value="Kątownik">Kątownik (L)</option>
+            <option value="Ceownik">Ceownik (C)</option>
+            <option value="Teownik">Teownik (T)</option>
+            <option value="Płaskownik">Płaskownik</option>
+            <option value="Blacha aluminiowa 2mm">Blacha aluminiowa 2mm</option>
+            <option value="Niestandardowy">Niestandardowy</option>
+          </select>
         </div>
         <div>
-          <label style="font-size: 11px; font-weight: 600;">Dł. handlowa:</label>
-          <input type="text" id="newProfileLen" class="form-control" placeholder="np. 6000 mm" style="font-size: 12px; padding: 6px;">
+          <label style="font-size: 11px; font-weight: 600;">Dł. handlowa [mm]:</label>
+          <input type="text" id="newProfileLen" class="form-control" placeholder="np. 6000" style="font-size: 12px; padding: 6px;">
+        </div>
+        <div>
+          <label style="font-size: 11px; font-weight: 600;">Waga (kg/m lub kg/szt):</label>
+          <input type="number" step="0.001" id="newProfileWeight" class="form-control" placeholder="np. 0.627" style="font-size: 12px; padding: 6px;">
         </div>
         <button type="button" class="btn-primary" onclick="addProfileFromForm()" style="padding: 7px 14px; font-size: 12px; font-weight: bold;">+ Dodaj profil</button>
       </div>
@@ -2070,9 +2512,10 @@
         <thead>
           <tr>
             <th class="wh-col-name">Nazwa profilu</th>
-            <th style="width: 220px;">Typ / Zastosowanie</th>
-            <th>Długość handlowa</th>
-            <th style="width: 60px; text-align: center;">Usuń</th>
+            <th style="width: 170px;">Typ / Kategoria</th>
+            <th style="width: 110px;">Dł. handlowa</th>
+            <th style="width: 110px; text-align: right;">Waga (kg/m lub szt.)</th>
+            <th style="width: 110px; text-align: center;">Akcja</th>
           </tr>
         </thead>
         <tbody id="profilesTableBody">
@@ -5730,16 +6173,18 @@
 
   // --- GŁÓWNE PODSTRONY (Etykiety / Verpackung / Wykaz materiałów) ---
   function switchMainSubpage(page) {
-    const pages = ['labels', 'verpackung', 'materials'];
+    const pages = ['labels', 'verpackung', 'materials', 'weights'];
     const tabMap = {
       labels: document.getElementById('tabNavLabels'),
       verpackung: document.getElementById('tabNavVerpackung'),
-      materials: document.getElementById('tabNavMaterials')
+      materials: document.getElementById('tabNavMaterials'),
+      weights: document.getElementById('tabNavWeights')
     };
     const viewMap = {
       labels: document.getElementById('subpageLabels'),
       verpackung: document.getElementById('subpageVerpackung'),
-      materials: document.getElementById('subpageMaterials')
+      materials: document.getElementById('subpageMaterials'),
+      weights: document.getElementById('subpageWeights')
     };
 
     pages.forEach(p => {
@@ -5756,12 +6201,17 @@
     if (btnNavWhItems) btnNavWhItems.style.display = (page === 'labels') ? 'inline-flex' : 'none';
     if (btnNavOptions) btnNavOptions.style.display = (page === 'verpackung') ? 'inline-flex' : 'none';
     if (btnNavSets) btnNavSets.style.display = (page === 'verpackung') ? 'inline-flex' : 'none';
-    if (btnNavProfiles) btnNavProfiles.style.display = (page === 'materials') ? 'inline-flex' : 'none';
+    if (btnNavProfiles) btnNavProfiles.style.display = (page === 'weights' || page === 'materials') ? 'inline-flex' : 'none';
 
     if (page === 'verpackung') {
       populateVpSelects();
       syncVpOrderFromEtykiety();
       renderVerpackungView();
+    } else if (page === 'weights' || page === 'materials') {
+      syncMaterialsOrderFromEtykiety();
+      renderDynamicProfileFields(currentProfileType);
+      recalcCurrentProfilePreview();
+      renderMaterialsItemsTable();
     }
 
     // Zapisz preferencję w localStorage
@@ -5803,6 +6253,949 @@
     fetchCloudOptions();
     fetchCloudSets();
   });
+
+  // ========================================================
+  // MODUŁ 3: KALKULATOR WAGI PROFILI I WYKAZ MATERIAŁÓW
+  // ========================================================
+
+  let currentProfileType = 'square';
+  let materialsOrderState = {
+    orderNumber: '',
+    client: '',
+    density: 2.713, // Aluminium EN AW-6061
+    metalName: 'Aluminium EN AW-6061',
+    items: []
+  };
+
+  // Predefiniowana bogatsza baza standardowych i niestandardowych profili
+  const initialDefaultProfiles = [
+    { name: 'Profil 80x20x1.2', type: 'Profil kwadratowy/prostokątny', length: '6000', weight: 0.627, a: 80, b: 20, t: 1.2, isCustom: false },
+    { name: 'Profil 60x40x2.0', type: 'Profil kwadratowy/prostokątny', length: '6000', weight: 1.036, a: 60, b: 40, t: 2.0, isCustom: false },
+    { name: 'Profil 100x100x3.0', type: 'Profil kwadratowy/prostokątny', length: '6000', weight: 3.142, a: 100, b: 100, t: 3.0, isCustom: false },
+    { name: 'Profil 120x120x3.0', type: 'Profil kwadratowy/prostokątny', length: '6000', weight: 3.793, a: 120, b: 120, t: 3.0, isCustom: false },
+    { name: 'Kątownik 40x40x3.0', type: 'Kątownik', length: '6000', weight: 0.624, a: 40, b: 40, t: 3.0, isCustom: false },
+    { name: 'Ceownik 80x40x3.0', type: 'Ceownik', length: '6000', weight: 1.248, a: 80, b: 40, t: 3.0, isCustom: false },
+    { name: 'Teownik 40x40x3.0', type: 'Teownik', length: '6000', weight: 0.624, a: 40, b: 40, t: 3.0, isCustom: false },
+    { name: 'Płaskownik 60x5.0', type: 'Płaskownik', length: '6000', weight: 0.814, a: 60, b: 5.0, t: 0, isCustom: false },
+    { name: 'Blacha aluminiowa 2.0 mm', type: 'Blacha aluminiowa 2mm', length: '2000', weight: 5.426, a: 1000, b: 2000, t: 2.0, isCustom: false },
+    { name: 'Profil ozdobny niestandardowy - ząbkowany', type: 'Niestandardowy', length: '6000', weight: 1.450, isCustom: true }
+  ];
+
+  // Inicjalizacja bazy profili
+  if (!localStorage.getItem('order_app_profiles')) {
+    materialsProfiles = initialDefaultProfiles;
+    localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
+  } else {
+    // Sprawdźmy czy istniejące profile mają pole weight
+    materialsProfiles = JSON.parse(localStorage.getItem('order_app_profiles'));
+    let updated = false;
+    materialsProfiles.forEach(p => {
+      if (p.weight === undefined) {
+        if (p.name.includes('80x20x1.2')) p.weight = 0.627;
+        else if (p.name.includes('60x40x2.0')) p.weight = 1.036;
+        else if (p.name.includes('100x100x3.0')) p.weight = 3.142;
+        else if (p.name.includes('120x120x3.0')) p.weight = 3.793;
+        else if (p.name.includes('80x80x5.0')) p.weight = 3.120;
+        else p.weight = 1.000;
+        updated = true;
+      }
+    });
+    if (updated) localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
+  }
+
+  // Pobranie bieżącej gęstości [kg/dm3]
+  function getCurrentDensity() {
+    const sel = document.getElementById('matMetalSelect');
+    if (!sel) return 2.713;
+    if (sel.value === 'custom') {
+      const customInput = document.getElementById('matCustomDensityInput');
+      const val = parseFloat(customInput ? customInput.value : '');
+      return isNaN(val) || val <= 0 ? 2.713 : val;
+    }
+    const val = parseFloat(sel.value);
+    return isNaN(val) || val <= 0 ? 2.713 : val;
+  }
+
+  function onMatMetalSelectChange() {
+    const sel = document.getElementById('matMetalSelect');
+    const customRow = document.getElementById('matCustomDensityRow');
+    if (sel.value === 'custom') {
+      customRow.style.display = 'block';
+      if (!document.getElementById('matCustomDensityInput').value) {
+        document.getElementById('matCustomDensityInput').value = '2.713';
+      }
+    } else {
+      customRow.style.display = 'none';
+    }
+    materialsOrderState.density = getCurrentDensity();
+    const selOpt = sel.options[sel.selectedIndex];
+    materialsOrderState.metalName = selOpt ? selOpt.text : 'Aluminium EN AW-6061';
+    recalcCurrentProfilePreview();
+    recalculateEntireOrderWeights();
+  }
+
+  // Zmiana typu profilu w kalkulatorze
+  function selectProfileType(type) {
+    currentProfileType = type;
+    const allTypes = ['square', 'angle', 'channel', 'tee', 'flat', 'sheet', 'custom'];
+    allTypes.forEach(t => {
+      const btn = document.getElementById('btnMatType_' + t);
+      if (btn) btn.classList.toggle('active', t === type);
+    });
+
+    renderDynamicProfileFields(type);
+    recalcCurrentProfilePreview();
+  }
+
+  // Generowanie dynamicznych pól w formularzu
+  function renderDynamicProfileFields(type) {
+    const container = document.getElementById('matFieldsDynamic');
+    if (!container) return;
+
+    if (type === 'square') {
+      container.innerHTML = `
+        <div style="font-size: 11px; font-weight: 700; color: #0369a1; margin-bottom: 6px;">📐 Wymiary profilu kwadratowego / prostokątnego (mm):</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+          <div>
+            <label style="font-size: 11px;">Szerokość A [mm]:</label>
+            <input type="number" id="matDimA" class="form-control" value="80" step="0.1" style="font-size: 12px; padding: 5px;" oninput="onDimChangeAutoName()">
+          </div>
+          <div>
+            <label style="font-size: 11px;">Wysokość B [mm]:</label>
+            <input type="number" id="matDimB" class="form-control" value="20" step="0.1" style="font-size: 12px; padding: 5px;" oninput="onDimChangeAutoName()">
+          </div>
+          <div>
+            <label style="font-size: 11px; font-weight: 700; color: #b45309;">Grubość t [mm]:</label>
+            <input type="number" id="matDimT" class="form-control" value="1.2" step="0.1" style="font-size: 12px; padding: 5px;" oninput="onDimChangeAutoName()">
+          </div>
+        </div>
+      `;
+    } else if (type === 'angle') {
+      container.innerHTML = `
+        <div style="font-size: 11px; font-weight: 700; color: #0369a1; margin-bottom: 6px;">📐 Wymiary kątownika (L) (mm):</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+          <div>
+            <label style="font-size: 11px;">Ramię A [mm]:</label>
+            <input type="number" id="matDimA" class="form-control" value="40" step="0.1" style="font-size: 12px; padding: 5px;" oninput="onDimChangeAutoName()">
+          </div>
+          <div>
+            <label style="font-size: 11px;">Ramię B [mm]:</label>
+            <input type="number" id="matDimB" class="form-control" value="40" step="0.1" style="font-size: 12px; padding: 5px;" oninput="onDimChangeAutoName()">
+          </div>
+          <div>
+            <label style="font-size: 11px; font-weight: 700; color: #b45309;">Grubość t [mm]:</label>
+            <input type="number" id="matDimT" class="form-control" value="3.0" step="0.1" style="font-size: 12px; padding: 5px;" oninput="onDimChangeAutoName()">
+          </div>
+        </div>
+      `;
+    } else if (type === 'channel') {
+      container.innerHTML = `
+        <div style="font-size: 11px; font-weight: 700; color: #0369a1; margin-bottom: 6px;">📐 Wymiary ceownika (C) (mm):</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+          <div>
+            <label style="font-size: 11px;">Podstawa A [mm]:</label>
+            <input type="number" id="matDimA" class="form-control" value="80" step="0.1" style="font-size: 12px; padding: 5px;" oninput="onDimChangeAutoName()">
+          </div>
+          <div>
+            <label style="font-size: 11px;">Ramię B [mm]:</label>
+            <input type="number" id="matDimB" class="form-control" value="40" step="0.1" style="font-size: 12px; padding: 5px;" oninput="onDimChangeAutoName()">
+          </div>
+          <div>
+            <label style="font-size: 11px; font-weight: 700; color: #b45309;">Grubość t [mm]:</label>
+            <input type="number" id="matDimT" class="form-control" value="3.0" step="0.1" style="font-size: 12px; padding: 5px;" oninput="onDimChangeAutoName()">
+          </div>
+        </div>
+      `;
+    } else if (type === 'tee') {
+      container.innerHTML = `
+        <div style="font-size: 11px; font-weight: 700; color: #0369a1; margin-bottom: 6px;">📐 Wymiary teownika (T) (mm):</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+          <div>
+            <label style="font-size: 11px;">Szerokość półki A [mm]:</label>
+            <input type="number" id="matDimA" class="form-control" value="40" step="0.1" style="font-size: 12px; padding: 5px;" oninput="onDimChangeAutoName()">
+          </div>
+          <div>
+            <label style="font-size: 11px;">Wysokość środnika B [mm]:</label>
+            <input type="number" id="matDimB" class="form-control" value="40" step="0.1" style="font-size: 12px; padding: 5px;" oninput="onDimChangeAutoName()">
+          </div>
+          <div>
+            <label style="font-size: 11px; font-weight: 700; color: #b45309;">Grubość t [mm]:</label>
+            <input type="number" id="matDimT" class="form-control" value="3.0" step="0.1" style="font-size: 12px; padding: 5px;" oninput="onDimChangeAutoName()">
+          </div>
+        </div>
+      `;
+    } else if (type === 'flat') {
+      container.innerHTML = `
+        <div style="font-size: 11px; font-weight: 700; color: #0369a1; margin-bottom: 6px;">📐 Wymiary płaskownika (mm):</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div>
+            <label style="font-size: 11px;">Szerokość A [mm]:</label>
+            <input type="number" id="matDimA" class="form-control" value="60" step="0.1" style="font-size: 12px; padding: 5px;" oninput="onDimChangeAutoName()">
+          </div>
+          <div>
+            <label style="font-size: 11px; font-weight: 700; color: #b45309;">Grubość t [mm]:</label>
+            <input type="number" id="matDimT" class="form-control" value="5.0" step="0.1" style="font-size: 12px; padding: 5px;" oninput="onDimChangeAutoName()">
+          </div>
+        </div>
+      `;
+    } else if (type === 'sheet') {
+      container.innerHTML = `
+        <div style="font-size: 11px; font-weight: 700; color: #86198f; margin-bottom: 6px;">📄 Wymiary arkusza blachy (mm):</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+          <div>
+            <label style="font-size: 11px;">Szerokość arkusza [mm]:</label>
+            <input type="number" id="matDimA" class="form-control" value="1000" step="1" style="font-size: 12px; padding: 5px;" oninput="onDimChangeAutoName()">
+          </div>
+          <div>
+            <label style="font-size: 11px;">Długość arkusza [mm]:</label>
+            <input type="number" id="matDimB" class="form-control" value="2000" step="1" style="font-size: 12px; padding: 5px;" oninput="onDimChangeAutoName()">
+          </div>
+          <div>
+            <label style="font-size: 11px; font-weight: 700; color: #86198f;">Grubość blachy t [mm]:</label>
+            <input type="number" id="matDimT" class="form-control" value="2.0" step="0.1" style="font-size: 12px; padding: 5px; background: #fae8ff; font-weight: bold;" oninput="onDimChangeAutoName()">
+          </div>
+        </div>
+      `;
+    } else if (type === 'custom') {
+      container.innerHTML = `
+        <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 8px; margin-bottom: 8px;">
+          <div style="font-size: 11px; font-weight: 700; color: #92400e; margin-bottom: 4px;">⭐ Profil niestandardowy - wpisz własną wagę:</div>
+          <div style="font-size: 11px; color: #78350f;">
+            Dla profili o złożonych przekrojach możesz wpisać dokładną wagę 1 metra bieżącego lub wagę 1 sztuki.
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div>
+            <label style="font-size: 11px; font-weight: 700; color: #b45309;">Waga 1 metra bieżącego [kg/m]:</label>
+            <input type="number" id="matCustomMeterWeight" class="form-control" step="0.001" placeholder="np. 1.450" style="font-size: 12px; padding: 5px; font-weight: bold;" oninput="onCustomMeterWeightInput()">
+          </div>
+          <div>
+            <label style="font-size: 11px; font-weight: 700; color: #b45309;">LUB waga 1 sztuki [kg]:</label>
+            <input type="number" id="matCustomUnitWeight" class="form-control" step="0.001" placeholder="np. 8.700" style="font-size: 12px; padding: 5px; font-weight: bold;" oninput="onCustomUnitWeightInput()">
+          </div>
+        </div>
+      `;
+    }
+
+    onDimChangeAutoName();
+  }
+
+  function onCustomMeterWeightInput() {
+    const meterW = parseFloat(document.getElementById('matCustomMeterWeight').value);
+    const len = parseFloat(document.getElementById('matFormLength').value) || 0;
+    if (!isNaN(meterW) && meterW > 0 && len > 0) {
+      document.getElementById('matCustomUnitWeight').value = (meterW * (len / 1000)).toFixed(3);
+    }
+    recalcCurrentProfilePreview();
+  }
+
+  function onCustomUnitWeightInput() {
+    const unitW = parseFloat(document.getElementById('matCustomUnitWeight').value);
+    const len = parseFloat(document.getElementById('matFormLength').value) || 0;
+    if (!isNaN(unitW) && unitW > 0 && len > 0) {
+      document.getElementById('matCustomMeterWeight').value = (unitW / (len / 1000)).toFixed(3);
+    }
+    recalcCurrentProfilePreview();
+  }
+
+  function onDimChangeAutoName() {
+    const type = currentProfileType;
+    const nameInput = document.getElementById('matFormName');
+    const a = parseFloat(document.getElementById('matDimA') ? document.getElementById('matDimA').value : 0);
+    const b = parseFloat(document.getElementById('matDimB') ? document.getElementById('matDimB').value : 0);
+    const t = parseFloat(document.getElementById('matDimT') ? document.getElementById('matDimT').value : 0);
+
+    if (type === 'square') {
+      nameInput.value = `Profil ${a}x${b}x${t}`;
+    } else if (type === 'angle') {
+      nameInput.value = `Kątownik ${a}x${b}x${t}`;
+    } else if (type === 'channel') {
+      nameInput.value = `Ceownik ${a}x${b}x${t}`;
+    } else if (type === 'tee') {
+      nameInput.value = `Teownik ${a}x${b}x${t}`;
+    } else if (type === 'flat') {
+      nameInput.value = `Płaskownik ${a}x${t}`;
+    } else if (type === 'sheet') {
+      nameInput.value = `Blacha aluminiowa ${a}x${b}x${t} mm`;
+    }
+    recalcCurrentProfilePreview();
+  }
+
+  // Wzory fizyczne obliczające pole przekroju poprzecznego [mm2]
+  function calculateSectionArea(type, a, b, t) {
+    if (type === 'square') {
+      // Profil kwadratowy lub prostokątny: A_zewn - A_wewn
+      // Jeśli 2*t >= min(a,b), to pełny przekrój
+      if (2 * t >= Math.min(a, b)) return a * b;
+      return (a * b) - ((a - 2 * t) * (b - 2 * t));
+    } else if (type === 'angle') {
+      // Kątownik: (a + b - t) * t
+      return (a + b - t) * t;
+    } else if (type === 'channel') {
+      // Ceownik: (a * t) + 2 * (b - t) * t
+      return (a * t) + (2 * (b - t) * t);
+    } else if (type === 'tee') {
+      // Teownik: (a * t) + (b - t) * t
+      return (a * t) + ((b - t) * t);
+    } else if (type === 'flat') {
+      // Płaskownik: a * t
+      return a * t;
+    } else if (type === 'sheet') {
+      // Arkusz blachy: powierzchnia w mm2 przekroju poprzecznego na szerokości A: a * t
+      return a * t;
+    }
+    return 0;
+  }
+
+  // Obliczenie wagi pojedynczej sztuki i metra bieżącego
+  function calculateItemWeights(item, density) {
+    const rho = density || getCurrentDensity(); // kg/dm3
+    const lenM = (item.length || 0) / 1000; // w metrach
+
+    if (item.type === 'custom' || item.isCustom) {
+      let meterW = parseFloat(item.customMeterWeight) || 0;
+      let unitW = parseFloat(item.customUnitWeight) || 0;
+      if (unitW > 0 && meterW <= 0 && lenM > 0) meterW = unitW / lenM;
+      if (meterW > 0 && unitW <= 0 && lenM > 0) unitW = meterW * lenM;
+      const totalW = unitW * (item.qty || 1);
+      return { meterWeight: meterW, unitWeight: unitW, totalWeight: totalW };
+    }
+
+    if (item.type === 'sheet') {
+      // Blacha: waga = objętość [dm3] * rho
+      // objętość = (szerokość [m] * długość [m] * grubość [m]) * 1000 dm3
+      const wM = (item.a || 0) / 1000;
+      const lM = (item.b || item.length || 0) / 1000;
+      const tM = (item.t || 2.0) / 1000;
+      const volDm3 = wM * lM * tM * 1000;
+      const unitW = volDm3 * rho;
+      const meterW = lM > 0 ? unitW / lM : 0;
+      const totalW = unitW * (item.qty || 1);
+      return { meterWeight: meterW, unitWeight: unitW, totalWeight: totalW };
+    }
+
+    // Standardowe profile z wyliczaniem pola przekroju S [mm2]
+    const areaMm2 = calculateSectionArea(item.type, item.a || 0, item.b || 0, item.t || 0);
+    // 1 m bieżący = 1000 mm
+    // Objętość 1m = areaMm2 * 1000 mm3 = areaMm2 / 1000 cm3 = areaMm2 / 1000000 dm3 * 1000 = areaMm2 / 1000 dm3
+    // Masa 1m [kg] = (areaMm2 / 1000) * rho
+    const meterW = (areaMm2 / 1000) * rho;
+    const unitW = meterW * lenM;
+    const totalW = unitW * (item.qty || 1);
+
+    return { meterWeight: meterW, unitWeight: unitW, totalWeight: totalW };
+  }
+
+  // Odświeżenie karty podglądu wagi w formularzu
+  function recalcCurrentProfilePreview() {
+    const type = currentProfileType;
+    const a = parseFloat(document.getElementById('matDimA') ? document.getElementById('matDimA').value : 0) || 0;
+    const b = parseFloat(document.getElementById('matDimB') ? document.getElementById('matDimB').value : 0) || 0;
+    const t = parseFloat(document.getElementById('matDimT') ? document.getElementById('matDimT').value : 0) || 0;
+    const len = parseFloat(document.getElementById('matFormLength') ? document.getElementById('matFormLength').value : 6000) || 0;
+    const qty = parseInt(document.getElementById('matFormQty') ? document.getElementById('matFormQty').value : 1) || 1;
+    const customMeter = parseFloat(document.getElementById('matCustomMeterWeight') ? document.getElementById('matCustomMeterWeight').value : 0) || 0;
+    const customUnit = parseFloat(document.getElementById('matCustomUnitWeight') ? document.getElementById('matCustomUnitWeight').value : 0) || 0;
+
+    const dummyItem = {
+      type,
+      a,
+      b,
+      t,
+      length: len,
+      qty,
+      isCustom: (type === 'custom'),
+      customMeterWeight: customMeter,
+      customUnitWeight: customUnit
+    };
+
+    const weights = calculateItemWeights(dummyItem, getCurrentDensity());
+
+    const unitEl = document.getElementById('matPreviewUnitWeight');
+    const meterEl = document.getElementById('matPreviewMeterWeight');
+    const totalEl = document.getElementById('matPreviewTotalWeight');
+
+    if (unitEl) unitEl.innerHTML = `Waga 1 szt.: <strong>${weights.unitWeight.toFixed(3)} kg</strong>`;
+    if (meterEl) meterEl.innerHTML = `Waga metra (kg/m): <strong>${weights.meterWeight.toFixed(3)} kg/m</strong>`;
+    if (totalEl) totalEl.innerHTML = `${weights.totalWeight.toFixed(3)} kg`;
+  }
+
+  // Dodanie profilu do zamówienia
+  function addCurrentProfileToOrder() {
+    const name = (document.getElementById('matFormName').value || '').trim();
+    if (!name) {
+      alert('Podaj nazwę profilu!');
+      document.getElementById('matFormName').focus();
+      return;
+    }
+
+    const type = currentProfileType;
+    const a = parseFloat(document.getElementById('matDimA') ? document.getElementById('matDimA').value : 0) || 0;
+    const b = parseFloat(document.getElementById('matDimB') ? document.getElementById('matDimB').value : 0) || 0;
+    const t = parseFloat(document.getElementById('matDimT') ? document.getElementById('matDimT').value : 0) || 0;
+    const len = parseFloat(document.getElementById('matFormLength').value) || 0;
+    const qty = parseInt(document.getElementById('matFormQty').value) || 1;
+    const customMeter = parseFloat(document.getElementById('matCustomMeterWeight') ? document.getElementById('matCustomMeterWeight').value : 0) || 0;
+    const customUnit = parseFloat(document.getElementById('matCustomUnitWeight') ? document.getElementById('matCustomUnitWeight').value : 0) || 0;
+
+    if (len <= 0) {
+      alert('Podaj prawidłową długość profilu!');
+      return;
+    }
+    if (qty <= 0) {
+      alert('Ilość sztuk musi wynosić co najmniej 1!');
+      return;
+    }
+
+    const newItem = {
+      id: Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      name,
+      type,
+      a,
+      b,
+      t,
+      length: len,
+      qty,
+      isCustom: (type === 'custom'),
+      customMeterWeight: customMeter,
+      customUnitWeight: customUnit
+    };
+
+    materialsOrderState.items.push(newItem);
+    renderMaterialsItemsTable();
+  }
+
+  // Usunięcie pozycji z zamówienia
+  function removeMaterialItem(idx) {
+    materialsOrderState.items.splice(idx, 1);
+    renderMaterialsItemsTable();
+  }
+
+  // Wyczyść całą listę pozycji
+  function clearMaterialsList() {
+    if (materialsOrderState.items.length === 0) return;
+    if (confirm('Czy na pewno chcesz usunąć wszystkie pozycje z bieżącego wykazu?')) {
+      materialsOrderState.items = [];
+      renderMaterialsItemsTable();
+    }
+  }
+
+  // Odświeżenie całej tabeli i podsumowania wag
+  function renderMaterialsItemsTable() {
+    const tbody = document.getElementById('matItemsTbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const density = getCurrentDensity();
+
+    if (materialsOrderState.items.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="10" style="text-align: center; color: #94a3b8; padding: 30px;">
+            Brak pozycji w zamówieniu. Wybierz profil po lewej stronie i dodaj go do listy.
+          </td>
+        </tr>
+      `;
+      updateMaterialsSummary(0, 0, 0, 0);
+      return;
+    }
+
+    let sumQty = 0;
+    let sumLengthM = 0;
+    let sumWeightKg = 0;
+
+    materialsOrderState.items.forEach((it, idx) => {
+      const weights = calculateItemWeights(it, density);
+      const totalLenRowM = ((it.length || 0) * (it.qty || 1)) / 1000;
+
+      sumQty += (it.qty || 1);
+      sumLengthM += totalLenRowM;
+      sumWeightKg += weights.totalWeight;
+
+      let typeBadge = '';
+      if (it.isCustom) typeBadge = '<span class="mat-badge-custom">Niestandardowy</span>';
+      else if (it.type === 'sheet') typeBadge = '<span class="mat-badge-sheet">Blacha 2mm</span>';
+      else typeBadge = '<span class="mat-badge-std">' + formatTypeNice(it.type) + '</span>';
+
+      let dimStr = '-';
+      if (it.type === 'square') dimStr = `${it.a}x${it.b}x${it.t} mm`;
+      else if (it.type === 'angle') dimStr = `L ${it.a}x${it.b}x${it.t} mm`;
+      else if (it.type === 'channel') dimStr = `C ${it.a}x${it.b}x${it.t} mm`;
+      else if (it.type === 'tee') dimStr = `T ${it.a}x${it.b}x${it.t} mm`;
+      else if (it.type === 'flat') dimStr = `Płask. ${it.a}x${it.t} mm`;
+      else if (it.type === 'sheet') dimStr = `Arkusz ${it.a}x${it.b}x${it.t} mm`;
+      else dimStr = `Własna waga`;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="text-align: center; font-weight: 700; color: #64748b;">${idx + 1}</td>
+        <td>${typeBadge}</td>
+        <td>
+          <input type="text" class="form-control" style="font-size: 11px; padding: 3px 6px; font-weight: 600;" value="${(it.name || '').replace(/"/g, '&quot;')}" onchange="materialsOrderState.items[${idx}].name = this.value">
+          <div style="font-size: 10px; color: #64748b; margin-top: 2px;">Wymiary: ${dimStr}</div>
+        </td>
+        <td style="text-align: center;">${it.t ? it.t + ' mm' : '-'}</td>
+        <td style="text-align: center;">
+          <input type="number" class="form-control" style="font-size: 11px; padding: 3px 4px; text-align: center; width: 75px;" value="${it.length}" onchange="updateRowLength(${idx}, this.value)">
+        </td>
+        <td style="text-align: center;">
+          <input type="number" class="form-control" style="font-size: 11px; padding: 3px 4px; text-align: center; width: 55px; font-weight: 700;" value="${it.qty}" min="1" onchange="updateRowQty(${idx}, this.value)">
+        </td>
+        <td style="text-align: right; color: #64748b;">${weights.meterWeight.toFixed(3)} kg</td>
+        <td style="text-align: right; font-weight: 600;">${weights.unitWeight.toFixed(3)} kg</td>
+        <td style="text-align: right; font-weight: 800; color: #0284c7;">${weights.totalWeight.toFixed(3)} kg</td>
+        <td class="no-print" style="text-align: center;">
+          <button type="button" class="btn-danger" style="padding: 2px 6px; font-size: 11px;" onclick="removeMaterialItem(${idx})" title="Usuń pozycję">✕</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    updateMaterialsSummary(materialsOrderState.items.length, sumQty, sumLengthM, sumWeightKg);
+  }
+
+  function formatTypeNice(type) {
+    if (type === 'square') return 'Profil kwadrat/prost.';
+    if (type === 'angle') return 'Kątownik (L)';
+    if (type === 'channel') return 'Ceownik (C)';
+    if (type === 'tee') return 'Teownik (T)';
+    if (type === 'flat') return 'Płaskownik';
+    if (type === 'sheet') return 'Blacha 2mm';
+    if (type === 'custom') return 'Niestandardowy';
+    return type || '-';
+  }
+
+  function updateRowLength(idx, val) {
+    const l = parseFloat(val);
+    if (!isNaN(l) && l > 0) {
+      materialsOrderState.items[idx].length = l;
+      renderMaterialsItemsTable();
+    }
+  }
+
+  function updateRowQty(idx, val) {
+    const q = parseInt(val);
+    if (!isNaN(q) && q > 0) {
+      materialsOrderState.items[idx].qty = q;
+      renderMaterialsItemsTable();
+    }
+  }
+
+  function recalculateEntireOrderWeights() {
+    renderMaterialsItemsTable();
+  }
+
+  function updateMaterialsSummary(positionsCount, totalQty, totalLengthM, totalWeightKg) {
+    const sumQtyEl = document.getElementById('matSumItemsQty');
+    const sumLenEl = document.getElementById('matSumTotalLength');
+    const sumWEl = document.getElementById('matSumTotalWeight');
+    const bottomWEl = document.getElementById('matTableBottomTotalWeight');
+
+    if (sumQtyEl) sumQtyEl.textContent = `${positionsCount} poz. / ${totalQty} szt.`;
+    if (sumLenEl) sumLenEl.textContent = `${totalLengthM.toFixed(2)} m`;
+    if (sumWEl) sumWEl.textContent = `${totalWeightKg.toFixed(3)} kg`;
+    if (bottomWEl) bottomWEl.textContent = `${totalWeightKg.toFixed(3)} kg`;
+  }
+
+  // Wpisanie numeru zamówienia w module materiałów
+  function onMatOrderNumberInput(val) {
+    materialsOrderState.orderNumber = val.trim();
+    document.getElementById('matDisplayOrderNum').textContent = val.trim() || '-';
+    document.getElementById('matPrintOrderNum').textContent = val.trim() || '-';
+  }
+
+  // Synchronizacja po wczytaniu zamówienia
+  function syncMaterialsOrderFromEtykiety() {
+    const etyNum = (document.getElementById('orderNumber').value || '').trim();
+    const etyClient = (document.getElementById('clientData').value || '').trim();
+    if (etyNum) {
+      document.getElementById('matOrderNumber').value = etyNum;
+      materialsOrderState.orderNumber = etyNum;
+      document.getElementById('matDisplayOrderNum').textContent = etyNum;
+      document.getElementById('matPrintOrderNum').textContent = etyNum;
+    }
+    if (etyClient) {
+      materialsOrderState.client = etyClient;
+      document.getElementById('matDisplayClient').textContent = etyClient.split('\n')[0];
+      document.getElementById('matPrintClient').textContent = etyClient.split('\n')[0];
+    }
+    updateMatProfilesSelect();
+  }
+
+  // Aktualizacja listy profili z bazy magazynowej do selecta w formularzu
+  function updateMatProfilesSelect() {
+    const sel = document.getElementById('matSelectSavedProfile');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">-- Wybierz profil z bazy --</option>';
+    materialsProfiles.forEach((p, idx) => {
+      const opt = document.createElement('option');
+      opt.value = idx;
+      const wInfo = p.weight ? ` (~ ${p.weight.toFixed(3)} kg/m)` : '';
+      opt.textContent = `${p.name} [${p.type || 'Standard'}]${wInfo}`;
+      sel.appendChild(opt);
+    });
+  }
+
+  function onSelectSavedProfileChange() {
+    // można podglądać
+  }
+
+  // Wczytanie wybranego profilu z bazy do formularza
+  function loadSelectedSavedProfileToForm() {
+    const sel = document.getElementById('matSelectSavedProfile');
+    const idx = parseInt(sel.value);
+    if (isNaN(idx) || !materialsProfiles[idx]) {
+      alert('Wybierz profil z listy!');
+      return;
+    }
+
+    const p = materialsProfiles[idx];
+    document.getElementById('matFormName').value = p.name || '';
+    if (p.length) {
+      const parsedLen = parseFloat(p.length);
+      if (!isNaN(parsedLen) && parsedLen > 0) document.getElementById('matFormLength').value = parsedLen;
+    }
+
+    // Wykrywanie typu
+    let targetType = 'square';
+    const typeStr = (p.type || '').toLowerCase();
+    const nameStr = (p.name || '').toLowerCase();
+
+    if (p.isCustom || typeStr.includes('niestandard')) {
+      targetType = 'custom';
+    } else if (typeStr.includes('blacha') || nameStr.includes('blacha')) {
+      targetType = 'sheet';
+    } else if (typeStr.includes('kątownik') || nameStr.includes('kątownik')) {
+      targetType = 'angle';
+    } else if (typeStr.includes('ceownik') || nameStr.includes('ceownik') || nameStr.includes('cechownik')) {
+      targetType = 'channel';
+    } else if (typeStr.includes('teownik') || nameStr.includes('teownik')) {
+      targetType = 'tee';
+    } else if (typeStr.includes('płaskownik') || nameStr.includes('płaskownik')) {
+      targetType = 'flat';
+    } else {
+      targetType = 'square';
+    }
+
+    selectProfileType(targetType);
+
+    // Uzupełnienie wymiarów
+    if (p.a && document.getElementById('matDimA')) document.getElementById('matDimA').value = p.a;
+    if (p.b && document.getElementById('matDimB')) document.getElementById('matDimB').value = p.b;
+    if (p.t && document.getElementById('matDimT')) document.getElementById('matDimT').value = p.t;
+
+    if (targetType === 'custom') {
+      if (p.weight) {
+        document.getElementById('matCustomMeterWeight').value = p.weight;
+        onCustomMeterWeightInput();
+      }
+    }
+
+    document.getElementById('matFormName').value = p.name;
+    recalcCurrentProfilePreview();
+  }
+
+  // Zapisanie aktualnie skonfigurowanego profilu na stałe w bazie magazynu profili
+  function saveCurrentProfileToWarehouseDb() {
+    const name = (document.getElementById('matFormName').value || '').trim();
+    if (!name) {
+      alert('Wpisz nazwę profilu przed zapisem do bazy!');
+      return;
+    }
+
+    const type = currentProfileType;
+    const a = parseFloat(document.getElementById('matDimA') ? document.getElementById('matDimA').value : 0) || 0;
+    const b = parseFloat(document.getElementById('matDimB') ? document.getElementById('matDimB').value : 0) || 0;
+    const t = parseFloat(document.getElementById('matDimT') ? document.getElementById('matDimT').value : 0) || 0;
+    const len = (document.getElementById('matFormLength').value || '6000').trim();
+    
+    // Obliczenie wagi metra dla bazy
+    const dummy = { type, a, b, t, length: 1000, qty: 1, isCustom: (type === 'custom') };
+    if (type === 'custom') {
+      dummy.customMeterWeight = parseFloat(document.getElementById('matCustomMeterWeight').value) || 0;
+    }
+    const weights = calculateItemWeights(dummy, getCurrentDensity());
+    const profileWeight = weights.meterWeight;
+
+    const newProfile = {
+      name,
+      type: formatTypeNice(type),
+      length: len,
+      weight: profileWeight,
+      a,
+      b,
+      t,
+      isCustom: (type === 'custom'),
+      createdAt: Date.now()
+    };
+
+    materialsProfiles.push(newProfile);
+    localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
+    updateMatProfilesSelect();
+    renderProfilesTable();
+    alert(`Profil "${name}" został pomyślnie dodany do Magazynu Profili z wagą ${profileWeight.toFixed(3)} kg/m!`);
+  }
+
+  // Zapis całego wykazu materiałów w zamówieniu (Magazyn Zamówień)
+  function saveMaterialsOrderToWarehouse() {
+    const orderNum = (document.getElementById('matOrderNumber').value || '').trim();
+    if (!orderNum) {
+      alert('Wpisz numer zamówienia ($) przed zapisaniem wykazu!');
+      document.getElementById('matOrderNumber').focus();
+      return;
+    }
+
+    const activeWorker = (currentWorker || localStorage.getItem('order_app_current_worker') || 'Nieznany').trim();
+    const existingIndex = savedOrders.findIndex(o => (o.orderNumber || '').trim().toLowerCase() === orderNum.toLowerCase());
+
+    const density = getCurrentDensity();
+    let sumWeight = 0;
+    materialsOrderState.items.forEach(it => {
+      const w = calculateItemWeights(it, density);
+      sumWeight += w.totalWeight;
+    });
+
+    const matData = {
+      orderNumber: orderNum,
+      metalName: materialsOrderState.metalName,
+      density: density,
+      items: JSON.parse(JSON.stringify(materialsOrderState.items)),
+      totalWeight: sumWeight,
+      savedAt: new Date().toLocaleString('pl-PL'),
+      lastModifiedBy: activeWorker
+    };
+
+    let targetOrder;
+    if (existingIndex >= 0) {
+      targetOrder = savedOrders[existingIndex];
+      targetOrder.materials = matData;
+      targetOrder.hasMaterials = true;
+      targetOrder.lastModifiedBy = activeWorker;
+      targetOrder.savedAt = new Date().toLocaleString('pl-PL');
+      alert(`Wykaz materiałów i wagi dla zamówienia nr ${orderNum} został pomyślnie zapisany w Magazynie Zamówień!`);
+    } else {
+      targetOrder = {
+        orderNumber: orderNum,
+        clientData: materialsOrderState.client || '',
+        orderDate: new Date().toISOString().split('T')[0],
+        workerName: activeWorker,
+        lastModifiedBy: activeWorker,
+        savedAt: new Date().toLocaleString('pl-PL'),
+        hasMaterials: true,
+        materials: matData
+      };
+      savedOrders.unshift(targetOrder);
+      alert(`Utworzono nowe zamówienie nr ${orderNum} z Wykazem Materiałów w Magazynie Zamówień!`);
+    }
+
+    localStorage.setItem('order_app_saved_orders', JSON.stringify(savedOrders));
+    syncOrderWithCloud(targetOrder);
+    renderOrdersTable();
+  }
+
+  // Wczytanie danych z zamówienia do modułu Wykaz Materiałów
+  function loadMaterialsForEdit(orderNum) {
+    const ord = savedOrders.find(o => o.orderNumber === orderNum);
+    if (!ord) return;
+
+    document.getElementById('matOrderNumber').value = ord.orderNumber || '';
+    onMatOrderNumberInput(ord.orderNumber || '');
+
+    const firstClientLine = (ord.clientData || '').split('\n')[0];
+    document.getElementById('matDisplayClient').textContent = firstClientLine || '-';
+    document.getElementById('matPrintClient').textContent = firstClientLine || '-';
+    document.getElementById('matPrintDate').textContent = new Date().toLocaleDateString('pl-PL');
+
+    if (ord.materials) {
+      const mat = ord.materials;
+      materialsOrderState.metalName = mat.metalName || 'Aluminium EN AW-6061';
+      materialsOrderState.density = mat.density || 2.713;
+      materialsOrderState.items = Array.isArray(mat.items) ? JSON.parse(JSON.stringify(mat.items)) : [];
+      
+      // Ustawienie selecta metalu
+      const sel = document.getElementById('matMetalSelect');
+      let found = false;
+      for (let i = 0; i < sel.options.length; i++) {
+        if (parseFloat(sel.options[i].value) === materialsOrderState.density) {
+          sel.selectedIndex = i;
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        sel.value = 'custom';
+        document.getElementById('matCustomDensityRow').style.display = 'block';
+        document.getElementById('matCustomDensityInput').value = materialsOrderState.density;
+      } else {
+        document.getElementById('matCustomDensityRow').style.display = 'none';
+      }
+    } else {
+      materialsOrderState.items = [];
+    }
+
+    renderMaterialsItemsTable();
+    updateMatProfilesSelect();
+  }
+
+  // Eksport zamówienia do pliku CSV / Excel
+  function exportMaterialsToCsv() {
+    if (materialsOrderState.items.length === 0) {
+      alert('Brak pozycji do wyeksportowania!');
+      return;
+    }
+
+    const orderNum = (document.getElementById('matOrderNumber').value || 'zamowienie').trim();
+    const density = getCurrentDensity();
+
+    let rows = [];
+    rows.push(['ZAMÓWIENIE NR: ' + orderNum]);
+    rows.push(['Stop metalu:', materialsOrderState.metalName + ' (Gęstość: ' + density + ' kg/dm3)']);
+    rows.push(['Data wygenerowania:', new Date().toLocaleString('pl-PL')]);
+    rows.push([]);
+    rows.push(['Lp.', 'Typ', 'Nazwa profilu', 'Grubość t [mm]', 'Długość [mm]', 'Ilość [szt.]', 'Waga 1m [kg/m]', 'Waga 1 szt. [kg]', 'Waga łączna [kg]']);
+
+    let totalWeight = 0;
+    let totalLengthM = 0;
+    let totalQty = 0;
+
+    materialsOrderState.items.forEach((it, idx) => {
+      const w = calculateItemWeights(it, density);
+      const rowLenM = ((it.length || 0) * (it.qty || 1)) / 1000;
+      totalWeight += w.totalWeight;
+      totalLengthM += rowLenM;
+      totalQty += (it.qty || 1);
+
+      rows.push([
+        idx + 1,
+        formatTypeNice(it.type),
+        '"' + (it.name || '').replace(/"/g, '""') + '"',
+        it.t || '-',
+        it.length || 0,
+        it.qty || 1,
+        w.meterWeight.toFixed(3).replace('.', ','),
+        w.unitWeight.toFixed(3).replace('.', ','),
+        w.totalWeight.toFixed(3).replace('.', ',')
+      ]);
+    });
+
+    rows.push([]);
+    rows.push(['SUMA', '', '', '', (totalLengthM * 1000).toFixed(0), totalQty, '', '', totalWeight.toFixed(3).replace('.', ',')]);
+
+    const csvContent = '\uFEFF' + rows.map(r => r.join(';')).join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', 'Wykaz_profili_waga_' + orderNum + '.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function printMaterialsOrder() {
+    const orderNum = (document.getElementById('matOrderNumber').value || '').trim();
+    document.getElementById('matPrintOrderNum').textContent = orderNum || '-';
+    document.getElementById('matPrintAlloy').textContent = `${materialsOrderState.metalName} (${getCurrentDensity()} kg/dm³)`;
+    document.getElementById('matPrintDate').textContent = new Date().toLocaleDateString('pl-PL');
+
+    document.body.classList.add('printing-mat');
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        document.body.classList.remove('printing-mat');
+      }, 500);
+    }, 150);
+  }
+
+  // Zaktualizowana funkcja renderProfilesTable w Magazynie profili (uwzględnia wagę)
+  function renderProfilesTable() {
+    const tbody = document.getElementById('profilesTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const query = (document.getElementById('searchProfilesInput') ? document.getElementById('searchProfilesInput').value : '').toLowerCase().trim();
+    const sortVal = document.getElementById('sortProfilesSelect') ? document.getElementById('sortProfilesSelect').value : 'alpha_asc';
+
+    let listWithIdx = materialsProfiles.map((p, originalIdx) => ({ ...p, originalIdx }));
+
+    if (query) {
+      listWithIdx = listWithIdx.filter(p => {
+        return (p.name || '').toLowerCase().includes(query) || (p.type || '').toLowerCase().includes(query);
+      });
+    }
+
+    listWithIdx.sort((a, b) => {
+      if (sortVal === 'alpha_asc') return (a.name || '').localeCompare(b.name || '', 'pl');
+      if (sortVal === 'alpha_desc') return (b.name || '').localeCompare(a.name || '', 'pl');
+      if (sortVal === 'newest') return (b.createdAt || b.originalIdx || 0) - (a.createdAt || a.originalIdx || 0);
+      if (sortVal === 'oldest') return (a.createdAt || a.originalIdx || 0) - (b.createdAt || b.originalIdx || 0);
+      return 0;
+    });
+
+    if (listWithIdx.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 15px;">Brak pasujących profili</td></tr>';
+      return;
+    }
+
+    listWithIdx.forEach((p) => {
+      const idx = p.originalIdx;
+      const tr = document.createElement('tr');
+      const wDisplay = (p.weight !== undefined && p.weight !== null && p.weight !== '') 
+        ? `${parseFloat(p.weight).toFixed(3)} kg/m` 
+        : '-';
+
+      tr.innerHTML = `
+        <td class="wh-col-name"><strong>${p.name}</strong></td>
+        <td><span class="mat-badge-std">${p.type || 'Standard'}</span></td>
+        <td>${p.length ? p.length + ' mm' : '-'}</td>
+        <td style="text-align: right; font-weight: 700; color: #0284c7;">${wDisplay}</td>
+        <td style="text-align: center; white-space: nowrap;">
+          <button type="button" class="btn-primary" style="padding: 2px 8px; font-size: 11px; margin-right: 4px;" onclick="selectSavedProfileFromDbModal(${idx})">Wstaw</button>
+          <button type="button" class="btn-danger" style="padding: 2px 6px; font-size: 11px;" onclick="deleteProfile(${idx})">✕</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function selectSavedProfileFromDbModal(idx) {
+    closeProfilesModal();
+    const sel = document.getElementById('matSelectSavedProfile');
+    if (sel) {
+      sel.value = idx;
+      loadSelectedSavedProfileToForm();
+    }
+    switchMainSubpage('weights');
+  }
+
+  // Nadpisanie addProfileFromForm dla nowej bazy
+  function addProfileFromForm() {
+    const name = document.getElementById('newProfileName').value.trim();
+    const type = document.getElementById('newProfileType').value.trim();
+    const len = document.getElementById('newProfileLen').value.trim();
+    const weightVal = parseFloat(document.getElementById('newProfileWeight').value);
+
+    if (!name) {
+      alert('Podaj nazwę profilu!');
+      return;
+    }
+
+    materialsProfiles.push({
+      name,
+      type,
+      length: len,
+      weight: isNaN(weightVal) ? null : weightVal,
+      isCustom: (type === 'Niestandardowy'),
+      createdAt: Date.now()
+    });
+
+    localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
+    document.getElementById('newProfileName').value = '';
+    document.getElementById('newProfileLen').value = '';
+    document.getElementById('newProfileWeight').value = '';
+    renderProfilesTable();
+    updateMatProfilesSelect();
+  }
+
 </script>
 
 </body>
