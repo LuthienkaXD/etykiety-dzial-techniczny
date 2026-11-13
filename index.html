@@ -7783,6 +7783,66 @@
     return type || '-';
   }
 
+  
+  // Aktualizacja wagi 1m wprowadzonej ręcznie w tabeli - natychmiastowe przeliczenie reszty wag
+  function updateRowMeterWeight(idx, val) {
+    if (!materialsOrderState.items[idx]) return;
+    const cleanVal = (val || '').toString().replace(',', '.').trim();
+    const w = parseFloat(cleanVal);
+    
+    if (!isNaN(w) && w >= 0) {
+      materialsOrderState.items[idx].customMeterWeight = w;
+      materialsOrderState.items[idx].isCustom = true;
+      if (w > 0) {
+        materialsOrderState.items[idx].isUnrecognized = false;
+      }
+    } else if (cleanVal === '') {
+      materialsOrderState.items[idx].customMeterWeight = 0;
+    }
+    renderMaterialsItemsTable();
+  }
+
+  // Aktualizacja wagi 1 sztuki wprowadzonej ręcznie w tabeli
+  function updateRowUnitWeight(idx, val) {
+    if (!materialsOrderState.items[idx]) return;
+    const cleanVal = (val || '').toString().replace(',', '.').trim();
+    const w = parseFloat(cleanVal);
+    
+    if (!isNaN(w) && w >= 0) {
+      materialsOrderState.items[idx].customUnitWeight = w;
+      materialsOrderState.items[idx].isPiece = true;
+      materialsOrderState.items[idx].isCustom = true;
+      if (w > 0) {
+        materialsOrderState.items[idx].isUnrecognized = false;
+      }
+    } else if (cleanVal === '') {
+      materialsOrderState.items[idx].customUnitWeight = 0;
+    }
+    renderMaterialsItemsTable();
+  }
+
+  // Przełączanie trybu pozycji pomiędzy metrami bieżącymi (mb) a pojedynczą sztuką (1 szt.)
+  function toggleItemPieceMode(idx) {
+    if (!materialsOrderState.items[idx]) return;
+    const it = materialsOrderState.items[idx];
+    it.isPiece = !it.isPiece;
+    it.isCustom = true;
+    if (it.isPiece) {
+      it.type = 'custom';
+      if (!it.customUnitWeight && it.customMeterWeight && it.length) {
+        it.customUnitWeight = (it.customMeterWeight * (it.length / 1000));
+      }
+    }
+    renderMaterialsItemsTable();
+  }
+
+  function enableManualWeightEdit(idx) {
+    if (!materialsOrderState.items[idx]) return;
+    materialsOrderState.items[idx].isUnrecognized = true;
+    materialsOrderState.items[idx].isCustom = true;
+    renderMaterialsItemsTable();
+  }
+
   function updateRowLength(idx, val) {
     const l = parseFloat(val);
     if (!isNaN(l) && l > 0) {
@@ -8294,6 +8354,11 @@
         }
       });
 
+      // Ustawienie parametrów OCR optymalnych dla tabel
+      await worker.setParameters({
+        tessedit_pageseg_mode: '6' // PSM 6: Zakładaj jednolity blok tekstu tabeli wiersz po wierszu
+      });
+
       const ret = await worker.recognize(imageSource);
       await worker.terminate();
 
@@ -8301,11 +8366,8 @@
       if (percentEl) percentEl.textContent = '100%';
       if (progressBar) progressBar.style.width = '100%';
 
-      const text = ret.data.text || '';
-      console.log('--- SUROWY TEKST OCR ---');
-      console.log(text);
-
-      const parsedItems = parseOcrTableText(text);
+      console.log('--- SUROWY TEKST OCR ---', ret.data.text);
+      const parsedItems = parseOcrAdvanced(ret.data);
 
       setTimeout(() => {
         if (statusBox) statusBox.style.display = 'none';
@@ -8338,71 +8400,96 @@
   }
 
   // Inteligentny parser linii tabeli: Nazwa profilu | Długość | Ilość
-  function parseOcrTableText(rawText) {
-    const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-    const results = [];
+  function parseOcrAdvanced(data) {
+    // 1. Sprawdzamy czy mamy strukturalne linie z Tesserakta
+    let lines = [];
+    if (data && Array.isArray(data.lines) && data.lines.length > 0) {
+      lines = data.lines.map(l => (l.text || '').trim()).filter(l => l.length > 0);
+    } else if (data && typeof data.text === 'string') {
+      lines = data.text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    }
 
+    const results = [];
     for (const rawLine of lines) {
-      // Ignoruj nagłówki kolumn
       const low = rawLine.toLowerCase();
-      if (low.includes('nazwa') || low.includes('długość') || low.includes('dlugosc') || low.includes('ilość') || low.includes('ilosc') || low.includes('profil') && low.includes('szt') && !low.match(/\d/)) {
+      // Pomiń nagłówki tabeli
+      if (low.startsWith('nazwa') || low === 'profil' || low === 'dlugosc' || low === 'ilosc' || (low.includes('profil') && low.includes('szt') && !low.match(/\d/))) {
         continue;
       }
-
       const item = parseSingleOcrLine(rawLine);
       if (item) {
         results.push(item);
       }
     }
-
     return results;
+  }
+
+  function parseOcrTableText(rawText) {
+    return parseOcrAdvanced({ text: rawText });
   }
 
   function parseSingleOcrLine(line) {
     let raw = line.trim();
     if (!raw || raw.length < 2) return null;
 
-    // Ignoruj nagłówki
-    const low = raw.toLowerCase();
-    if (low.startsWith('nazwa') || low === 'profil' || low === 'dlugosc' || low === 'ilosc') return null;
+    // Normalizacja separatorów kolumn i kropek
+    // Zamień tabulatory, potrójne kropki i pionowe kreski na spacje
+    let clean = raw.replace(/[|\t;]+/g, ' ')
+                   .replace(/\.{2,}/g, ' - ')
+                   .replace(/\s+/g, ' ')
+                   .trim();
 
-    // Zastąp wielokrotne spacje, kropki wielokropka (...) myślniki kolumny
-    let clean = raw.replace(/[|\t;]+/g, ' ').replace(/\.{2,}/g, ' - ').replace(/\s+/g, ' ').trim();
-
-    // Podział na tokeny/kolumny
-    // Typowy wiersz: "Profil 50x30 388,7 1" lub "Dekiel 80x50 (2) ... 1" lub "Zawias 80 ... 2"
+    // Szukamy kolumn: NAZWA | DŁUGOŚĆ | ILOŚĆ
+    // Uwaga: Długość może być liczbą dziesiętną (np. 388,7 lub 791,3 lub 1440 lub 1150 lub 2500)
+    // Ilość jest ZAWSZE ostatnią liczbą całkowitą w wierszu!
     let parsedName = clean;
-    let parsedLen = 6000;
+    let parsedLen = null;
     let parsedQty = 1;
-    let hasExplicitLen = false;
+    let isExplicitPiece = false;
 
-    // Sprawdzamy czy na końcu jest ilość (liczba całkowita)
+    // 1. Wycięcie ostatniej liczby jako ILOŚĆ
     const qtyMatch = clean.match(/\s+(\d+)\s*$/);
     if (qtyMatch) {
       parsedQty = parseInt(qtyMatch[1], 10);
       clean = clean.substring(0, qtyMatch.index).trim();
     }
 
-    // Teraz sprawdzamy czy na końcu pozostałego tekstu jest długość (np. 1440, 388.7, 791,3 lub myślnik / brak dla akcesoriów)
+    // 2. Wycięcie przedostatniej wartości jako DŁUGOŚĆ (jeśli istnieje)
+    // Może to być: liczba całkowita (np. 1440, 6000, 30, 260, 1295), liczba zmiennoprzecinkowa (388,7) lub kreska/kropka
     const lenMatch = clean.match(/\s+(\d+([\.,]\d+)?)\s*$/);
     if (lenMatch) {
       parsedLen = parseFloat(lenMatch[1].replace(',', '.'));
       clean = clean.substring(0, lenMatch.index).trim();
-      hasExplicitLen = true;
     } else {
-      // Może być myślnik lub kropki na pozycji długości (np. dekiel, zawias)
-      clean = clean.replace(/\s+[-–—\.]+\s*$/, '').trim();
-      parsedLen = 0;
+      // Sprawdzamy czy na końcu były myślniki lub kropki (akcesoria bez podanej długości)
+      const dashMatch = clean.match(/\s+[-–—\.]+\s*$/);
+      if (dashMatch) {
+        clean = clean.substring(0, dashMatch.index).trim();
+        isExplicitPiece = true;
+        parsedLen = 0;
+      }
     }
 
     parsedName = clean.trim();
     if (!parsedName) return null;
 
-    // Inteligentne dopasowanie profilu z bazy
+    // Jeśli w nazwie nadal pozostały myślniki na końcu (np. "Dekiel 80x50 (2) -")
+    parsedName = parsedName.replace(/\s+[-–—\.]+\s*$/, '').trim();
+
+    const pLow = parsedName.toLowerCase();
+    const isAccessory = pLow.includes('dekiel') || pLow.includes('zawias') || pLow.includes('plyta') || pLow.includes('płyta') || pLow.includes('zaslep') || isExplicitPiece;
+
+    // Domyślna długość:
+    // WAŻNE: NIGDY NIE WPISUJEMY 6000 W CIEMNO, jeśli na zdjęciu nie było 6000!
+    // Jeśli długość została odczytana z kolumny zdjęcia, używamy DOKŁADNIE tej długości (np. 1150, 1440, 388.7, 30, 2500, 1295).
+    // Jeśli nie było długości (np. dekle), wstawiamy 0!
+    let finalLength = (parsedLen !== null) ? parsedLen : (isAccessory ? 0 : 0);
+
+    // Inteligentne dopasowanie profilu z bazy 109 profili
     const match = findBestProfileMatch(parsedName);
 
-    if (match) {
-      // Mamy pewne dopasowanie do bazy 109 profili
+    if (match && !isAccessory) {
+      // Profil rozpoznany w bazie
       return {
         id: Date.now() + '_' + Math.random().toString(36).substr(2, 4),
         name: parsedName,
@@ -8410,20 +8497,16 @@
         a: match.profile.a || 0,
         b: match.profile.b || 0,
         t: match.profile.t || 0,
-        length: hasExplicitLen ? parsedLen : (parseFloat(match.profile.length) || 6000),
+        length: finalLength, // DOKŁADNA długość ze zdjęcia!
         qty: parsedQty,
         isCustom: false,
+        isPiece: false,
         customMeterWeight: match.profile.weight || 0,
         isUnrecognized: false
       };
     } else {
-      // Sprawdzamy czy to profil z wymiarami, ale np. bez grubości ścianki (np. "Profil 50x30")
-      // lub niestandardowy element
+      // Profil do poprawy (np. Trega, C-listwa, Kątownik montażowy, Profil bez ścianki lub dekle)
       const dimExtracted = extractDimensionsFromString(parsedName);
-      const isRecognizableGeom = (dimExtracted.a > 0 && dimExtracted.b > 0 && dimExtracted.t > 0);
-
-      const pLow = parsedName.toLowerCase();
-      const autoPiece = pLow.includes('dekiel') || pLow.includes('zawias') || pLow.includes('plyta') || pLow.includes('płyta') || pLow.includes('zaslep') || parsedLen <= 0;
 
       return {
         id: Date.now() + '_' + Math.random().toString(36).substr(2, 4),
@@ -8432,10 +8515,10 @@
         a: dimExtracted.a || 0,
         b: dimExtracted.b || 0,
         t: dimExtracted.t || 0,
-        length: autoPiece ? 0 : (parsedLen || 0),
+        length: finalLength, // DOKŁADNA długość ze zdjęcia!
         qty: parsedQty,
         isCustom: true,
-        isPiece: autoPiece,
+        isPiece: isAccessory,
         customMeterWeight: 0,
         customUnitWeight: 0,
         isUnrecognized: true
