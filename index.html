@@ -919,6 +919,9 @@
       background: #ffffff;
       table-layout: fixed;
     }
+    #vpItemsTable tbody tr:last-child td {
+      border-bottom: 2px solid #000000 !important;
+    }
 
     .vp-excel-table td, .vp-excel-table th {
       border: 1px solid #000000;
@@ -1022,7 +1025,7 @@
     }
     @page vpLandscape {
       size: A4 landscape;
-      margin: 6mm 8mm;
+      margin: 4mm 5mm;
     }
     body.printing-vp {
       page: vpLandscape;
@@ -1034,11 +1037,11 @@
       }
       @page vpLandscape {
         size: A4 landscape;
-        margin: 5mm 6mm;
+        margin: 4mm 5mm;
       }
       body.printing-vp @page {
         size: A4 landscape;
-        margin: 5mm 6mm;
+        margin: 4mm 5mm;
       }
 
       html, body {
@@ -1116,25 +1119,62 @@
         max-width: 100% !important;
         table-layout: fixed !important;
         box-sizing: border-box !important;
+        border: 2px solid #000000 !important;
       }
-      .verpackung-a4-page .vp-excel-table th,
-      .verpackung-a4-page .vp-excel-table td {
-        padding: 4px 6px !important;
+      .verpackung-a4-page #vpHeaderTable {
+        margin-bottom: 8px !important;
+      }
+      .verpackung-a4-page #vpHeaderTable tr {
+        height: 25px !important;
+      }
+      .verpackung-a4-page #vpHeaderTable td {
+        padding: 2px 5px !important;
         font-size: 11px !important;
+      }
+      .verpackung-a4-page #vpHeaderTable .vp-big-pakowanie-cell {
+        font-size: 20px !important;
+      }
+      .verpackung-a4-page #vpHeaderTable img {
+        max-width: 85px !important;
+        max-height: 85px !important;
+      }
+      .verpackung-a4-page #vpItemsTable {
+        margin-top: 6px !important;
+        border-bottom: 2px solid #000000 !important;
+      }
+      .verpackung-a4-page #vpItemsTable th {
+        padding: 3px 4px !important;
+        font-size: 10.5px !important;
+        background: #f1f5f9 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        border: 1px solid #000000 !important;
+      }
+      .verpackung-a4-page #vpItemsTable td {
+        padding: 2px 4px !important;
+        font-size: 10px !important;
         box-sizing: border-box !important;
+        border: 1px solid #000000 !important;
+        line-height: 1.15 !important;
+      }
+      .verpackung-a4-page #vpItemsTable tbody tr:last-child td {
+        border-bottom: 2px solid #000000 !important;
       }
       .verpackung-a4-page .vp-cell-input {
-        font-size: 11px !important;
-        padding: 1px 2px !important;
+        font-size: 10px !important;
+        padding: 0 !important;
+        height: 18px !important;
+        line-height: 18px !important;
       }
       .verpackung-a4-page .vp-cell-textarea {
         border: none !important;
         background: transparent !important;
         resize: none !important;
         overflow: visible !important;
-        font-size: 11px !important;
-        line-height: 1.25 !important;
-        padding: 1px 2px !important;
+        font-size: 10px !important;
+        line-height: 1.15 !important;
+        padding: 0 !important;
+        min-height: 18px !important;
       }
 
       /* Karta główna oraz etykiety łączą się w jeden dokument do druku/PDF */
