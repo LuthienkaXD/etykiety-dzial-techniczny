@@ -1406,7 +1406,33 @@
       border-bottom: 2px solid #0f172a;
     }
 
+  
+    .mat-row-unrecognized {
+      background-color: #fef2f2 !important;
+      border-left: 4px solid #ef4444 !important;
+    }
+    .mat-row-unrecognized td {
+      border-color: #fecaca !important;
+      color: #991b1b !important;
+    }
+    .mat-badge-unrecognized {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 800;
+      background: #fee2e2;
+      color: #b91c1c;
+      border: 1px solid #f87171;
+      animation: pulseAlert 2s infinite;
+    }
+    @keyframes pulseAlert {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.65; }
+    }
+
   </style>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
 
@@ -1917,6 +1943,39 @@
       </div>
 
       <!-- Wybór typu profilu -->
+      
+      <!-- Moduł Odczytu ze Zdjęcia (OCR) -->
+      <div style="background: linear-gradient(135deg, #fdf4ff 0%, #fae8ff 100%); border: 1.5px dashed #c084fc; border-radius: 8px; padding: 12px; margin-bottom: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <span style="font-size: 12px; font-weight: 800; color: #7e22ce;">📸 Wczytaj listę profili ze zdjęcia / zrzutu:</span>
+          <span style="font-size: 10px; background: #f3e8ff; color: #6b21a8; padding: 2px 6px; border-radius: 4px; font-weight: 700;">OCR AI</span>
+        </div>
+        <p style="font-size: 11px; color: #6b21a8; margin: 0 0 8px 0; line-height: 1.35;">
+          Wstaw zdjęcie tabeli z 3 kolumnami: <strong>Nazwa profilu</strong>, <strong>Długość [mm]</strong>, <strong>Ilość</strong>. Program rozpozna profile, dopasuje z bazy, obliczy wagi, a nierozpoznane oznaczy na czerwono.
+        </p>
+
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <input type="file" id="matPhotoInput" accept="image/*" style="display: none;" onchange="onMatPhotoSelected(event)">
+          <button type="button" class="btn-primary" onclick="document.getElementById('matPhotoInput').click()" style="flex: 1; padding: 8px; font-size: 12px; background: #9333ea; border-color: #7e22ce; font-weight: bold;">
+            📷 Wybierz plik zdjęcia...
+          </button>
+          <button type="button" class="btn-secondary" onclick="pasteImageFromClipboard()" style="padding: 8px 12px; font-size: 11px; background: #ffffff; color: #7e22ce; border-color: #d8b4fe;" title="Wklej zrzut ze schowka (Ctrl + V)">
+            📋 Wklej (Ctrl+V)
+          </button>
+        </div>
+
+        <!-- Pasek postępu OCR -->
+        <div id="matOcrStatusBox" style="display: none; margin-top: 8px; background: #ffffff; border-radius: 6px; padding: 8px; border: 1px solid #e9d5ff;">
+          <div style="display: flex; justify-content: space-between; font-size: 11px; color: #6b21a8; font-weight: 600; margin-bottom: 4px;">
+            <span id="matOcrStatusText">Trwa przetwarzanie obrazu...</span>
+            <span id="matOcrPercent">0%</span>
+          </div>
+          <div style="width: 100%; height: 6px; background: #f3e8ff; border-radius: 3px; overflow: hidden;">
+            <div id="matOcrProgressBar" style="width: 0%; height: 100%; background: #9333ea; transition: width 0.2s ease;"></div>
+          </div>
+        </div>
+      </div>
+
       <div class="mat-section-title">1. Wybierz rodzaj profilu:</div>
       <div class="mat-types-grid">
         <button type="button" class="mat-type-btn active" id="btnMatType_square" onclick="selectProfileType('square')">Profil kwadratowy / prostokątny</button>
@@ -4979,6 +5038,7 @@
 
     verpackungState.items.forEach((item, idx) => {
       const tr = document.createElement('tr');
+      if (isUnrecognized) tr.className = 'mat-row-unrecognized';
       tr.innerHTML = `
         <td style="text-align: center; font-weight: bold; width: 45px;">${idx + 1}</td>
         <td style="padding: 4px 6px;"><textarea class="vp-cell-textarea" rows="2" oninput="updateVpItem(${idx}, 'name', this.value)">${(item.name || '')}</textarea></td>
@@ -7616,7 +7676,8 @@
       sumWeightKg += weights.totalWeight;
 
       let typeBadge = '';
-      if (it.isCustom) typeBadge = '<span class="mat-badge-custom">Niestandardowy</span>';
+      if (isUnrecognized) typeBadge = '<span class="mat-badge-unrecognized">⚠️ Do poprawy</span>';
+      else if (it.isCustom) typeBadge = '<span class="mat-badge-custom">Niestandardowy</span>';
       else if (it.type === 'sheet') typeBadge = '<span class="mat-badge-sheet">Blacha 2mm</span>';
       else typeBadge = '<span class="mat-badge-std">' + formatTypeNice(it.type) + '</span>';
 
@@ -7634,8 +7695,10 @@
         <td style="text-align: center; font-weight: 700; color: #64748b;">${idx + 1}</td>
         <td>${typeBadge}</td>
         <td>
-          <input type="text" class="form-control" style="font-size: 11px; padding: 3px 6px; font-weight: 600;" value="${(it.name || '').replace(/"/g, '&quot;')}" onchange="materialsOrderState.items[${idx}].name = this.value">
-          <div style="font-size: 10px; color: #64748b; margin-top: 2px;">Wymiary: ${dimStr}</div>
+          <input type="text" class="form-control" style="font-size: 11px; padding: 3px 6px; font-weight: 600; ${isUnrecognized ? 'border: 1.5px solid #ef4444; background: #fff5f5;' : ''}" value="${(it.name || '').replace(/"/g, '&quot;')}" onchange="updateRowNameManual(${idx}, this.value)">
+          <div style="font-size: 10px; color: ${isUnrecognized ? '#dc2626' : '#64748b'}; margin-top: 2px;">
+            ${isUnrecognized ? '⚠️ Nie dopasowano do bazy – popraw wymiary lub wpisz wagę' : 'Wymiary: ' + dimStr}
+          </div>
         </td>
         <td style="text-align: center;">${it.t ? it.t + ' mm' : '-'}</td>
         <td style="text-align: center;">
@@ -8102,6 +8165,337 @@
     document.getElementById('newProfileWeight').value = '';
     renderProfilesTable();
     updateMatProfilesSelect();
+  }
+
+
+  // ========================================================
+  // SYSTEM OCR - ODCZYT LISTY PROFILI ZE ZDJĘĆ
+  // ========================================================
+
+  function onMatPhotoSelected(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    processImageWithOcr(file);
+    e.target.value = '';
+  }
+
+  // Obsługa wklejania zrzutu ze schowka (Ctrl+V)
+  window.addEventListener('paste', (e) => {
+    // Reaguj tylko jeśli aktywna jest podstrona Wagi
+    const activeSub = localStorage.getItem('dt_active_subpage');
+    if (activeSub !== 'weights') return;
+
+    const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+    for (const item of items) {
+      if (item.type.indexOf('image') !== -1) {
+        const file = item.getAsFile();
+        processImageWithOcr(file);
+        break;
+      }
+    }
+  });
+
+  async function pasteImageFromClipboard() {
+    try {
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        for (const type of item.types) {
+          if (type.startsWith('image/')) {
+            const blob = await item.getType(type);
+            processImageWithOcr(blob);
+            return;
+          }
+        }
+      }
+      alert('W schowku nie znaleziono żadnego obrazu. Skopiuj zrzut ekranu (np. Win+Shift+S) i spróbuj ponownie.');
+    } catch (err) {
+      alert('Aby wkleić ze schowka, użyj skrótu klawiszowego Ctrl + V bezpośrednio na stronie.');
+    }
+  }
+
+  async function processImageWithOcr(imageSource) {
+    const statusBox = document.getElementById('matOcrStatusBox');
+    const statusText = document.getElementById('matOcrStatusText');
+    const percentEl = document.getElementById('matOcrPercent');
+    const progressBar = document.getElementById('matOcrProgressBar');
+
+    if (statusBox) statusBox.style.display = 'block';
+    if (statusText) statusText.textContent = 'Ładowanie silnika OCR...';
+    if (percentEl) percentEl.textContent = '0%';
+    if (progressBar) progressBar.style.width = '0%';
+
+    try {
+      if (typeof Tesseract === 'undefined') {
+        throw new Error('Biblioteka Tesseract.js nie została jeszcze załadowana.');
+      }
+
+      const worker = await Tesseract.createWorker('pol+eng', 1, {
+        logger: m => {
+          if (m.status === 'recognizing text') {
+            const p = Math.round((m.progress || 0) * 100);
+            if (percentEl) percentEl.textContent = p + '%';
+            if (progressBar) progressBar.style.width = p + '%';
+            if (statusText) statusText.textContent = 'Odczytywanie tekstu z tabeli (' + p + '%)...';
+          } else {
+            if (statusText) statusText.textContent = m.status || 'Inicjalizacja...';
+          }
+        }
+      });
+
+      const ret = await worker.recognize(imageSource);
+      await worker.terminate();
+
+      if (statusText) statusText.textContent = 'Dopasowywanie profili do bazy...';
+      if (percentEl) percentEl.textContent = '100%';
+      if (progressBar) progressBar.style.width = '100%';
+
+      const text = ret.data.text || '';
+      console.log('--- SUROWY TEKST OCR ---');
+      console.log(text);
+
+      const parsedItems = parseOcrTableText(text);
+
+      setTimeout(() => {
+        if (statusBox) statusBox.style.display = 'none';
+      }, 1500);
+
+      if (parsedItems.length === 0) {
+        alert('Nie udało się wyodrębnić wierszy tabeli ze zdjęcia. Upewnij się, że zdjęcie jest ostre i zawiera 3 kolumny: Nazwa, Długość [mm], Ilość.');
+        return;
+      }
+
+      // Dodajemy wiersze do zamówienia
+      parsedItems.forEach(it => {
+        materialsOrderState.items.push(it);
+      });
+
+      renderMaterialsItemsTable();
+
+      const unrecCount = parsedItems.filter(i => i.isUnrecognized).length;
+      if (unrecCount > 0) {
+        alert('Odczytano ' + parsedItems.length + ' pozycji ze zdjęcia.\n' + unrecCount + ' pozycji oznaczono na CZERWONO (brak pewnego dopasowania w bazie lub niepełne dane) – możesz je łatwo skorygować ręcznie w tabeli.');
+      } else {
+        alert('Sukces! Pomyślnie odczytano i dopasowano wszystkie ' + parsedItems.length + ' pozycji z bazy profili!');
+      }
+
+    } catch (err) {
+      console.error('OCR Error:', err);
+      if (statusBox) statusBox.style.display = 'none';
+      alert('Wystąpił błąd podczas rozpoznawania zdjęcia: ' + (err.message || err));
+    }
+  }
+
+  // Inteligentny parser linii tabeli: Nazwa profilu | Długość | Ilość
+  function parseOcrTableText(rawText) {
+    const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    const results = [];
+
+    for (const rawLine of lines) {
+      // Ignoruj nagłówki kolumn
+      const low = rawLine.toLowerCase();
+      if (low.includes('nazwa') || low.includes('długość') || low.includes('dlugosc') || low.includes('ilość') || low.includes('ilosc') || low.includes('profil') && low.includes('szt') && !low.match(/\d/)) {
+        continue;
+      }
+
+      const item = parseSingleOcrLine(rawLine);
+      if (item) {
+        results.push(item);
+      }
+    }
+
+    return results;
+  }
+
+  function parseSingleOcrLine(line) {
+    // Normalizacja separatorów i znaków
+    let clean = line.replace(/[,;\|\t]+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (clean.length < 3) return null;
+
+    // Szukamy dwóch liczb na końcu wiersza (Długość oraz Ilość)
+    // Np: "Profil 100x100x3 6000 4" lub "Ceownik 25x25x2 2500 12" lub "Kątownik 40x40x2 6000x2"
+    // Rozpoznawanie liczb na końcu:
+    const endMatch = clean.match(/(\d+[\.,]?\d*)\s+(\d+)\s*$/);
+
+    let parsedName = clean;
+    let parsedLen = 6000;
+    let parsedQty = 1;
+
+    if (endMatch) {
+      parsedLen = parseFloat(endMatch[1].replace(',', '.')) || 6000;
+      parsedQty = parseInt(endMatch[2], 10) || 1;
+      parsedName = clean.substring(0, endMatch.index).trim();
+    } else {
+      // Alternatywny match: tylko jedna liczba na końcu (długość lub ilość)
+      const singleNumMatch = clean.match(/(\d+)\s*$/);
+      if (singleNumMatch) {
+        const num = parseInt(singleNumMatch[1], 10);
+        if (num > 200) {
+          parsedLen = num; // prawdopodobnie długość
+        } else {
+          parsedQty = num; // prawdopodobnie ilość
+        }
+        parsedName = clean.substring(0, singleNumMatch.index).trim();
+      }
+    }
+
+    // Usunięcie zbędnych znaków z nazwy
+    parsedName = parsedName.replace(/^[-*•\d+\.\)]+\s*/, '').trim();
+
+    // Inteligentne dopasowanie do bazy profili
+    const match = findBestProfileMatch(parsedName);
+
+    if (match) {
+      return {
+        id: Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        name: match.profile.name,
+        type: match.profile.profileCategory || match.profile.type || 'square',
+        a: match.profile.a || 0,
+        b: match.profile.b || 0,
+        t: match.profile.t || 0,
+        length: parsedLen,
+        qty: parsedQty,
+        isCustom: !!match.profile.isCustom,
+        customMeterWeight: match.profile.weight || 0,
+        isUnrecognized: false
+      };
+    } else {
+      // Nie rozpoznano z pewnością - tworzymy pozycję czerwoną do poprawy
+      // Sprawdzamy czy da się z samej nazwy wyciągnąć wymiary np. 80x20x1.2
+      const dimExtracted = extractDimensionsFromString(parsedName);
+
+      return {
+        id: Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        name: parsedName || 'Nieznany profil',
+        type: dimExtracted.type || 'square',
+        a: dimExtracted.a || 0,
+        b: dimExtracted.b || 0,
+        t: dimExtracted.t || 0,
+        length: parsedLen,
+        qty: parsedQty,
+        isCustom: true,
+        customMeterWeight: 0,
+        isUnrecognized: true
+      };
+    }
+  }
+
+  // Inteligentne dopasowywanie stringa do bazy 109 profili
+  function findBestProfileMatch(queryName) {
+    if (!queryName) return null;
+    const qNorm = normalizeProfileString(queryName);
+
+    // 1. Dokładne dopasowanie po znormalizowanym stringu
+    for (const p of materialsProfiles) {
+      if (normalizeProfileString(p.name) === qNorm) {
+        return { profile: p, score: 1.0 };
+      }
+    }
+
+    // 2. Dopasowanie po wymiarach liczbowych (np. "100x100x3" lub "100 100 3")
+    const qDims = extractNumericDimensions(queryName);
+    if (qDims.length >= 2) {
+      const qPrefix = getCategoryPrefix(queryName); // profil, katownik, ceownik, plaskownik
+      for (const p of materialsProfiles) {
+        const pDims = extractNumericDimensions(p.name);
+        const pPrefix = getCategoryPrefix(p.name);
+
+        if (qPrefix && pPrefix && qPrefix !== pPrefix) continue;
+
+        if (arraysEqual(qDims, pDims)) {
+          return { profile: p, score: 0.95 };
+        }
+      }
+    }
+
+    // 3. Dopasowanie częściowe / rozmyte (np. drobna literówka OCR)
+    for (const p of materialsProfiles) {
+      const pNorm = normalizeProfileString(p.name);
+      if (qNorm.length > 5 && (pNorm.includes(qNorm) || qNorm.includes(pNorm))) {
+        return { profile: p, score: 0.8 };
+      }
+    }
+
+    return null;
+  }
+
+  function normalizeProfileString(str) {
+    return (str || '')
+      .toLowerCase()
+      .replace(/[ąàá]/g, 'a')
+      .replace(/[ćç]/g, 'c')
+      .replace(/[ęèé]/g, 'e')
+      .replace(/[ł]/g, 'l')
+      .replace(/[ńñ]/g, 'n')
+      .replace(/[óòó]/g, 'o')
+      .replace(/[śş]/g, 's')
+      .replace(/[źż]/g, 'z')
+      .replace(/cechownik/g, 'ceownik')
+      .replace(/katownik/g, 'katownik')
+      .replace(/plaskownik/g, 'plaskownik')
+      .replace(/\*/g, 'x')
+      .replace(/\s*x\s*/g, 'x')
+      .replace(/[^a-z0-9x]/g, '');
+  }
+
+  function getCategoryPrefix(str) {
+    const s = normalizeProfileString(str);
+    if (s.includes('katownik')) return 'angle';
+    if (s.includes('ceownik')) return 'channel';
+    if (s.includes('teownik')) return 'tee';
+    if (s.includes('plaskownik')) return 'flat';
+    if (s.includes('blacha')) return 'sheet';
+    if (s.includes('profil')) return 'square';
+    return '';
+  }
+
+  function extractNumericDimensions(str) {
+    const matches = str.match(/(\d+[\.,]?\d*)/g);
+    if (!matches) return [];
+    return matches.map(m => parseFloat(m.replace(',', '.')));
+  }
+
+  function arraysEqual(a, b) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (Math.abs(a[i] - b[i]) > 0.05) return false;
+    }
+    return true;
+  }
+
+  function extractDimensionsFromString(str) {
+    const dims = extractNumericDimensions(str);
+    const cat = getCategoryPrefix(str) || 'square';
+    if (cat === 'flat' && dims.length >= 2) {
+      return { type: 'flat', a: dims[0], b: 0, t: dims[1] };
+    }
+    if (dims.length >= 3) {
+      return { type: cat, a: dims[0], b: dims[1], t: dims[2] };
+    }
+    return { type: cat, a: dims[0] || 0, b: dims[1] || 0, t: dims[2] || 0 };
+  }
+
+  // Ręczna edycja nazwy wiersza (jeśli użytkownik poprawia pozycję na czerwono)
+  function updateRowNameManual(idx, newName) {
+    materialsOrderState.items[idx].name = newName;
+    const match = findBestProfileMatch(newName);
+    if (match) {
+      materialsOrderState.items[idx].name = match.profile.name;
+      materialsOrderState.items[idx].type = match.profile.profileCategory || match.profile.type || 'square';
+      materialsOrderState.items[idx].a = match.profile.a || 0;
+      materialsOrderState.items[idx].b = match.profile.b || 0;
+      materialsOrderState.items[idx].t = match.profile.t || 0;
+      materialsOrderState.items[idx].customMeterWeight = match.profile.weight || 0;
+      materialsOrderState.items[idx].isUnrecognized = false;
+    } else {
+      const dims = extractDimensionsFromString(newName);
+      materialsOrderState.items[idx].a = dims.a;
+      materialsOrderState.items[idx].b = dims.b;
+      materialsOrderState.items[idx].t = dims.t;
+      if (dims.a > 0 && dims.t > 0) {
+        materialsOrderState.items[idx].isUnrecognized = false;
+      }
+    }
+    renderMaterialsItemsTable();
   }
 
 </script>
