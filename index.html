@@ -2525,6 +2525,7 @@
           <table class="warehouse-table" style="margin-top: 0;">
             <thead>
               <tr>
+                <th style="width: 60px; text-align: center;">Kolejność</th>
                 <th class="wh-col-name">Nazwa</th>
                 <th style="width: 65px; text-align: center;">J.m.</th>
                 <th style="width: 50px;">Ilość</th>
@@ -5984,15 +5985,21 @@
 
     const items = isEditingCurrentSet ? (tempEditSetItems || []) : (currentSet.items || []);
     if (items.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 20px;">Ten zbiór jest pusty. Kliknij "+ Przypisz kolejną opcję" poniżej.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #94a3b8; padding: 20px;">Ten zbiór jest pusty. Kliknij "+ Przypisz kolejną opcję" poniżej.</td></tr>';
       return;
     }
 
     items.forEach((it, itIdx) => {
       const tr = document.createElement('tr');
       if (isEditingCurrentSet) {
-        // Tryb edycji - aktywne pola input
+        // Tryb edycji - przyciski przesuwania góra/dół oraz aktywne pola input
+        const isFirst = itIdx === 0;
+        const isLast = itIdx === items.length - 1;
         tr.innerHTML = `
+          <td style="text-align: center; white-space: nowrap; user-select: none;">
+            <button type="button" class="btn-secondary" style="padding: 1px 5px; font-size: 11px; margin-right: 2px; cursor: pointer;" onclick="moveCurrentSetItem(${itIdx}, -1)" title="Przesuń w górę" ${isFirst ? 'disabled style="opacity: 0.3; cursor: default;"' : ''}>▲</button>
+            <button type="button" class="btn-secondary" style="padding: 1px 5px; font-size: 11px; cursor: pointer;" onclick="moveCurrentSetItem(${itIdx}, 1)" title="Przesuń w dół" ${isLast ? 'disabled style="opacity: 0.3; cursor: default;"' : ''}>▼</button>
+          </td>
           <td class="wh-col-name"><textarea class="vp-cell-textarea" rows="2" oninput="updateCurrentSetItem(${itIdx}, 'name', this.value)">${(it.name || '')}</textarea></td>
           <td><input type="text" class="vp-cell-input" style="text-align: center;" value="${(it.jm || '').replace(/"/g, '&quot;')}" oninput="updateCurrentSetItem(${itIdx}, 'jm', this.value)"></td>
           <td><input type="text" class="vp-cell-input" style="text-align: center; font-weight: bold;" value="${(it.qty !== undefined ? it.qty : '').replace(/"/g, '&quot;')}" oninput="updateCurrentSetItem(${itIdx}, 'qty', this.value)"></td>
@@ -6004,8 +6011,9 @@
           </td>
         `;
       } else {
-        // Tryb podglądu - statyczny tekst, stabilny i odporny na odświeżanie
+        // Tryb podglądu - numeracja pozycji
         tr.innerHTML = `
+          <td style="text-align: center; font-size: 11px; color: #94a3b8; font-weight: 600;">${itIdx + 1}.</td>
           <td class="wh-col-name">${it.name || '-'}</td>
           <td style="text-align: center;">${it.jm || '-'}</td>
           <td style="text-align: center; font-weight: bold; color: #0284c7;">${it.qty !== undefined ? it.qty : '-'}</td>
@@ -6195,6 +6203,38 @@
       renderSetDetailsById(selectedSetId);
       populateVpSelects();
     }
+  }
+
+  
+  function moveCurrentSetItem(itIdx, direction) {
+    let itemsArr = null;
+    if (isEditingCurrentSet && tempEditSetItems) {
+      itemsArr = tempEditSetItems;
+    } else {
+      const s = getSetObjectById(selectedSetId) || packingSets[selectedSetIndex];
+      if (s && Array.isArray(s.items)) itemsArr = s.items;
+    }
+
+    if (!itemsArr) return;
+    const targetIdx = itIdx + direction;
+    if (targetIdx < 0 || targetIdx >= itemsArr.length) return;
+
+    // Zamiana miejscami
+    const temp = itemsArr[itIdx];
+    itemsArr[itIdx] = itemsArr[targetIdx];
+    itemsArr[targetIdx] = temp;
+
+    if (!isEditingCurrentSet) {
+      const s = getSetObjectById(selectedSetId) || packingSets[selectedSetIndex];
+      if (s) {
+        s.lastModifiedBy = (currentWorker || localStorage.getItem('order_app_current_worker') || 'Nieznany').trim();
+        s.lastModifiedAt = new Date().toLocaleString('pl-PL');
+        localStorage.setItem('order_app_sets', JSON.stringify(packingSets));
+        syncSetsWithCloud();
+      }
+    }
+
+    renderSetDetailsById(selectedSetId);
   }
 
   function updateCurrentSetItem(itIdx, field, val) {
