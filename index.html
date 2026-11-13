@@ -7707,7 +7707,23 @@
         <td style="text-align: center;">
           <input type="number" class="form-control" style="font-size: 11px; padding: 3px 4px; text-align: center; width: 55px; font-weight: 700;" value="${it.qty}" min="1" onchange="updateRowQty(${idx}, this.value)">
         </td>
-        <td style="text-align: right; color: #64748b;">${weights.meterWeight.toFixed(3)} kg</td>
+        <td style="text-align: right; white-space: nowrap;">
+          ${isUnrecognized ? `
+            <div style="display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
+              <input type="number" step="0.001" min="0" class="form-control" 
+                style="width: 78px; font-size: 11px; padding: 3px 5px; text-align: right; font-weight: 700; color: #b91c1c; border: 1.5px solid #ef4444; background: #fff5f5;" 
+                placeholder="0.000" 
+                value="${(it.customMeterWeight || weights.meterWeight || 0) > 0 ? (it.customMeterWeight || weights.meterWeight).toFixed(3) : ''}" 
+                oninput="updateRowMeterWeight(${idx}, this.value)" 
+                title="Wpisz wagę 1 metra bieżącego [kg/m]">
+              <span style="font-size: 11px; color: #b91c1c; font-weight: 600;">kg</span>
+            </div>
+          ` : `
+            <div style="cursor: pointer; color: #334155;" onclick="enableManualWeightEdit(${idx})" title="Kliknij, aby nadpisać wagę ręcznie">
+              ${weights.meterWeight.toFixed(3)} kg
+            </div>
+          `}
+        </td>
         <td style="text-align: right; font-weight: 600;">${weights.unitWeight.toFixed(3)} kg</td>
         <td style="text-align: right; font-weight: 800; color: #0284c7;">${weights.totalWeight.toFixed(3)} kg</td>
         <td class="no-print" style="text-align: center;">
@@ -8400,17 +8416,24 @@
     }
 
     // 2. Dopasowanie po wymiarach liczbowych (np. "100x100x3" lub "100 100 3")
-    const qDims = extractNumericDimensions(queryName);
-    if (qDims.length >= 2) {
-      const qPrefix = getCategoryPrefix(queryName); // profil, katownik, ceownik, plaskownik
-      for (const p of materialsProfiles) {
-        const pDims = extractNumericDimensions(p.name);
-        const pPrefix = getCategoryPrefix(p.name);
+    // UWAGA: Nie dopasowujemy akcesoriów (dekiel, zawias, zaślepka) do profili głównych!
+    const qLow = queryName.toLowerCase();
+    const isAccessory = qLow.includes('dekiel') || qLow.includes('zawias') || qLow.includes('zaslepk') || qLow.includes('plyta') || qLow.includes('montazow');
 
-        if (qPrefix && pPrefix && qPrefix !== pPrefix) continue;
+    if (!isAccessory) {
+      const qDims = extractNumericDimensions(queryName);
+      if (qDims.length >= 2) {
+        const qPrefix = getCategoryPrefix(queryName); // profil, katownik, ceownik, plaskownik
+        for (const p of materialsProfiles) {
+          const pDims = extractNumericDimensions(p.name);
+          const pPrefix = getCategoryPrefix(p.name);
 
-        if (arraysEqual(qDims, pDims)) {
-          return { profile: p, score: 0.95 };
+          if (qPrefix && pPrefix && qPrefix !== pPrefix) continue;
+
+          // Musi zgadzać się liczba wymiarów (żeby np. Profil 50x30 bez ścianki nie brał w ciemno 50x30x2)
+          if (qDims.length === pDims.length && arraysEqual(qDims, pDims)) {
+            return { profile: p, score: 0.95 };
+          }
         }
       }
     }
