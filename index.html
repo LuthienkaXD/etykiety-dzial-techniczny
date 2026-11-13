@@ -2467,32 +2467,20 @@
 
     <!-- Formularz dodawania profilu -->
     <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 14px;">
-      <div style="display: grid; grid-template-columns: 2fr 1.2fr 1fr 1fr auto; gap: 8px; align-items: flex-end;">
+      <div style="display: grid; grid-template-columns: 2.5fr 1fr 1fr auto; gap: 10px; align-items: flex-end;">
         <div>
           <label style="font-size: 11px; font-weight: 600;">Nazwa profilu:</label>
-          <input type="text" id="newProfileName" class="form-control" placeholder="np. Profil 80x20x1.2" style="font-size: 12px; padding: 6px;">
-        </div>
-        <div>
-          <label style="font-size: 11px; font-weight: 600;">Typ / Kategoria:</label>
-          <select id="newProfileType" class="form-control" style="font-size: 12px; padding: 6px;">
-            <option value="Profil kwadratowy/prostokątny">Profil kwadratowy/prostokątny</option>
-            <option value="Kątownik">Kątownik (L)</option>
-            <option value="Ceownik">Ceownik (C)</option>
-            <option value="Teownik">Teownik (T)</option>
-            <option value="Płaskownik">Płaskownik</option>
-            <option value="Blacha aluminiowa 2mm">Blacha aluminiowa 2mm</option>
-            <option value="Niestandardowy">Niestandardowy</option>
-          </select>
+          <input type="text" id="newProfileName" class="form-control" placeholder="np. Profil 100x100x3" style="font-size: 12px; padding: 6px;">
         </div>
         <div>
           <label style="font-size: 11px; font-weight: 600;">Dł. handlowa [mm]:</label>
-          <input type="text" id="newProfileLen" class="form-control" placeholder="np. 6000" style="font-size: 12px; padding: 6px;">
+          <input type="text" id="newProfileLen" class="form-control" placeholder="6000" value="6000" style="font-size: 12px; padding: 6px;">
         </div>
         <div>
-          <label style="font-size: 11px; font-weight: 600;">Waga (kg/m lub kg/szt):</label>
-          <input type="number" step="0.001" id="newProfileWeight" class="form-control" placeholder="np. 0.627" style="font-size: 12px; padding: 6px;">
+          <label style="font-size: 11px; font-weight: 600;">Waga [kg/m]:</label>
+          <input type="number" step="0.001" id="newProfileWeight" class="form-control" placeholder="np. 3.142" style="font-size: 12px; padding: 6px;">
         </div>
-        <button type="button" class="btn-primary" onclick="addProfileFromForm()" style="padding: 7px 14px; font-size: 12px; font-weight: bold;">+ Dodaj profil</button>
+        <button type="button" class="btn-primary" onclick="addProfileFromForm()" style="padding: 7px 16px; font-size: 12px; font-weight: bold;">+ Dodaj profil</button>
       </div>
     </div>
 
@@ -2512,10 +2500,10 @@
         <thead>
           <tr>
             <th class="wh-col-name">Nazwa profilu</th>
-            <th style="width: 170px;">Typ / Kategoria</th>
-            <th style="width: 110px;">Dł. handlowa</th>
-            <th style="width: 110px; text-align: right;">Waga (kg/m lub szt.)</th>
-            <th style="width: 110px; text-align: center;">Akcja</th>
+            <th style="width: 140px; text-align: center;">Dł. handlowa</th>
+            <th style="width: 140px; text-align: right;">Waga (kg/m)</th>
+            <th style="width: 140px; text-align: right;">Waga 1 szt. (6m)</th>
+            <th style="width: 120px; text-align: center;">Akcja</th>
           </tr>
         </thead>
         <tbody id="profilesTableBody">
@@ -6016,66 +6004,7 @@
     document.getElementById('profilesModal').style.display = 'none';
   }
 
-  function renderProfilesTable() {
-    const tbody = document.getElementById('profilesTableBody');
-    tbody.innerHTML = '';
-
-    const query = (document.getElementById('searchProfilesInput') ? document.getElementById('searchProfilesInput').value : '').toLowerCase().trim();
-    const sortVal = document.getElementById('sortProfilesSelect') ? document.getElementById('sortProfilesSelect').value : 'alpha_asc';
-
-    let listWithIdx = materialsProfiles.map((p, originalIdx) => ({ ...p, originalIdx }));
-
-    if (query) {
-      listWithIdx = listWithIdx.filter(p => {
-        return (p.name || '').toLowerCase().includes(query) || (p.type || '').toLowerCase().includes(query);
-      });
-    }
-
-    listWithIdx.sort((a, b) => {
-      if (sortVal === 'alpha_asc') return (a.name || '').localeCompare(b.name || '', 'pl');
-      if (sortVal === 'alpha_desc') return (b.name || '').localeCompare(a.name || '', 'pl');
-      if (sortVal === 'newest') return (b.createdAt || b.originalIdx || 0) - (a.createdAt || a.originalIdx || 0);
-      if (sortVal === 'oldest') return (a.createdAt || a.originalIdx || 0) - (b.createdAt || b.originalIdx || 0);
-      return 0;
-    });
-
-    if (listWithIdx.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 15px;">Brak pasujących profili</td></tr>';
-      return;
-    }
-
-    listWithIdx.forEach((p) => {
-      const idx = p.originalIdx;
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td class="wh-col-name"><strong>${p.name}</strong></td>
-        <td>${p.type || '-'}</td>
-        <td>${p.length || '-'}</td>
-        <td style="text-align: center;">
-          <button type="button" class="btn-danger" style="padding: 2px 6px; font-size: 11px;" onclick="deleteProfile(${idx})">✕</button>
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
-  }
-
-  function addProfileFromForm() {
-    const name = document.getElementById('newProfileName').value.trim();
-    const type = document.getElementById('newProfileType').value.trim();
-    const len = document.getElementById('newProfileLen').value.trim();
-
-    if (!name) {
-      alert('Podaj nazwę profilu!');
-      return;
-    }
-
-    materialsProfiles.push({ name, type, length: len, createdAt: Date.now() });
-    localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
-    document.getElementById('newProfileName').value = '';
-    document.getElementById('newProfileType').value = '';
-    document.getElementById('newProfileLen').value = '';
-    renderProfilesTable();
-  }
+// Starsza wersja renderProfilesTable usunięta na rzecz nowej
 
   function deleteProfile(idx) {
     if (confirm('Usunąć ten profil z magazynu?')) {
@@ -6269,38 +6198,998 @@
 
   // Predefiniowana bogatsza baza standardowych i niestandardowych profili
   const initialDefaultProfiles = [
-    { name: 'Profil 80x20x1.2', type: 'Profil kwadratowy/prostokątny', length: '6000', weight: 0.627, a: 80, b: 20, t: 1.2, isCustom: false },
-    { name: 'Profil 60x40x2.0', type: 'Profil kwadratowy/prostokątny', length: '6000', weight: 1.036, a: 60, b: 40, t: 2.0, isCustom: false },
-    { name: 'Profil 100x100x3.0', type: 'Profil kwadratowy/prostokątny', length: '6000', weight: 3.142, a: 100, b: 100, t: 3.0, isCustom: false },
-    { name: 'Profil 120x120x3.0', type: 'Profil kwadratowy/prostokątny', length: '6000', weight: 3.793, a: 120, b: 120, t: 3.0, isCustom: false },
-    { name: 'Kątownik 40x40x3.0', type: 'Kątownik', length: '6000', weight: 0.624, a: 40, b: 40, t: 3.0, isCustom: false },
-    { name: 'Ceownik 80x40x3.0', type: 'Ceownik', length: '6000', weight: 1.248, a: 80, b: 40, t: 3.0, isCustom: false },
-    { name: 'Teownik 40x40x3.0', type: 'Teownik', length: '6000', weight: 0.624, a: 40, b: 40, t: 3.0, isCustom: false },
-    { name: 'Płaskownik 60x5.0', type: 'Płaskownik', length: '6000', weight: 0.814, a: 60, b: 5.0, t: 0, isCustom: false },
-    { name: 'Blacha aluminiowa 2.0 mm', type: 'Blacha aluminiowa 2mm', length: '2000', weight: 5.426, a: 1000, b: 2000, t: 2.0, isCustom: false },
-    { name: 'Profil ozdobny niestandardowy - ząbkowany', type: 'Niestandardowy', length: '6000', weight: 1.450, isCustom: true }
-  ];
+  {
+    "name": "Profil 100x100x2",
+    "length": "6000",
+    "weight": 2.127,
+    "a": 100,
+    "b": 100,
+    "t": 2,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 100x100x3",
+    "length": "6000",
+    "weight": 3.158,
+    "a": 100,
+    "b": 100,
+    "t": 3,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 100x100x4",
+    "length": "6000",
+    "weight": 4.167,
+    "a": 100,
+    "b": 100,
+    "t": 4,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 120x120x4",
+    "length": "6000",
+    "weight": 5.035,
+    "a": 120,
+    "b": 120,
+    "t": 4,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 15x15x2",
+    "length": "6000",
+    "weight": 0.282,
+    "a": 15,
+    "b": 15,
+    "t": 2,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 18x18x1.5",
+    "length": "6000",
+    "weight": 0.269,
+    "a": 18,
+    "b": 18,
+    "t": 1.5,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 20x20x2",
+    "length": "6000",
+    "weight": 0.391,
+    "a": 20,
+    "b": 20,
+    "t": 2,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 25x25x3",
+    "length": "6000",
+    "weight": 0.716,
+    "a": 25,
+    "b": 25,
+    "t": 3,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 30x30x1.5",
+    "length": "6000",
+    "weight": 0.464,
+    "a": 30,
+    "b": 30,
+    "t": 1.5,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 40x40x2",
+    "length": "6000",
+    "weight": 0.825,
+    "a": 40,
+    "b": 40,
+    "t": 2,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 50x50x2",
+    "length": "6000",
+    "weight": 1.042,
+    "a": 50,
+    "b": 50,
+    "t": 2,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 50x50x4",
+    "length": "6000",
+    "weight": 1.997,
+    "a": 50,
+    "b": 50,
+    "t": 4,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 60x60x2",
+    "length": "6000",
+    "weight": 1.259,
+    "a": 60,
+    "b": 60,
+    "t": 2,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 60x60x3",
+    "length": "6000",
+    "weight": 1.856,
+    "a": 60,
+    "b": 60,
+    "t": 3,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 70x70x4",
+    "length": "6000",
+    "weight": 2.865,
+    "a": 70,
+    "b": 70,
+    "t": 4,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 80x80x2",
+    "length": "6000",
+    "weight": 1.693,
+    "a": 80,
+    "b": 80,
+    "t": 2,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 80x80x3",
+    "length": "6000",
+    "weight": 2.507,
+    "a": 80,
+    "b": 80,
+    "t": 3,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 80x80x4",
+    "length": "6000",
+    "weight": 3.299,
+    "a": 80,
+    "b": 80,
+    "t": 4,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 90x90x4",
+    "length": "6000",
+    "weight": 3.733,
+    "a": 90,
+    "b": 90,
+    "t": 4,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 100x20x1.4",
+    "length": "6000",
+    "weight": 0.89,
+    "a": 100,
+    "b": 20,
+    "t": 1.4,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 100x40x4",
+    "length": "6000",
+    "weight": 2.865,
+    "a": 100,
+    "b": 40,
+    "t": 4,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 100x50x2",
+    "length": "6000",
+    "weight": 1.584,
+    "a": 100,
+    "b": 50,
+    "t": 2,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 100x50x4",
+    "length": "6000",
+    "weight": 3.082,
+    "a": 100,
+    "b": 50,
+    "t": 4,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 100x60x3",
+    "length": "6000",
+    "weight": 2.507,
+    "a": 100,
+    "b": 60,
+    "t": 3,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 120x20x1.4",
+    "length": "6000",
+    "weight": 1.042,
+    "a": 120,
+    "b": 20,
+    "t": 1.4,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 120x50x4",
+    "length": "6000",
+    "weight": 3.516,
+    "a": 120,
+    "b": 50,
+    "t": 4,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 120x60x1.6",
+    "length": "6000",
+    "weight": 1.535,
+    "a": 120,
+    "b": 60,
+    "t": 1.6,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 120x60x3",
+    "length": "6000",
+    "weight": 2.832,
+    "a": 120,
+    "b": 60,
+    "t": 3,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 120x60x4",
+    "length": "6000",
+    "weight": 3.733,
+    "a": 120,
+    "b": 60,
+    "t": 4,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 150x100x3",
+    "length": "6000",
+    "weight": 3.972,
+    "a": 150,
+    "b": 100,
+    "t": 3,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 150x20x1.7",
+    "length": "6000",
+    "weight": 1.537,
+    "a": 150,
+    "b": 20,
+    "t": 1.7,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 150x50x4",
+    "length": "6000",
+    "weight": 4.167,
+    "a": 150,
+    "b": 50,
+    "t": 4,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 180x20x2",
+    "length": "6000",
+    "weight": 2.127,
+    "a": 180,
+    "b": 20,
+    "t": 2,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 20x10x2",
+    "length": "6000",
+    "weight": 0.282,
+    "a": 20,
+    "b": 10,
+    "t": 2,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 200x100x2.5",
+    "length": "6000",
+    "weight": 4.002,
+    "a": 200,
+    "b": 100,
+    "t": 2.5,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 200x100x4",
+    "length": "6000",
+    "weight": 6.338,
+    "a": 200,
+    "b": 100,
+    "t": 4,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 200x20x1.9",
+    "length": "6000",
+    "weight": 2.229,
+    "a": 200,
+    "b": 20,
+    "t": 1.9,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 200x50x4",
+    "length": "6000",
+    "weight": 5.252,
+    "a": 200,
+    "b": 50,
+    "t": 4,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 200x80x4",
+    "length": "6000",
+    "weight": 5.903,
+    "a": 200,
+    "b": 80,
+    "t": 4,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 250x20x2",
+    "length": "6000",
+    "weight": 2.887,
+    "a": 250,
+    "b": 20,
+    "t": 2,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 30x10x2",
+    "length": "6000",
+    "weight": 0.391,
+    "a": 30,
+    "b": 10,
+    "t": 2,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 30x20x1.2",
+    "length": "6000",
+    "weight": 0.31,
+    "a": 30,
+    "b": 20,
+    "t": 1.2,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 40x20x1.2",
+    "length": "6000",
+    "weight": 0.375,
+    "a": 40,
+    "b": 20,
+    "t": 1.2,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 40x20x3",
+    "length": "6000",
+    "weight": 0.879,
+    "a": 40,
+    "b": 20,
+    "t": 3,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 40x30x2",
+    "length": "6000",
+    "weight": 0.716,
+    "a": 40,
+    "b": 30,
+    "t": 2,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 50x20x1.4",
+    "length": "6000",
+    "weight": 0.51,
+    "a": 50,
+    "b": 20,
+    "t": 1.4,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 50x30x2",
+    "length": "6000",
+    "weight": 0.825,
+    "a": 50,
+    "b": 30,
+    "t": 2,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 50x40x2",
+    "length": "6000",
+    "weight": 0.933,
+    "a": 50,
+    "b": 40,
+    "t": 2,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 60x20x1.4",
+    "length": "6000",
+    "weight": 0.586,
+    "a": 60,
+    "b": 20,
+    "t": 1.4,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 60x30x2",
+    "length": "6000",
+    "weight": 0.933,
+    "a": 60,
+    "b": 30,
+    "t": 2,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 60x40x2",
+    "length": "6000",
+    "weight": 1.042,
+    "a": 60,
+    "b": 40,
+    "t": 2,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 60x40x3",
+    "length": "6000",
+    "weight": 1.53,
+    "a": 60,
+    "b": 40,
+    "t": 3,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 60x40x4",
+    "length": "6000",
+    "weight": 1.997,
+    "a": 60,
+    "b": 40,
+    "t": 4,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 70x20x1.4",
+    "length": "6000",
+    "weight": 0.662,
+    "a": 70,
+    "b": 20,
+    "t": 1.4,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 70x30x2",
+    "length": "6000",
+    "weight": 1.042,
+    "a": 70,
+    "b": 30,
+    "t": 2,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 78x19x2",
+    "length": "6000",
+    "weight": 1.009,
+    "a": 78,
+    "b": 19,
+    "t": 2,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 80x20x1.4",
+    "length": "6000",
+    "weight": 0.738,
+    "a": 80,
+    "b": 20,
+    "t": 1.4,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 80x40x2",
+    "length": "6000",
+    "weight": 1.259,
+    "a": 80,
+    "b": 40,
+    "t": 2,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 80x50x2",
+    "length": "6000",
+    "weight": 1.367,
+    "a": 80,
+    "b": 50,
+    "t": 2,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 80x50x4",
+    "length": "6000",
+    "weight": 2.648,
+    "a": 80,
+    "b": 50,
+    "t": 4,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 80x60x1.6",
+    "length": "6000",
+    "weight": 1.188,
+    "a": 80,
+    "b": 60,
+    "t": 1.6,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 80x60x2",
+    "length": "6000",
+    "weight": 1.476,
+    "a": 80,
+    "b": 60,
+    "t": 2,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 80x60x3",
+    "length": "6000",
+    "weight": 2.181,
+    "a": 80,
+    "b": 60,
+    "t": 3,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Profil 80x60x4",
+    "length": "6000",
+    "weight": 2.865,
+    "a": 80,
+    "b": 60,
+    "t": 4,
+    "profileCategory": "square"
+  },
+  {
+    "name": "Ceownik 25x25x2",
+    "length": "6000",
+    "weight": 0.385,
+    "a": 25,
+    "b": 25,
+    "t": 2,
+    "profileCategory": "channel"
+  },
+  {
+    "name": "Ceownik 25x35x2",
+    "length": "6000",
+    "weight": 0.494,
+    "a": 25,
+    "b": 35,
+    "t": 2,
+    "profileCategory": "channel"
+  },
+  {
+    "name": "Ceownik 25x45x2.5",
+    "length": "6000",
+    "weight": 0.746,
+    "a": 25,
+    "b": 45,
+    "t": 2.5,
+    "profileCategory": "channel"
+  },
+  {
+    "name": "Ceownik 40x60x3",
+    "length": "6000",
+    "weight": 1.253,
+    "a": 40,
+    "b": 60,
+    "t": 3,
+    "profileCategory": "channel"
+  },
+  {
+    "name": "Ceownik 15x15x2",
+    "length": "6000",
+    "weight": 0.222,
+    "a": 15,
+    "b": 15,
+    "t": 2,
+    "profileCategory": "channel"
+  },
+  {
+    "name": "Kątownik 100x20x2",
+    "length": "6000",
+    "weight": 0.64,
+    "a": 100,
+    "b": 20,
+    "t": 2,
+    "profileCategory": "angle"
+  },
+  {
+    "name": "Kątownik 100x30x2",
+    "length": "6000",
+    "weight": 0.695,
+    "a": 100,
+    "b": 30,
+    "t": 2,
+    "profileCategory": "angle"
+  },
+  {
+    "name": "Kątownik 100x50x5",
+    "length": "6000",
+    "weight": 1.967,
+    "a": 100,
+    "b": 50,
+    "t": 5,
+    "profileCategory": "angle"
+  },
+  {
+    "name": "Kątownik 105x52x1.6",
+    "length": "6000",
+    "weight": 0.675,
+    "a": 105,
+    "b": 52,
+    "t": 1.6,
+    "profileCategory": "angle"
+  },
+  {
+    "name": "Kątownik 20x20x2",
+    "length": "6000",
+    "weight": 0.206,
+    "a": 20,
+    "b": 20,
+    "t": 2,
+    "profileCategory": "angle"
+  },
+  {
+    "name": "Kątownik 25x20x2",
+    "length": "6000",
+    "weight": 0.233,
+    "a": 25,
+    "b": 20,
+    "t": 2,
+    "profileCategory": "angle"
+  },
+  {
+    "name": "Kątownik 25x25x2",
+    "length": "6000",
+    "weight": 0.26,
+    "a": 25,
+    "b": 25,
+    "t": 2,
+    "profileCategory": "angle"
+  },
+  {
+    "name": "Kątownik 25x25x3",
+    "length": "6000",
+    "weight": 0.383,
+    "a": 25,
+    "b": 25,
+    "t": 3,
+    "profileCategory": "angle"
+  },
+  {
+    "name": "Kątownik 30x30x3",
+    "length": "6000",
+    "weight": 0.464,
+    "a": 30,
+    "b": 30,
+    "t": 3,
+    "profileCategory": "angle"
+  },
+  {
+    "name": "Kątownik 35x15x2",
+    "length": "6000",
+    "weight": 0.26,
+    "a": 35,
+    "b": 15,
+    "t": 2,
+    "profileCategory": "angle"
+  },
+  {
+    "name": "Kątownik 35x20x2",
+    "length": "6000",
+    "weight": 0.288,
+    "a": 35,
+    "b": 20,
+    "t": 2,
+    "profileCategory": "angle"
+  },
+  {
+    "name": "Kątownik 35x25x2",
+    "length": "6000",
+    "weight": 0.315,
+    "a": 35,
+    "b": 25,
+    "t": 2,
+    "profileCategory": "angle"
+  },
+  {
+    "name": "Kątownik 40x20x2",
+    "length": "6000",
+    "weight": 0.315,
+    "a": 40,
+    "b": 20,
+    "t": 2,
+    "profileCategory": "angle"
+  },
+  {
+    "name": "Kątownik 40x30x3",
+    "length": "6000",
+    "weight": 0.545,
+    "a": 40,
+    "b": 30,
+    "t": 3,
+    "profileCategory": "angle"
+  },
+  {
+    "name": "Kątownik 40x40x2",
+    "length": "6000",
+    "weight": 0.423,
+    "a": 40,
+    "b": 40,
+    "t": 2,
+    "profileCategory": "angle"
+  },
+  {
+    "name": "Kątownik 50x20x2",
+    "length": "6000",
+    "weight": 0.369,
+    "a": 50,
+    "b": 20,
+    "t": 2,
+    "profileCategory": "angle"
+  },
+  {
+    "name": "Kątownik 50x30x3",
+    "length": "6000",
+    "weight": 0.627,
+    "a": 50,
+    "b": 30,
+    "t": 3,
+    "profileCategory": "angle"
+  },
+  {
+    "name": "Kątownik 50x40x2",
+    "length": "6000",
+    "weight": 0.477,
+    "a": 50,
+    "b": 40,
+    "t": 2,
+    "profileCategory": "angle"
+  },
+  {
+    "name": "Kątownik 50x50x2",
+    "length": "6000",
+    "weight": 0.532,
+    "a": 50,
+    "b": 50,
+    "t": 2,
+    "profileCategory": "angle"
+  },
+  {
+    "name": "Kątownik 50x50x5",
+    "length": "6000",
+    "weight": 1.289,
+    "a": 50,
+    "b": 50,
+    "t": 5,
+    "profileCategory": "angle"
+  },
+  {
+    "name": "Kątownik 60x20x2",
+    "length": "6000",
+    "weight": 0.423,
+    "a": 60,
+    "b": 20,
+    "t": 2,
+    "profileCategory": "angle"
+  },
+  {
+    "name": "Kątownik 60x30x3",
+    "length": "6000",
+    "weight": 0.708,
+    "a": 60,
+    "b": 30,
+    "t": 3,
+    "profileCategory": "angle"
+  },
+  {
+    "name": "Kątownik 60x40x4",
+    "length": "6000",
+    "weight": 1.042,
+    "a": 60,
+    "b": 40,
+    "t": 4,
+    "profileCategory": "angle"
+  },
+  {
+    "name": "Kątownik 80x20x2",
+    "length": "6000",
+    "weight": 0.532,
+    "a": 80,
+    "b": 20,
+    "t": 2,
+    "profileCategory": "angle"
+  },
+  {
+    "name": "Płaskownik 100x10",
+    "length": "6000",
+    "weight": 2.713,
+    "a": 100,
+    "b": 0,
+    "t": 10,
+    "profileCategory": "flat"
+  },
+  {
+    "name": "Płaskownik 100x5",
+    "length": "6000",
+    "weight": 1.357,
+    "a": 100,
+    "b": 0,
+    "t": 5,
+    "profileCategory": "flat"
+  },
+  {
+    "name": "Płaskownik 120x10",
+    "length": "6000",
+    "weight": 3.256,
+    "a": 120,
+    "b": 0,
+    "t": 10,
+    "profileCategory": "flat"
+  },
+  {
+    "name": "Płaskownik 120x8",
+    "length": "6000",
+    "weight": 2.604,
+    "a": 120,
+    "b": 0,
+    "t": 8,
+    "profileCategory": "flat"
+  },
+  {
+    "name": "Płaskownik 160x10",
+    "length": "6000",
+    "weight": 4.341,
+    "a": 160,
+    "b": 0,
+    "t": 10,
+    "profileCategory": "flat"
+  },
+  {
+    "name": "Płaskownik 200x10",
+    "length": "6000",
+    "weight": 5.426,
+    "a": 200,
+    "b": 0,
+    "t": 10,
+    "profileCategory": "flat"
+  },
+  {
+    "name": "Płaskownik 30x5",
+    "length": "6000",
+    "weight": 0.407,
+    "a": 30,
+    "b": 0,
+    "t": 5,
+    "profileCategory": "flat"
+  },
+  {
+    "name": "Płaskownik 40x5",
+    "length": "6000",
+    "weight": 0.543,
+    "a": 40,
+    "b": 0,
+    "t": 5,
+    "profileCategory": "flat"
+  },
+  {
+    "name": "Płaskownik 50x3",
+    "length": "6000",
+    "weight": 0.407,
+    "a": 50,
+    "b": 0,
+    "t": 3,
+    "profileCategory": "flat"
+  },
+  {
+    "name": "Płaskownik 50x8",
+    "length": "6000",
+    "weight": 1.085,
+    "a": 50,
+    "b": 0,
+    "t": 8,
+    "profileCategory": "flat"
+  },
+  {
+    "name": "Płaskownik 50x10",
+    "length": "6000",
+    "weight": 1.357,
+    "a": 50,
+    "b": 0,
+    "t": 10,
+    "profileCategory": "flat"
+  },
+  {
+    "name": "Płaskownik 60x3",
+    "length": "6000",
+    "weight": 0.488,
+    "a": 60,
+    "b": 0,
+    "t": 3,
+    "profileCategory": "flat"
+  },
+  {
+    "name": "Płaskownik 60x8",
+    "length": "6000",
+    "weight": 1.302,
+    "a": 60,
+    "b": 0,
+    "t": 8,
+    "profileCategory": "flat"
+  },
+  {
+    "name": "Płaskownik 80x5",
+    "length": "6000",
+    "weight": 1.085,
+    "a": 80,
+    "b": 0,
+    "t": 5,
+    "profileCategory": "flat"
+  },
+  {
+    "name": "Płaskownik 80x8",
+    "length": "6000",
+    "weight": 1.736,
+    "a": 80,
+    "b": 0,
+    "t": 8,
+    "profileCategory": "flat"
+  },
+  {
+    "name": "Płaskownik 80x10",
+    "length": "6000",
+    "weight": 2.17,
+    "a": 80,
+    "b": 0,
+    "t": 10,
+    "profileCategory": "flat"
+  }
+];
 
   // Inicjalizacja bazy profili
-  if (!localStorage.getItem('order_app_profiles')) {
+  // Zawsze wczytujemy zaktualizowaną bazę profili o długości 6000 mm z obliczonymi wagami
+  const currentDbVersion = 'profiles_v2_6000';
+  if (localStorage.getItem('order_app_profiles_ver') !== currentDbVersion) {
     materialsProfiles = initialDefaultProfiles;
     localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
+    localStorage.setItem('order_app_profiles_ver', currentDbVersion);
   } else {
-    // Sprawdźmy czy istniejące profile mają pole weight
-    materialsProfiles = JSON.parse(localStorage.getItem('order_app_profiles'));
-    let updated = false;
-    materialsProfiles.forEach(p => {
-      if (p.weight === undefined) {
-        if (p.name.includes('80x20x1.2')) p.weight = 0.627;
-        else if (p.name.includes('60x40x2.0')) p.weight = 1.036;
-        else if (p.name.includes('100x100x3.0')) p.weight = 3.142;
-        else if (p.name.includes('120x120x3.0')) p.weight = 3.793;
-        else if (p.name.includes('80x80x5.0')) p.weight = 3.120;
-        else p.weight = 1.000;
-        updated = true;
-      }
-    });
-    if (updated) localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
+    materialsProfiles = JSON.parse(localStorage.getItem('order_app_profiles')) || initialDefaultProfiles;
   }
 
   // Pobranie bieżącej gęstości [kg/dm3]
@@ -6831,7 +7720,7 @@
       const opt = document.createElement('option');
       opt.value = idx;
       const wInfo = p.weight ? ` (~ ${p.weight.toFixed(3)} kg/m)` : '';
-      opt.textContent = `${p.name} [${p.type || 'Standard'}]${wInfo}`;
+      opt.textContent = `${p.name}${wInfo}`;
       sel.appendChild(opt);
     });
   }
@@ -7139,18 +8028,18 @@
     listWithIdx.forEach((p) => {
       const idx = p.originalIdx;
       const tr = document.createElement('tr');
-      const wDisplay = (p.weight !== undefined && p.weight !== null && p.weight !== '') 
-        ? `${parseFloat(p.weight).toFixed(3)} kg/m` 
-        : '-';
+      const meterW = (p.weight !== undefined && p.weight !== null && p.weight !== '') ? parseFloat(p.weight) : 0;
+      const lenVal = parseFloat(p.length) || 6000;
+      const unitW = meterW * (lenVal / 1000);
 
       tr.innerHTML = `
         <td class="wh-col-name"><strong>${p.name}</strong></td>
-        <td><span class="mat-badge-std">${p.type || 'Standard'}</span></td>
-        <td>${p.length ? p.length + ' mm' : '-'}</td>
-        <td style="text-align: right; font-weight: 700; color: #0284c7;">${wDisplay}</td>
+        <td style="text-align: center;">${p.length ? p.length + ' mm' : '6000 mm'}</td>
+        <td style="text-align: right; font-weight: 700; color: #0284c7;">${meterW.toFixed(3)} kg/m</td>
+        <td style="text-align: right; font-weight: 800; color: #166534;">${unitW.toFixed(3)} kg</td>
         <td style="text-align: center; white-space: nowrap;">
-          <button type="button" class="btn-primary" style="padding: 2px 8px; font-size: 11px; margin-right: 4px;" onclick="selectSavedProfileFromDbModal(${idx})">Wstaw</button>
-          <button type="button" class="btn-danger" style="padding: 2px 6px; font-size: 11px;" onclick="deleteProfile(${idx})">✕</button>
+          <button type="button" class="btn-primary" style="padding: 3px 10px; font-size: 11px; margin-right: 4px; font-weight: 600;" onclick="selectSavedProfileFromDbModal(${idx})">Wstaw</button>
+          <button type="button" class="btn-danger" style="padding: 3px 7px; font-size: 11px;" onclick="deleteProfile(${idx})">✕</button>
         </td>
       `;
       tbody.appendChild(tr);
@@ -7170,8 +8059,7 @@
   // Nadpisanie addProfileFromForm dla nowej bazy
   function addProfileFromForm() {
     const name = document.getElementById('newProfileName').value.trim();
-    const type = document.getElementById('newProfileType').value.trim();
-    const len = document.getElementById('newProfileLen').value.trim();
+    const len = (document.getElementById('newProfileLen').value || '6000').trim();
     const weightVal = parseFloat(document.getElementById('newProfileWeight').value);
 
     if (!name) {
@@ -7181,16 +8069,14 @@
 
     materialsProfiles.push({
       name,
-      type,
       length: len,
       weight: isNaN(weightVal) ? null : weightVal,
-      isCustom: (type === 'Niestandardowy'),
       createdAt: Date.now()
     });
 
     localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
     document.getElementById('newProfileName').value = '';
-    document.getElementById('newProfileLen').value = '';
+    document.getElementById('newProfileLen').value = '6000';
     document.getElementById('newProfileWeight').value = '';
     renderProfilesTable();
     updateMatProfilesSelect();
