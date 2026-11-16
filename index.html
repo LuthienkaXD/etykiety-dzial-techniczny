@@ -3007,7 +3007,7 @@
           <table class="warehouse-table" style="margin-top: 0; margin-bottom: 8px;">
             <thead>
               <tr style="background: #f1f5f9;">
-                <th style="width: 45px; text-align: center;">Lp.</th>
+                <th style="width: 55px; text-align: center;">Kolejność</th>
                 <th>Materiał / Profil</th>
                 <th style="width: 100px; text-align: center;">Długość [mm]</th>
                 <th style="width: 70px; text-align: center;">Ilość</th>
@@ -3123,7 +3123,7 @@
       <table class="warehouse-table" style="margin: 0;">
         <thead>
           <tr style="background: #f8fafc;">
-            <th style="width: 35px; text-align: center;">Lp.</th>
+            <th style="width: 55px; text-align: center;">Kolejność</th>
             <th>Nazwa profilu / materiału</th>
             <th style="width: 100px; text-align: center;">Długość [mm]</th>
             <th style="width: 70px; text-align: center;">Ilość</th>
@@ -7712,8 +7712,13 @@
         itemsToRender.forEach((it, itIdx) => {
           const tr = document.createElement('tr');
           if (isEditingMaterialSet) {
+            const isFirst = itIdx === 0;
+            const isLast = itIdx === itemsToRender.length - 1;
             tr.innerHTML = `
-              <td style="text-align: center; font-size: 11px; color: #64748b; font-weight: bold;">${itIdx + 1}.</td>
+              <td style="text-align: center; white-space: nowrap; user-select: none;">
+                <button type="button" class="btn-secondary" style="padding: 1px 5px; font-size: 11px; margin-right: 2px; cursor: pointer;" onclick="moveCurrentMatSetItem(${itIdx}, -1)" title="Przesuń w górę" ${isFirst ? 'disabled style="opacity: 0.3; cursor: default;"' : ''}>▲</button>
+                <button type="button" class="btn-secondary" style="padding: 1px 5px; font-size: 11px; cursor: pointer;" onclick="moveCurrentMatSetItem(${itIdx}, 1)" title="Przesuń w dół" ${isLast ? 'disabled style="opacity: 0.3; cursor: default;"' : ''}>▼</button>
+              </td>
               <td><input type="text" class="vp-cell-input" style="font-weight: 600;" value="${(it.material || '').replace(/"/g, '&quot;')}" oninput="updateCurrentMatSetItem(${itIdx}, 'material', this.value)" placeholder="Nazwa profilu"></td>
               <td><input type="text" class="vp-cell-input" style="text-align: center;" value="${(it.length || '').replace(/"/g, '&quot;')}" oninput="updateCurrentMatSetItem(${itIdx}, 'length', this.value)" placeholder="np. 6000"></td>
               <td><input type="text" class="vp-cell-input" style="text-align: center; font-weight: bold;" value="${(it.qty !== undefined ? it.qty : '1')}" oninput="updateCurrentMatSetItem(${itIdx}, 'qty', this.value)" placeholder="1"></td>
@@ -7894,6 +7899,37 @@
       renderMaterialSetDetailsById(selectedMaterialSetId);
       updateWmSetsSelect();
     }
+  }
+
+  function moveCurrentMatSetItem(itIdx, direction) {
+    let itemsArr = null;
+    if (isEditingMaterialSet && tempEditMaterialSetItems) {
+      itemsArr = tempEditMaterialSetItems;
+    } else {
+      const s = getMaterialSetObjectById(selectedMaterialSetId) || materialSets[selectedMaterialSetIndex];
+      if (s && Array.isArray(s.items)) itemsArr = s.items;
+    }
+
+    if (!itemsArr) return;
+    const targetIdx = itIdx + direction;
+    if (targetIdx < 0 || targetIdx >= itemsArr.length) return;
+
+    // Zamiana miejscami
+    const temp = itemsArr[itIdx];
+    itemsArr[itIdx] = itemsArr[targetIdx];
+    itemsArr[targetIdx] = temp;
+
+    if (!isEditingMaterialSet) {
+      const s = getMaterialSetObjectById(selectedMaterialSetId) || materialSets[selectedMaterialSetIndex];
+      if (s) {
+        s.lastModifiedBy = (currentWorker || localStorage.getItem('order_app_current_worker') || 'Nieznany').trim();
+        s.lastModifiedAt = new Date().toLocaleString('pl-PL');
+        localStorage.setItem('order_app_material_sets', JSON.stringify(materialSets));
+        syncMaterialSetsWithCloud();
+      }
+    }
+
+    renderMaterialSetDetailsById(selectedMaterialSetId);
   }
 
   function updateCurrentMatSetItem(itIdx, field, val) {
@@ -8137,8 +8173,13 @@
 
     tempPackageItems.forEach((it, idx) => {
       const tr = document.createElement('tr');
+      const isFirst = idx === 0;
+      const isLast = idx === tempPackageItems.length - 1;
       tr.innerHTML = `
-        <td style="text-align: center; font-size: 11px; color: #64748b; font-weight: bold;">${idx + 1}.</td>
+        <td style="text-align: center; white-space: nowrap; user-select: none;">
+          <button type="button" class="btn-secondary" style="padding: 1px 5px; font-size: 11px; margin-right: 2px; cursor: pointer;" onclick="movePackageItemRow(${idx}, -1)" title="Przesuń w górę" ${isFirst ? 'disabled style="opacity: 0.3; cursor: default;"' : ''}>▲</button>
+          <button type="button" class="btn-secondary" style="padding: 1px 5px; font-size: 11px; cursor: pointer;" onclick="movePackageItemRow(${idx}, 1)" title="Przesuń w dół" ${isLast ? 'disabled style="opacity: 0.3; cursor: default;"' : ''}>▼</button>
+        </td>
         <td><input type="text" class="vp-cell-input" style="font-weight: 600;" value="${(it.material || '').replace(/"/g, '&quot;')}" oninput="tempPackageItems[${idx}].material = this.value" placeholder="Nazwa profilu"></td>
         <td><input type="text" class="vp-cell-input" style="text-align: center;" value="${(it.length || '').replace(/"/g, '&quot;')}" oninput="tempPackageItems[${idx}].length = this.value" placeholder="np. 6000"></td>
         <td><input type="text" class="vp-cell-input" style="text-align: center; font-weight: bold;" value="${(it.qty !== undefined ? it.qty : '1')}" oninput="tempPackageItems[${idx}].qty = this.value" placeholder="1"></td>
@@ -8152,6 +8193,15 @@
 
   function addEmptyRowToPackageItems() {
     tempPackageItems.push({ material: '', length: '', qty: '1', remarks: '' });
+    renderPackageItemsTable();
+  }
+
+  function movePackageItemRow(idx, direction) {
+    const targetIdx = idx + direction;
+    if (targetIdx < 0 || targetIdx >= tempPackageItems.length) return;
+    const temp = tempPackageItems[idx];
+    tempPackageItems[idx] = tempPackageItems[targetIdx];
+    tempPackageItems[targetIdx] = temp;
     renderPackageItemsTable();
   }
 
