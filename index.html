@@ -7045,9 +7045,24 @@
 // Starsza wersja renderProfilesTable usunięta na rzecz nowej
 
   function deleteProfile(idx) {
-    if (confirm('Usunąć ten profil z magazynu?')) {
+    if (!requireLogin('Aby usuwać profile z magazynu, musisz być zalogowany.')) return;
+    const p = materialsProfiles[idx];
+    const profName = p ? p.name : 'ten profil';
+    if (confirm(`Czy na pewno usunąć "${profName}" z magazynu profili?`)) {
       materialsProfiles.splice(idx, 1);
+      // Zapisujemy wyczyszczoną z duplikatów listę
+      const unique = [];
+      const seen = new Set();
+      for (const item of materialsProfiles) {
+        const key = `${(item.name || '').trim().toLowerCase()}|${(item.length || '6000').toString().trim()}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          unique.push(item);
+        }
+      }
+      materialsProfiles = unique;
       localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
+      localStorage.setItem('order_app_profiles_ver', 'profiles_v4_deduped');
       renderProfilesTable();
       updateMatProfilesSelect();
       syncProfilesWithCloud();
@@ -7146,22 +7161,30 @@
 
   async function fetchCloudProfiles(notify = false) {
     if (!CLOUD_API_URL || isProfilesSyncing) return;
-    // Ochrona przed natychmiastowym nadpisaniem lokalnie dodanych profili przez polling / focus
+    // Ochrona przed natychmiastowym nadpisaniem lokalnie dodanych/usuniętych profili przez polling / focus
     if (Date.now() - lastProfileLocalSaveTime < 8000) return;
     try {
       const res = await fetch(`${CLOUD_API_URL}/api/profiles`);
       if (res.ok) {
         const cloudProfiles = await res.json();
         if (Array.isArray(cloudProfiles) && cloudProfiles.length > 0) {
-          // Upewnij się, że liczby są sparsowane do float
-          cloudProfiles.forEach(p => {
+          // Automatyczna deduplikacja pobranych profili
+          const unique = [];
+          const seen = new Set();
+          for (const p of cloudProfiles) {
             if (p.weight !== undefined && p.weight !== null && p.weight !== '') p.weight = parseFloat(p.weight);
             if (p.a) p.a = parseFloat(p.a);
             if (p.b) p.b = parseFloat(p.b);
             if (p.t) p.t = parseFloat(p.t);
-          });
-          materialsProfiles = cloudProfiles;
+            const key = `${(p.name || '').trim().toLowerCase()}|${(p.length || '6000').toString().trim()}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              unique.push(p);
+            }
+          }
+          materialsProfiles = unique;
           localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
+          localStorage.setItem('order_app_profiles_ver', 'profiles_v4_deduped');
           renderProfilesTable();
           updateMatProfilesSelect();
         }
@@ -7177,6 +7200,19 @@
     lastProfileLocalSaveTime = Date.now();
     try {
       isProfilesSyncing = true;
+      // Upewniamy się, że wysyłana lista profili nie zawiera duplikatów
+      const unique = [];
+      const seen = new Set();
+      for (const p of materialsProfiles) {
+        const key = `${(p.name || '').trim().toLowerCase()}|${(p.length || '6000').toString().trim()}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          unique.push(p);
+        }
+      }
+      materialsProfiles = unique;
+      localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
+
       const res = await fetch(`${CLOUD_API_URL}/api/profiles`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -9210,15 +9246,38 @@
 ];
 
   // Inicjalizacja bazy profili
-  // Zawsze wczytujemy zaktualizowaną bazę profili o długości 6000 mm z obliczonymi wagami
-  const currentDbVersion = 'profiles_v3_added';
-  if (localStorage.getItem('order_app_profiles_ver') !== currentDbVersion) {
-    materialsProfiles = initialDefaultProfiles;
-    localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
-    localStorage.setItem('order_app_profiles_ver', currentDbVersion);
+  // Wczytujemy z pamięci lokalnej lub z szablonu, zachowując ewentualne usunięcia/edycje użytkownika
+  const currentDbVersion = 'profiles_v4_deduped';
+  const savedProfilesJson = localStorage.getItem('order_app_profiles');
+  if (savedProfilesJson) {
+    try {
+      const parsed = JSON.parse(savedProfilesJson);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // Zapewniamy brak duplikatów w pamięci
+        const unique = [];
+        const seen = new Set();
+        for (const item of parsed) {
+          const key = `${(item.name || '').trim().toLowerCase()}|${(item.length || '6000').toString().trim()}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            unique.push(item);
+          }
+        }
+        materialsProfiles = unique;
+        localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
+      } else {
+        materialsProfiles = JSON.parse(JSON.stringify(initialDefaultProfiles));
+        localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
+      }
+    } catch (e) {
+      materialsProfiles = JSON.parse(JSON.stringify(initialDefaultProfiles));
+      localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
+    }
   } else {
-    materialsProfiles = JSON.parse(localStorage.getItem('order_app_profiles')) || initialDefaultProfiles;
+    materialsProfiles = JSON.parse(JSON.stringify(initialDefaultProfiles));
+    localStorage.setItem('order_app_profiles', JSON.stringify(materialsProfiles));
   }
+  localStorage.setItem('order_app_profiles_ver', currentDbVersion);
 
   // Pobranie bieżącej gęstości [kg/dm3]
   function getCurrentDensity() {
