@@ -94,6 +94,15 @@ if (DATABASE_URL && pg) {
       last_modified_at VARCHAR(100),
       created_at BIGINT
     );
+
+    CREATE TABLE IF NOT EXISTS etykiety_paint_producers (
+      id SERIAL PRIMARY KEY,
+      color_pattern VARCHAR(150) NOT NULL,
+      producer VARCHAR(150) NOT NULL,
+      symbol VARCHAR(150),
+      notes TEXT,
+      created_at BIGINT
+    );
     CREATE TABLE IF NOT EXISTS etykiety_orders (
       id SERIAL PRIMARY KEY,
       order_number VARCHAR(100) UNIQUE NOT NULL,
@@ -790,6 +799,77 @@ const server = http.createServer(async (req, res) => {
           console.error('Błąd zapisu zbiorów materiałów:', e);
           res.writeHead(500, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Błąd zapisu zbiorów materiałów w chmurze' }));
+        }
+      });
+      return;
+    }
+  }
+
+  // --- API BAZA PRODUCENTÓW FARB ---
+  if (url.pathname === '/api/paint-producers') {
+    if (req.method === 'GET') {
+      try {
+        if (!pool) {
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify([]));
+          return;
+        }
+        const result = await pool.query('SELECT id, color_pattern as "colorPattern", producer, symbol, notes, created_at as "createdAt" FROM etykiety_paint_producers ORDER BY id ASC');
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify(result.rows));
+      } catch (err) {
+        console.error('Błąd pobierania producentów farb:', err);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify([]));
+      }
+      return;
+    }
+
+    if (req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => body += chunk);
+      req.on('end', async () => {
+        try {
+          const producers = JSON.parse(body);
+          if (!Array.isArray(producers)) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Dane muszą być tablicą' }));
+            return;
+          }
+
+          if (pool) {
+            const client = await pool.connect();
+            try {
+              await client.query('BEGIN');
+              await client.query('DELETE FROM etykiety_paint_producers');
+              for (const p of producers) {
+                if (!p.colorPattern || !p.producer) continue;
+                await client.query(
+                  'INSERT INTO etykiety_paint_producers (color_pattern, producer, symbol, notes, created_at) VALUES ($1, $2, $3, $4, $5)',
+                  [
+                    p.colorPattern.trim(),
+                    p.producer.trim(),
+                    (p.symbol || '').trim(),
+                    (p.notes || '').trim(),
+                    p.createdAt || Date.now()
+                  ]
+                );
+              }
+              await client.query('COMMIT');
+            } catch (txErr) {
+              await client.query('ROLLBACK');
+              throw txErr;
+            } finally {
+              client.release();
+            }
+          }
+
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: true, count: producers.length }));
+        } catch (e) {
+          console.error('Błąd zapisu producentów farb:', e);
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Błąd zapisu producentów farb w chmurze' }));
         }
       });
       return;
