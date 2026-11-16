@@ -9321,11 +9321,11 @@
 
     renderDynamicProfileFields(type);
     
-    // Dla blach ukrywamy pole 'Długość pojedyncza', ponieważ długość podaje się w wymiarach arkusza
+    // Dla blach oraz profilu niestandardowego w trybie 1 sztuki ukrywamy pole 'Długość pojedyncza'
     const lenWrapper = document.getElementById('matFormLengthWrapper');
     const gridEl = document.getElementById('matQtyLengthGrid');
     if (lenWrapper && gridEl) {
-      if (type === 'sheet') {
+      if (type === 'sheet' || (type === 'custom' && currentCustomWeightMode === 'unit')) {
         lenWrapper.style.display = 'none';
         gridEl.style.gridTemplateColumns = '1fr';
       } else {
@@ -9449,25 +9449,94 @@
     } else if (type === 'custom') {
       container.innerHTML = `
         <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 8px; margin-bottom: 8px;">
-          <div style="font-size: 11px; font-weight: 700; color: #92400e; margin-bottom: 4px;">⭐ Profil niestandardowy - wpisz własną wagę:</div>
-          <div style="font-size: 11px; color: #78350f;">
-            Dla profili o złożonych przekrojach możesz wpisać dokładną wagę 1 metra bieżącego lub wagę 1 sztuki.
+          <div style="font-size: 11px; font-weight: 700; color: #92400e; margin-bottom: 4px;">⭐ Profil / element niestandardowy:</div>
+          <div style="font-size: 11px; color: #78350f; margin-bottom: 8px;">
+            Wybierz sposób podania wagi – w metrach bieżących profilu lub wprost za 1 sztukę (np. dekiel, zawias).
+          </div>
+          <div style="display: flex; gap: 10px; background: #ffffff; border: 1px solid #fed7aa; padding: 6px 10px; border-radius: 5px;">
+            <label style="font-size: 11.5px; font-weight: 700; color: #9a3412; display: flex; align-items: center; gap: 5px; cursor: pointer;">
+              <input type="radio" name="customWeightModeRadio" id="radioCustomModeMeter" value="meter" checked onchange="setCustomWeightMode('meter')">
+              Waga 1 metra [kg/m]
+            </label>
+            <label style="font-size: 11.5px; font-weight: 700; color: #9a3412; display: flex; align-items: center; gap: 5px; cursor: pointer;">
+              <input type="radio" name="customWeightModeRadio" id="radioCustomModeUnit" value="unit" onchange="setCustomWeightMode('unit')">
+              Waga 1 sztuki [kg]
+            </label>
           </div>
         </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-          <div>
-            <label style="font-size: 11px; font-weight: 700; color: #b45309;">Waga 1 metra bieżącego [kg/m]:</label>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;" id="customWeightInputsGrid">
+          <div id="wrapperCustomMeterWeight">
+            <label style="font-size: 11px; font-weight: 700; color: #b45309;" id="lblCustomMeterWeight">Waga 1 metra bieżącego [kg/m]:</label>
             <input type="text" id="matCustomMeterWeight" class="form-control" placeholder="np. 1.450 lub 0,26" style="font-size: 12px; padding: 5px; font-weight: bold;" oninput="onCustomMeterWeightInput()">
           </div>
-          <div>
-            <label style="font-size: 11px; font-weight: 700; color: #b45309;">LUB waga 1 sztuki [kg]:</label>
-            <input type="text" id="matCustomUnitWeight" class="form-control" placeholder="np. 8.700 lub 1,56" style="font-size: 12px; padding: 5px; font-weight: bold;" oninput="onCustomUnitWeightInput()">
+          <div id="wrapperCustomUnitWeight">
+            <label style="font-size: 11px; font-weight: 700; color: #b45309;" id="lblCustomUnitWeight">Waga 1 sztuki [kg]:</label>
+            <input type="text" id="matCustomUnitWeight" class="form-control" placeholder="np. 0.220 lub 1,56" style="font-size: 12px; padding: 5px; font-weight: bold; background: #f1f5f9;" disabled oninput="onCustomUnitWeightInput()">
           </div>
         </div>
       `;
+      // Zastosuj bieżący tryb
+      setTimeout(() => {
+        applyCustomWeightModeUI(currentCustomWeightMode);
+      }, 0);
     }
 
     onDimChangeAutoName();
+  }
+
+  let currentCustomWeightMode = 'meter'; // 'meter' lub 'unit'
+
+  function setCustomWeightMode(mode) {
+    currentCustomWeightMode = mode;
+    applyCustomWeightModeUI(mode);
+    recalcCurrentProfilePreview();
+  }
+
+  function applyCustomWeightModeUI(mode) {
+    const radioMeter = document.getElementById('radioCustomModeMeter');
+    const radioUnit = document.getElementById('radioCustomModeUnit');
+    const inMeter = document.getElementById('matCustomMeterWeight');
+    const inUnit = document.getElementById('matCustomUnitWeight');
+    const lenWrapper = document.getElementById('matFormLengthWrapper');
+    const gridEl = document.getElementById('matQtyLengthGrid');
+
+    if (radioMeter && radioUnit) {
+      radioMeter.checked = (mode === 'meter');
+      radioUnit.checked = (mode === 'unit');
+    }
+
+    if (mode === 'meter') {
+      if (inMeter) {
+        inMeter.disabled = false;
+        inMeter.style.background = '#ffffff';
+      }
+      if (inUnit) {
+        inUnit.disabled = true;
+        inUnit.style.background = '#f1f5f9';
+        inUnit.value = '';
+      }
+      // W trybie wagi 1 metra długość jest potrzebna
+      if (lenWrapper && gridEl) {
+        lenWrapper.style.display = 'block';
+        gridEl.style.gridTemplateColumns = '1fr 1fr';
+      }
+    } else {
+      // mode === 'unit'
+      if (inUnit) {
+        inUnit.disabled = false;
+        inUnit.style.background = '#ffffff';
+      }
+      if (inMeter) {
+        inMeter.disabled = true;
+        inMeter.style.background = '#f1f5f9';
+        inMeter.value = '';
+      }
+      // W trybie wagi 1 sztuki znika uzupełnienie długości pojedynczej
+      if (lenWrapper && gridEl) {
+        lenWrapper.style.display = 'none';
+        gridEl.style.gridTemplateColumns = '1fr';
+      }
+    }
   }
 
   function parseCustomWeightVal(val) {
@@ -9478,21 +9547,19 @@
   }
 
   function onCustomMeterWeightInput() {
-    const rawVal = document.getElementById('matCustomMeterWeight') ? document.getElementById('matCustomMeterWeight').value : '';
-    const meterW = parseCustomWeightVal(rawVal);
-    const len = parseFloat(document.getElementById('matFormLength') ? document.getElementById('matFormLength').value : 6000) || 6000;
-    if (meterW > 0 && len > 0 && document.getElementById('matCustomUnitWeight')) {
-      document.getElementById('matCustomUnitWeight').value = (meterW * (len / 1000)).toFixed(3);
+    // Po wpisaniu wagi 1m bieżącego przełącz i wymuś tryb meter
+    if (currentCustomWeightMode !== 'meter') {
+      currentCustomWeightMode = 'meter';
+      applyCustomWeightModeUI('meter');
     }
     recalcCurrentProfilePreview();
   }
 
   function onCustomUnitWeightInput() {
-    const rawVal = document.getElementById('matCustomUnitWeight') ? document.getElementById('matCustomUnitWeight').value : '';
-    const unitW = parseCustomWeightVal(rawVal);
-    const len = parseFloat(document.getElementById('matFormLength') ? document.getElementById('matFormLength').value : 6000) || 6000;
-    if (unitW > 0 && len > 0 && document.getElementById('matCustomMeterWeight')) {
-      document.getElementById('matCustomMeterWeight').value = (unitW / (len / 1000)).toFixed(3);
+    // Po wpisaniu wagi 1 sztuki przełącz i wymuś tryb unit
+    if (currentCustomWeightMode !== 'unit') {
+      currentCustomWeightMode = 'unit';
+      applyCustomWeightModeUI('unit');
     }
     recalcCurrentProfilePreview();
   }
@@ -9601,10 +9668,12 @@
     let len = parseFloat(document.getElementById('matFormLength') ? document.getElementById('matFormLength').value : 6000) || 0;
     if (type === 'sheet') {
       len = b; // Dla blachy długość pojedyncza to wymiar B (Długość arkusza)
+    } else if (type === 'custom' && currentCustomWeightMode === 'unit') {
+      len = 0; // Waga 1 sztuki nie zależy od długości profilu
     }
     const qty = parseInt(document.getElementById('matFormQty') ? document.getElementById('matFormQty').value : 1) || 1;
-    const customMeter = parseCustomWeightVal(document.getElementById('matCustomMeterWeight') ? document.getElementById('matCustomMeterWeight').value : 0);
-    const customUnit = parseCustomWeightVal(document.getElementById('matCustomUnitWeight') ? document.getElementById('matCustomUnitWeight').value : 0);
+    const customMeter = (type === 'custom' && currentCustomWeightMode === 'unit') ? 0 : parseCustomWeightVal(document.getElementById('matCustomMeterWeight') ? document.getElementById('matCustomMeterWeight').value : 0);
+    const customUnit = (type === 'custom' && currentCustomWeightMode === 'meter') ? 0 : parseCustomWeightVal(document.getElementById('matCustomUnitWeight') ? document.getElementById('matCustomUnitWeight').value : 0);
 
     const dummyItem = {
       type,
@@ -9614,6 +9683,7 @@
       length: len,
       qty,
       isCustom: (type === 'custom'),
+      isPiece: (type === 'custom' && currentCustomWeightMode === 'unit'),
       customMeterWeight: customMeter,
       customUnitWeight: customUnit
     };
@@ -9625,7 +9695,13 @@
     const totalEl = document.getElementById('matPreviewTotalWeight');
 
     if (unitEl) unitEl.innerHTML = `Waga 1 szt.: <strong>${weights.unitWeight.toFixed(3)} kg</strong>`;
-    if (meterEl) meterEl.innerHTML = `Waga metra (kg/m): <strong>${weights.meterWeight.toFixed(3)} kg/m</strong>`;
+    if (meterEl) {
+      if (type === 'custom' && currentCustomWeightMode === 'unit') {
+        meterEl.innerHTML = `Waga metra (kg/m): <strong>-</strong>`;
+      } else {
+        meterEl.innerHTML = `Waga metra (kg/m): <strong>${weights.meterWeight.toFixed(3)} kg/m</strong>`;
+      }
+    }
     if (totalEl) totalEl.innerHTML = `${weights.totalWeight.toFixed(3)} kg`;
   }
 
@@ -9642,18 +9718,38 @@
     const a = parseFloat(document.getElementById('matDimA') ? document.getElementById('matDimA').value : 0) || 0;
     const b = parseFloat(document.getElementById('matDimB') ? document.getElementById('matDimB').value : 0) || 0;
     const t = parseFloat(document.getElementById('matDimT') ? document.getElementById('matDimT').value : 0) || 0;
-    const len = parseFloat(document.getElementById('matFormLength').value) || 0;
+    let len = parseFloat(document.getElementById('matFormLength') ? document.getElementById('matFormLength').value : 0) || 0;
+    if (type === 'sheet') {
+      len = b;
+    } else if (type === 'custom' && currentCustomWeightMode === 'unit') {
+      len = 0;
+    }
     const qty = parseInt(document.getElementById('matFormQty').value) || 1;
-    const customMeter = parseCustomWeightVal(document.getElementById('matCustomMeterWeight') ? document.getElementById('matCustomMeterWeight').value : 0);
-    const customUnit = parseCustomWeightVal(document.getElementById('matCustomUnitWeight') ? document.getElementById('matCustomUnitWeight').value : 0);
+    const customMeter = (type === 'custom' && currentCustomWeightMode === 'unit') ? 0 : parseCustomWeightVal(document.getElementById('matCustomMeterWeight') ? document.getElementById('matCustomMeterWeight').value : 0);
+    const customUnit = (type === 'custom' && currentCustomWeightMode === 'meter') ? 0 : parseCustomWeightVal(document.getElementById('matCustomUnitWeight') ? document.getElementById('matCustomUnitWeight').value : 0);
 
-    if (len <= 0) {
+    const isPieceMode = (type === 'custom' && currentCustomWeightMode === 'unit');
+
+    if (!isPieceMode && len <= 0) {
       alert('Podaj prawidłową długość profilu!');
       return;
     }
     if (qty <= 0) {
       alert('Ilość sztuk musi wynosić co najmniej 1!');
       return;
+    }
+
+    if (type === 'custom') {
+      if (isPieceMode && customUnit <= 0) {
+        alert('Podaj wagę 1 sztuki [kg]!');
+        if (document.getElementById('matCustomUnitWeight')) document.getElementById('matCustomUnitWeight').focus();
+        return;
+      }
+      if (!isPieceMode && customMeter <= 0) {
+        alert('Podaj wagę 1 metra bieżącego [kg/m]!');
+        if (document.getElementById('matCustomMeterWeight')) document.getElementById('matCustomMeterWeight').focus();
+        return;
+      }
     }
 
     const newItem = {
@@ -9666,6 +9762,7 @@
       length: len,
       qty,
       isCustom: (type === 'custom'),
+      isPiece: isPieceMode,
       customMeterWeight: customMeter,
       customUnitWeight: customUnit
     };
