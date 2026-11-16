@@ -1576,6 +1576,9 @@
         <button class="btn-nav" id="btnNavMaterialSets" onclick="openMaterialSetsModal()" style="display: none;">
           📚 Zbiory materiałów
         </button>
+        <button class="btn-nav" id="btnNavPaintProducers" onclick="openPaintProducersModal()" style="display: none;">
+          🎨 Producenci farb
+        </button>
         <button class="btn-nav" id="adminPanelNavBtn" onclick="openAdminModal()" style="display: none; background: #fef3c7; color: #92400e; border-color: #fcd34d;">
           👑 Panel Administratora
         </button>
@@ -2021,9 +2024,10 @@
     <div class="panel no-print" style="width: 380px; min-width: 340px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 6px; flex-wrap: wrap;">
         <h2 style="margin: 0; font-size: 18px; color: #1e3a8a;">📋 Wykaz materiałów</h2>
-        <div style="display: flex; gap: 4px;">
-          <button type="button" class="btn-secondary" onclick="openProfilesModal()" style="font-size: 11px; padding: 4px 8px;">🧱 Magazyn profili</button>
-          <button type="button" class="btn-secondary" onclick="openMaterialSetsModal()" style="font-size: 11px; padding: 4px 8px; background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; font-weight: 600;">📚 Zbiory</button>
+        <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+          <button type="button" class="btn-secondary" onclick="openProfilesModal()" style="font-size: 11px; padding: 4px 7px;">🧱 Magazyn profili</button>
+          <button type="button" class="btn-secondary" onclick="openMaterialSetsModal()" style="font-size: 11px; padding: 4px 7px; background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; font-weight: 600;">📚 Zbiory</button>
+          <button type="button" class="btn-secondary" onclick="openPaintProducersModal()" style="font-size: 11px; padding: 4px 7px; background: #fdf4ff; color: #a21caf; border-color: #f5d0fe; font-weight: 600;">🎨 Producenci</button>
         </div>
       </div>
       <p style="font-size: 13px; color: #64748b; margin-bottom: 14px;">
@@ -2039,8 +2043,26 @@
       </div>
 
       <div class="form-group" style="margin-bottom: 12px;">
-        <label for="wmColorInput">Kolor (RAL):</label>
-        <input type="text" id="wmColorInput" list="suggestedColorsList" class="form-control" placeholder="np. 7016 str" oninput="handleWmColorInput(this.value)">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
+          <label for="wmColorInput" style="margin-bottom: 0;">Kolor (RAL):</label>
+          <button type="button" class="btn-secondary" onclick="openPaintProducersModal()" style="font-size: 10px; padding: 1px 6px; background: #fdf4ff; color: #a21caf; border-color: #f5d0fe;">🎨 Baza farb</button>
+        </div>
+        <input type="text" id="wmColorInput" list="suggestedColorsList" class="form-control" placeholder="np. 7016 str lub 581-7021" oninput="handleWmColorInput(this.value)">
+        <!-- Pasek producenta farby (automatyczne dopasowanie lub wybór wariantu) -->
+        <div id="wmPaintProducerRow" style="margin-top: 6px; display: none; background: #fdf4ff; border: 1px solid #f5d0fe; border-radius: 6px; padding: 6px 10px; font-size: 11.5px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
+            <span style="font-weight: 700; color: #86198f;">🎨 Producent farby:</span>
+            <span id="wmPaintProducerCountBadge" style="font-size: 10px; color: #a21caf; font-weight: 600;"></span>
+          </div>
+          <div id="wmPaintProducerSelectWrapper" style="display: none;">
+            <select id="wmPaintProducerSelect" class="form-control" style="font-size: 11.5px; padding: 3px 6px; background: #ffffff; font-weight: 600; color: #86198f;" onchange="onWmPaintProducerSelectChange(this.value)">
+              <!-- Opcje wyboru producenta, gdy jest ich więcej niż 1 -->
+            </select>
+          </div>
+          <div id="wmPaintProducerSingleDisplay" style="font-weight: bold; color: #701a75;">
+            <!-- Nazwa producenta, gdy jest dokładnie 1 -->
+          </div>
+        </div>
       </div>
 
       <!-- Wstawianie gotowego zbioru profili (z obsługą podzbiorów i pakietów) -->
@@ -2182,7 +2204,7 @@
             </tr>
             <tr style="height: 28px;">
               <td colspan="4" style="border-left: 1px solid #000000; border-right: 1px solid #000000; border-top: none; border-bottom: none; font-size: 12pt; font-weight: bold; padding: 2px 14px; color: #1e3a8a; text-align: center; vertical-align: middle;">
-                Kolor: <span id="wmViewColor">-</span>
+                Kolor: <span id="wmViewColor">-</span> <span id="wmViewProducer" style="font-weight: normal; color: #701a75; font-size: 11pt; margin-left: 6px;"></span>
               </td>
               <td class="no-print" style="border: none;"></td>
             </tr>
@@ -3153,6 +3175,78 @@
     <div style="display: flex; justify-content: flex-end; gap: 8px;">
       <button type="button" class="btn-secondary" onclick="closeCopyFromMaterialSetModal()">Anuluj</button>
       <button type="button" class="btn-primary" onclick="confirmCopyFromSourceMaterialSet()" style="background: #16a34a; border-color: #15803d; font-weight: bold;">📋 Kopiuj pozycje</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================
+     MODAL BAZY PRODUCENTÓW FARB (Wykaz materiałów)
+     ======================================================== -->
+<div class="modal-overlay" id="paintProducersModal">
+  <div class="modal-box" style="width: 1050px; max-width: 96%; max-height: 94vh; display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; padding: 16px 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <h3 style="margin: 0; color: #86198f; display: flex; align-items: center; gap: 8px;">
+        <span>🎨</span> Baza producentów farb (Wykaz materiałów)
+      </h3>
+      <button class="btn-secondary" onclick="closePaintProducersModal()" style="padding: 4px 10px;">✕</button>
+    </div>
+    <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">
+      Baza przypisuje producenta farby (np. <em>Tigard</em>, <em>Pulver</em>, <em>Axalta</em>) do koloru RAL. Po wpisaniu koloru w Wykazie Materiałów producent dopasowuje się automatycznie (przy wielu wariantach pojawia się wybór), bez dopisywania go do nazwy pliku Excel.
+    </p>
+
+    <!-- Formularz dodawania / edycji producenta -->
+    <div style="background: #fdf4ff; border: 1px solid #f5d0fe; border-radius: 8px; padding: 12px; margin-bottom: 14px;">
+      <h4 id="paintProducerFormTitle" style="font-size: 13px; margin-bottom: 8px; color: #86198f;">Dodaj nowego producenta do koloru:</h4>
+      <div style="display: grid; grid-template-columns: 1.5fr 1.5fr 2fr 2fr auto; gap: 8px; align-items: flex-end;">
+        <div>
+          <label style="font-size: 11px; font-weight: 600;">Kolor RAL / wzorzec:</label>
+          <input type="text" id="newProducerColor" class="form-control" placeholder="np. 7016 lub 581-7021" style="font-size: 12px; padding: 6px; font-weight: bold;">
+        </div>
+        <div>
+          <label style="font-size: 11px; font-weight: 600;">Producent farby:</label>
+          <input type="text" id="newProducerName" class="form-control" placeholder="np. Tigard, Pulver, Axalta" style="font-size: 12px; padding: 6px; font-weight: bold; color: #86198f;">
+        </div>
+        <div>
+          <label style="font-size: 11px; font-weight: 600;">Symbol / kod farby (opcjonalnie):</label>
+          <input type="text" id="newProducerSymbol" class="form-control" placeholder="np. RAL 7016 Matt, Alesta" style="font-size: 12px; padding: 6px;">
+        </div>
+        <div>
+          <label style="font-size: 11px; font-weight: 600;">Uwagi / opis (opcjonalnie):</label>
+          <input type="text" id="newProducerNotes" class="form-control" placeholder="np. Drobna struktura, standard" style="font-size: 12px; padding: 6px;">
+        </div>
+        <div style="display: flex; gap: 4px;">
+          <button type="button" id="btnCancelEditProducer" class="btn-secondary" onclick="resetPaintProducerForm()" style="display: none; padding: 6px 10px; font-size: 12px;">Anuluj</button>
+          <button type="button" id="btnSaveProducerForm" class="btn-primary" onclick="savePaintProducerFromForm()" style="padding: 7px 14px; font-size: 12.5px; font-weight: bold; background: #a21caf; border-color: #86198f;">+ Dodaj do bazy</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabela producentów farb -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <div style="font-weight: 700; font-size: 12px; color: #1e293b;">Zapisani producenci i przypisane kolory:</div>
+      <input type="text" id="searchPaintProducersInput" class="form-control" placeholder="🔍 Szukaj koloru lub producenta..." oninput="renderPaintProducersTable()" style="width: 280px; font-size: 11.5px; padding: 4px 8px;">
+    </div>
+
+    <div style="flex: 1; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; background: #ffffff;">
+      <table class="warehouse-table" style="margin: 0;">
+        <thead>
+          <tr style="background: #f1f5f9;">
+            <th style="width: 40px; text-align: center;">Lp.</th>
+            <th style="width: 140px;">Kolor / RAL</th>
+            <th style="width: 180px;">Producent</th>
+            <th>Symbol / kod farby</th>
+            <th>Uwagi / opis</th>
+            <th style="width: 80px; text-align: center;">Akcje</th>
+          </tr>
+        </thead>
+        <tbody id="paintProducersTableBody">
+          <!-- Wiersze generowane dynamicznie -->
+        </tbody>
+      </table>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
+      <button class="btn-secondary" onclick="closePaintProducersModal()">Zamknij</button>
     </div>
   </div>
 </div>
@@ -8314,6 +8408,270 @@
     alert(`Dodano ${itemsToAdd.length} pozycji ze zbioru "${chosenSet.title}" do Wykazu Materiałów!`);
   }
 
+  // ========================================================
+  // BAZA PRODUCENTÓW FARB (Wykaz materiałów)
+  // Automatyczne przypisywanie producenta po kolorze RAL
+  // ========================================================
+  const defaultPaintProducers = [
+    { id: 1, colorPattern: '7016', producer: 'Tigard', symbol: 'RAL 7016 Matt', notes: 'Główny dostawca antracytu' },
+    { id: 2, colorPattern: '7016', producer: 'Pulver', symbol: 'RAL 7016 Mat', notes: 'Wariant alternatywny' },
+    { id: 3, colorPattern: '7021', producer: 'Tigard', symbol: 'RAL 7021', notes: 'Ciemnoszary' },
+    { id: 4, colorPattern: '9005', producer: 'Tigard', symbol: 'RAL 9005 Głęboka czerń', notes: 'Czarny mat' },
+    { id: 5, colorPattern: '9005', producer: 'Axalta', symbol: 'Alesta 9005 Fine Texture', notes: 'Drobna struktura' },
+    { id: 6, colorPattern: '9016', producer: 'Tigard', symbol: 'RAL 9016 Biały beskidzki', notes: 'Biel alpejska' },
+    { id: 7, colorPattern: '8017', producer: 'Tigard', symbol: 'RAL 8017 Czekoladowy brąz', notes: 'Brąz mat' },
+    { id: 8, colorPattern: '8019', producer: 'Tigard', symbol: 'RAL 8019 Szary brąz', notes: 'Ciemny brąz' },
+    { id: 9, colorPattern: '7035', producer: 'Pulver', symbol: 'RAL 7035 Jasnoszary', notes: 'Szary jasny' }
+  ];
+
+  let paintProducers = JSON.parse(localStorage.getItem('order_app_paint_producers')) || defaultPaintProducers;
+  let editingPaintProducerIndex = -1;
+
+  function openPaintProducersModal() {
+    if (!requireLogin('Aby zarządzać bazą producentów farb, musisz być zalogowany.')) return;
+    editingPaintProducerIndex = -1;
+    resetPaintProducerForm();
+    renderPaintProducersTable();
+    document.getElementById('paintProducersModal').style.display = 'flex';
+    fetchCloudPaintProducers();
+  }
+
+  function closePaintProducersModal() {
+    document.getElementById('paintProducersModal').style.display = 'none';
+  }
+
+  function resetPaintProducerForm() {
+    editingPaintProducerIndex = -1;
+    const fTitle = document.getElementById('paintProducerFormTitle');
+    if (fTitle) fTitle.textContent = 'Dodaj nowego producenta do koloru:';
+    const btnCancel = document.getElementById('btnCancelEditProducer');
+    if (btnCancel) btnCancel.style.display = 'none';
+    const btnSave = document.getElementById('btnSaveProducerForm');
+    if (btnSave) btnSave.textContent = '+ Dodaj do bazy';
+
+    const colIn = document.getElementById('newProducerColor');
+    const prodIn = document.getElementById('newProducerName');
+    const symIn = document.getElementById('newProducerSymbol');
+    const notesIn = document.getElementById('newProducerNotes');
+
+    if (colIn) colIn.value = '';
+    if (prodIn) prodIn.value = '';
+    if (symIn) symIn.value = '';
+    if (notesIn) notesIn.value = '';
+  }
+
+  function editPaintProducer(idx) {
+    if (!requireLogin('Aby edytować producentów farb, musisz być zalogowany.')) return;
+    const p = paintProducers[idx];
+    if (!p) return;
+
+    editingPaintProducerIndex = idx;
+    const fTitle = document.getElementById('paintProducerFormTitle');
+    if (fTitle) fTitle.textContent = `Edytuj producenta dla koloru: ${p.colorPattern}`;
+    const btnCancel = document.getElementById('btnCancelEditProducer');
+    if (btnCancel) btnCancel.style.display = 'inline-block';
+    const btnSave = document.getElementById('btnSaveProducerForm');
+    if (btnSave) btnSave.textContent = '💾 Zapisz zmiany';
+
+    document.getElementById('newProducerColor').value = p.colorPattern || '';
+    document.getElementById('newProducerName').value = p.producer || '';
+    document.getElementById('newProducerSymbol').value = p.symbol || '';
+    document.getElementById('newProducerNotes').value = p.notes || '';
+
+    document.getElementById('newProducerColor').focus();
+  }
+
+  function savePaintProducerFromForm() {
+    if (!requireLogin('Musisz być zalogowany.')) return;
+    const col = (document.getElementById('newProducerColor').value || '').trim();
+    const prod = (document.getElementById('newProducerName').value || '').trim();
+    const sym = (document.getElementById('newProducerSymbol').value || '').trim();
+    const notes = (document.getElementById('newProducerNotes').value || '').trim();
+
+    if (!col) {
+      alert('Podaj kolor lub wzorzec RAL (np. 7016 lub 581-7021)!');
+      document.getElementById('newProducerColor').focus();
+      return;
+    }
+    if (!prod) {
+      alert('Podaj nazwę producenta farby (np. Tigard, Pulver, Axalta)!');
+      document.getElementById('newProducerName').focus();
+      return;
+    }
+
+    if (editingPaintProducerIndex >= 0 && paintProducers[editingPaintProducerIndex]) {
+      // Edycja
+      paintProducers[editingPaintProducerIndex].colorPattern = col;
+      paintProducers[editingPaintProducerIndex].producer = prod;
+      paintProducers[editingPaintProducerIndex].symbol = sym;
+      paintProducers[editingPaintProducerIndex].notes = notes;
+    } else {
+      // Nowy
+      paintProducers.push({
+        id: Date.now(),
+        colorPattern: col,
+        producer: prod,
+        symbol: sym,
+        notes: notes,
+        createdAt: Date.now()
+      });
+    }
+
+    localStorage.setItem('order_app_paint_producers', JSON.stringify(paintProducers));
+    syncPaintProducersWithCloud();
+    resetPaintProducerForm();
+    renderPaintProducersTable();
+    updatePaintProducerForCurrentColor();
+  }
+
+  function deletePaintProducer(idx) {
+    if (!requireLogin('Aby usuwać producentów farb, musisz być zalogowany.')) return;
+    const p = paintProducers[idx];
+    if (!p) return;
+    if (confirm(`Czy na pewno usunąć wpis producenta "${p.producer}" dla koloru "${p.colorPattern}"?`)) {
+      paintProducers.splice(idx, 1);
+      localStorage.setItem('order_app_paint_producers', JSON.stringify(paintProducers));
+      syncPaintProducersWithCloud();
+      if (editingPaintProducerIndex === idx) resetPaintProducerForm();
+      renderPaintProducersTable();
+      updatePaintProducerForCurrentColor();
+    }
+  }
+
+  function renderPaintProducersTable() {
+    const tbody = document.getElementById('paintProducersTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const query = (document.getElementById('searchPaintProducersInput') ? document.getElementById('searchPaintProducersInput').value : '').toLowerCase().trim();
+
+    let filtered = paintProducers.map((p, originalIdx) => ({ ...p, originalIdx }));
+    if (query) {
+      filtered = filtered.filter(p => {
+        const c = (p.colorPattern || '').toLowerCase();
+        const pr = (p.producer || '').toLowerCase();
+        const s = (p.symbol || '').toLowerCase();
+        const n = (p.notes || '').toLowerCase();
+        return c.includes(query) || pr.includes(query) || s.includes(query) || n.includes(query);
+      });
+    }
+
+    filtered.sort((a, b) => (a.colorPattern || '').localeCompare(b.colorPattern || '', 'pl', { numeric: true }));
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #94a3b8; padding: 20px;">Brak wpisów producentów farb. Dodaj powyżej.</td></tr>';
+      return;
+    }
+
+    filtered.forEach((p, rIdx) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="text-align: center; color: #64748b; font-weight: bold;">${rIdx + 1}</td>
+        <td style="font-weight: 700; color: #1e3a8a;">${p.colorPattern || '-'}</td>
+        <td style="font-weight: 700; color: #86198f;">${p.producer || '-'}</td>
+        <td style="color: #475569;">${p.symbol || '-'}</td>
+        <td style="color: #64748b; font-size: 11.5px;">${p.notes || '-'}</td>
+        <td style="text-align: center; white-space: nowrap;">
+          <button type="button" class="btn-secondary" style="padding: 2px 7px; font-size: 11px; margin-right: 4px;" onclick="editPaintProducer(${p.originalIdx})">✏️</button>
+          <button type="button" class="btn-danger" style="padding: 2px 7px; font-size: 11px;" onclick="deletePaintProducer(${p.originalIdx})">✕</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // --- AUTOMATYCZNE PRZYPISYWANIE PRODUCENTA PO KOLORZE W WYKAZIE MATERIAŁÓW ---
+  function getMatchingProducersForColor(colorStr) {
+    if (!colorStr) return [];
+    const clean = colorStr.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!clean) return [];
+
+    return paintProducers.filter(p => {
+      const patClean = (p.colorPattern || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (!patClean) return false;
+      return clean.includes(patClean) || patClean.includes(clean);
+    });
+  }
+
+  function updatePaintProducerForCurrentColor() {
+    const colorVal = (wykazMaterialowState.color || (document.getElementById('wmColorInput') ? document.getElementById('wmColorInput').value : '') || '').trim();
+    const rowEl = document.getElementById('wmPaintProducerRow');
+    const badgeEl = document.getElementById('wmPaintProducerCountBadge');
+    const selectWrap = document.getElementById('wmPaintProducerSelectWrapper');
+    const selectEl = document.getElementById('wmPaintProducerSelect');
+    const singleEl = document.getElementById('wmPaintProducerSingleDisplay');
+    const viewProd = document.getElementById('wmViewProducer');
+
+    if (!colorVal) {
+      if (rowEl) rowEl.style.display = 'none';
+      wykazMaterialowState.paintProducer = '';
+      if (viewProd) viewProd.textContent = '';
+      return;
+    }
+
+    const matches = getMatchingProducersForColor(colorVal);
+
+    if (matches.length === 0) {
+      if (rowEl) {
+        rowEl.style.display = 'block';
+        if (badgeEl) badgeEl.textContent = 'brak w bazie';
+        if (selectWrap) selectWrap.style.display = 'none';
+        if (singleEl) {
+          singleEl.innerHTML = `<span style="color: #94a3b8; font-style: italic; font-weight: normal;">Brak przypisanego producenta w bazie (możesz dodać w "Baza farb")</span>`;
+        }
+      }
+      wykazMaterialowState.paintProducer = '';
+      if (viewProd) viewProd.textContent = '';
+      return;
+    }
+
+    if (rowEl) rowEl.style.display = 'block';
+
+    if (matches.length === 1) {
+      // Dokładnie 1 producent
+      const m = matches[0];
+      wykazMaterialowState.paintProducer = m.producer + (m.symbol ? ` (${m.symbol})` : '');
+      if (badgeEl) badgeEl.textContent = '1 dopasowanie';
+      if (selectWrap) selectWrap.style.display = 'none';
+      if (singleEl) {
+        singleEl.innerHTML = `<span style="font-weight: 700; color: #86198f;">${m.producer}</span>${m.symbol ? ` <span style="font-size: 11px; color: #475569;">(${m.symbol})</span>` : ''}`;
+      }
+      if (viewProd) viewProd.textContent = `[Producent: ${wykazMaterialowState.paintProducer}]`;
+    } else {
+      // Więcej niż 1 producent -> dajemy możliwość wyboru z rozwijanej listy
+      if (badgeEl) badgeEl.textContent = `${matches.length} producentów (wybierz z listy)`;
+      if (selectWrap) selectWrap.style.display = 'block';
+      if (singleEl) singleEl.innerHTML = '';
+
+      if (selectEl) {
+        const curSelected = wykazMaterialowState.paintProducer;
+        selectEl.innerHTML = '';
+        matches.forEach((m, idx) => {
+          const valStr = m.producer + (m.symbol ? ` (${m.symbol})` : '');
+          const opt = document.createElement('option');
+          opt.value = valStr;
+          opt.textContent = `${m.producer}${m.symbol ? ' - ' + m.symbol : ''}${m.notes ? ' [' + m.notes + ']' : ''}`;
+          if (curSelected && curSelected === valStr) {
+            opt.selected = true;
+          } else if (!curSelected && idx === 0) {
+            opt.selected = true;
+          }
+          selectEl.appendChild(opt);
+        });
+
+        // Ustaw aktywną wartość z selecta
+        wykazMaterialowState.paintProducer = selectEl.value;
+        if (viewProd) viewProd.textContent = `[Producent: ${wykazMaterialowState.paintProducer}]`;
+      }
+    }
+  }
+
+  function onWmPaintProducerSelectChange(val) {
+    wykazMaterialowState.paintProducer = val;
+    const viewProd = document.getElementById('wmViewProducer');
+    if (viewProd) viewProd.textContent = val ? `[Producent: ${val}]` : '';
+  }
+
   // --- MAGAZYN PROFILI (Wykaz materiałów) ---
   function restoreDefaultProfiles() {
     if (!confirm('Czy przywrócić fabryczną bazę profili i zaktualizować ją dla wszystkich?')) return;
@@ -8491,6 +8849,43 @@
     }
   }
 
+  // --- SYNCHRONIZACJA BAZY PRODUCENTÓW FARB Z CHMURĄ ---
+  async function fetchCloudPaintProducers() {
+    if (!CLOUD_API_URL) return;
+    try {
+      const res = await fetch(`${CLOUD_API_URL}/api/paint-producers`);
+      if (res.ok) {
+        const cloudProducers = await res.json();
+        if (Array.isArray(cloudProducers) && cloudProducers.length > 0) {
+          paintProducers = cloudProducers;
+          localStorage.setItem('order_app_paint_producers', JSON.stringify(paintProducers));
+
+          const modal = document.getElementById('paintProducersModal');
+          if (modal && modal.style.display === 'flex') {
+            renderPaintProducersTable();
+          }
+          // Odśwież dopasowanie w Wykazie Materiałów
+          updatePaintProducerForCurrentColor();
+        }
+      }
+    } catch (e) {
+      console.warn('Błąd pobierania bazy producentów farb z chmury:', e);
+    }
+  }
+
+  async function syncPaintProducersWithCloud() {
+    if (!CLOUD_API_URL) return;
+    try {
+      await fetch(`${CLOUD_API_URL}/api/paint-producers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(paintProducers)
+      });
+    } catch (e) {
+      console.warn('Nie udało się zapisać bazy producentów farb w chmurze:', e);
+    }
+  }
+
   // --- SYNCHRONIZACJA WSPÓŁDZIELONEJ BAZY PROFILI Z CHMURĄ (DLA WSZYSTKICH PRZYSTAWIANYCH UŻYTKOWNIKÓW) ---
   let isProfilesSyncing = false;
   let lastProfileLocalSaveTime = 0;
@@ -8620,6 +9015,8 @@
     wykazMaterialowState.color = val;
     const viewCol = document.getElementById('wmViewColor');
     if (viewCol) viewCol.textContent = val.trim() || '-';
+    // Automatycznie dopasuj lub zaoferuj wybór producenta farby
+    updatePaintProducerForCurrentColor();
   }
 
   function syncWmOrderFromEtykiety() {
@@ -8774,8 +9171,10 @@
     const tbody = document.getElementById('wmItemsTbody');
     const viewNum = document.getElementById('wmViewOrderNum');
     const viewCol = document.getElementById('wmViewColor');
+    const viewProd = document.getElementById('wmViewProducer');
     if (viewNum) viewNum.textContent = wykazMaterialowState.orderNumber || '_26';
     if (viewCol) viewCol.textContent = wykazMaterialowState.color || '-';
+    if (viewProd) viewProd.textContent = wykazMaterialowState.paintProducer ? `[Producent: ${wykazMaterialowState.paintProducer}]` : '';
     if (!tbody) return;
 
     tbody.innerHTML = '';
@@ -8827,6 +9226,7 @@
           zip.file(f, WM_EXCEL_TEMPLATE_FILES[f], { base64: true });
         });
 
+        const producerText = wykazMaterialowState.paintProducer ? ` [Producent: ${wykazMaterialowState.paintProducer}]` : '';
         const sharedList = [
           'Wykaz materiałów:',
           'Materiał',
@@ -8836,7 +9236,7 @@
           'Zamówienie: _24',
           'Długość [mm]',
           'Zamówienie: ' + orderNum,
-          'Kolor: ' + (colorVal || '-')
+          'Kolor: ' + (colorVal || '-') + producerText
         ];
 
         function getStrIdx(str) {
@@ -9014,6 +9414,7 @@
     const wmData = {
       orderNumber: orderNum,
       color: wykazMaterialowState.color || document.getElementById('wmColorInput').value || '',
+      paintProducer: wykazMaterialowState.paintProducer || '',
       items: JSON.parse(JSON.stringify(wykazMaterialowState.items)),
       savedAt: new Date().toLocaleString('pl-PL'),
       lastModifiedBy: activeWorker
@@ -9052,6 +9453,14 @@
 
     document.getElementById('wmOrderNumber').value = ord.orderNumber || '';
     handleWmOrderNumberInput(ord.orderNumber || '');
+
+    if (ord.wykazMaterialow && ord.wykazMaterialow.color) {
+      document.getElementById('wmColorInput').value = ord.wykazMaterialow.color;
+      handleWmColorInput(ord.wykazMaterialow.color);
+      if (ord.wykazMaterialow.paintProducer) {
+        wykazMaterialowState.paintProducer = ord.wykazMaterialow.paintProducer;
+      }
+    }
 
     if (ord.wykazMaterialow && Array.isArray(ord.wykazMaterialow.items)) {
       wykazMaterialowState.items = JSON.parse(JSON.stringify(ord.wykazMaterialow.items));
@@ -9452,12 +9861,14 @@
     const btnNavSets = document.getElementById('btnNavSets');
     const btnNavProfiles = document.getElementById('btnNavProfiles');
     const btnNavMaterialSets = document.getElementById('btnNavMaterialSets');
+    const btnNavPaintProducers = document.getElementById('btnNavPaintProducers');
 
     if (btnNavWhItems) btnNavWhItems.style.display = (page === 'labels') ? 'inline-flex' : 'none';
     if (btnNavOptions) btnNavOptions.style.display = (page === 'verpackung') ? 'inline-flex' : 'none';
     if (btnNavSets) btnNavSets.style.display = (page === 'verpackung') ? 'inline-flex' : 'none';
     if (btnNavProfiles) btnNavProfiles.style.display = (page === 'weights' || page === 'materials') ? 'inline-flex' : 'none';
     if (btnNavMaterialSets) btnNavMaterialSets.style.display = (page === 'materials') ? 'inline-flex' : 'none';
+    if (btnNavPaintProducers) btnNavPaintProducers.style.display = (page === 'materials') ? 'inline-flex' : 'none';
 
     if (page === 'verpackung') {
       populateVpSelects();
@@ -9509,9 +9920,9 @@
   fetchCloudWorkers();
   fetchCloudWarehouse();
   fetchCloudOrders();
-
-  // Ciągła synchronizacja magazynu pozycji i zamówień pomiędzy wszystkimi pracownikami
   fetchCloudProfiles();
+  fetchCloudMaterialSets();
+  fetchCloudPaintProducers();
 
   // Ciągła synchronizacja magazynów, profili i zamówień pomiędzy wszystkimi pracownikami
   setInterval(() => {
@@ -9521,6 +9932,7 @@
     fetchCloudSets();
     fetchCloudProfiles();
     fetchCloudMaterialSets();
+    fetchCloudPaintProducers();
   }, 5000);
 
   window.addEventListener('focus', () => {
@@ -9530,6 +9942,7 @@
     fetchCloudSets();
     fetchCloudProfiles();
     fetchCloudMaterialSets();
+    fetchCloudPaintProducers();
   });
 
   // ========================================================
