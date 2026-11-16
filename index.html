@@ -1001,6 +1001,39 @@
       background: #eff6ff;
     }
 
+    .wm-cell-textarea {
+      width: 100%;
+      min-height: 26px;
+      border: none;
+      outline: none;
+      font-family: inherit;
+      font-size: 13px;
+      background: transparent;
+      padding: 3px 4px;
+      box-sizing: border-box;
+      resize: none;
+      overflow: hidden;
+      line-height: 1.35;
+      display: block;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+
+    .wm-cell-textarea:focus {
+      background: #eff6ff;
+      border-radius: 3px;
+    }
+
+    body.printing-wm .wm-cell-textarea {
+      border: none !important;
+      background: transparent !important;
+      resize: none !important;
+      overflow: visible !important;
+      font-size: 10pt !important;
+      padding: 0 !important;
+      line-height: 1.25 !important;
+    }
+
     /* Kafelki zbiorów */
     .set-list-card {
       padding: 10px 12px;
@@ -9231,6 +9264,12 @@
     }
   }
 
+  function autoResizeWmTextarea(el) {
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = Math.max(26, el.scrollHeight) + 'px';
+  }
+
   function updateWmItemField(idx, field, val) {
     if (wykazMaterialowState.items[idx]) {
       wykazMaterialowState.items[idx][field] = val;
@@ -9290,6 +9329,7 @@
         }
         if (ghostEl) ghostEl.textContent = '';
         item._bestMatch = null;
+        autoResizeWmTextarea(inputEl);
       }
     } else if (event.key === 'Escape') {
       if (ghostEl) ghostEl.textContent = '';
@@ -9315,29 +9355,34 @@
 
     wykazMaterialowState.items.forEach((it, idx) => {
       const tr = document.createElement('tr');
-      tr.style.height = '34px';
+      tr.style.minHeight = '34px';
       tr.innerHTML = `
-        <td style="border: 1px solid #000000; padding: 4px 6px; position: relative;">
+        <td style="border: 1px solid #000000; padding: 4px 6px; position: relative; vertical-align: top;">
           <div class="autocomplete-wrapper" style="position: relative; width: 100%;">
             <div class="ghost-input-hint" id="wmGhostHint_${idx}" style="left: 8px;"></div>
-            <input type="text" id="wmMatInput_${idx}" class="vp-cell-input" value="${(it.material || '').replace(/"/g, '&quot;')}" placeholder="Wpisz materiał / profil..." oninput="handleWmMaterialTyping(${idx}, this.value)" onkeydown="handleWmMaterialKeydown(${idx}, event)" style="width: 100%; font-size: 13px; font-weight: 500; text-align: left; position: relative; z-index: 2; background: transparent;">
+            <textarea id="wmMatInput_${idx}" class="wm-cell-textarea" rows="1" placeholder="Wpisz materiał / profil..." oninput="handleWmMaterialTyping(${idx}, this.value); autoResizeWmTextarea(this);" onkeydown="handleWmMaterialKeydown(${idx}, event)" style="font-weight: 500; text-align: left; position: relative; z-index: 2; background: transparent;">${(it.material || '')}</textarea>
           </div>
         </td>
-        <td style="border: 1px solid #000000; padding: 4px 6px; text-align: center;">
-          <input type="text" id="wmLenInput_${idx}" class="vp-cell-input" style="text-align: center; font-size: 13px;" value="${(it.length !== undefined ? it.length : '').replace(/"/g, '&quot;')}" placeholder="np. 6000" oninput="updateWmItemField(${idx}, 'length', this.value)">
+        <td style="border: 1px solid #000000; padding: 4px 6px; text-align: center; vertical-align: top;">
+          <input type="text" id="wmLenInput_${idx}" class="vp-cell-input" style="text-align: center; font-size: 13px; padding-top: 3px;" value="${(it.length !== undefined ? it.length : '').replace(/"/g, '&quot;')}" placeholder="np. 6000" oninput="updateWmItemField(${idx}, 'length', this.value)">
         </td>
-        <td style="border: 1px solid #000000; padding: 4px 6px; text-align: center;">
-          <input type="text" class="vp-cell-input" style="text-align: center; font-weight: bold; font-size: 13px;" value="${(it.qty !== undefined ? it.qty : '').replace(/"/g, '&quot;')}" placeholder="np. 2" oninput="updateWmItemField(${idx}, 'qty', this.value)">
+        <td style="border: 1px solid #000000; padding: 4px 6px; text-align: center; vertical-align: top;">
+          <input type="text" class="vp-cell-input" style="text-align: center; font-weight: bold; font-size: 13px; padding-top: 3px;" value="${(it.qty !== undefined ? it.qty : '').replace(/"/g, '&quot;')}" placeholder="np. 2" oninput="updateWmItemField(${idx}, 'qty', this.value)">
         </td>
-        <td style="border: 1px solid #000000; padding: 4px 6px;">
-          <input type="text" class="vp-cell-input" value="${(it.remarks || '').replace(/"/g, '&quot;')}" placeholder="Opcjonalne uwagi..." oninput="updateWmItemField(${idx}, 'remarks', this.value)" style="width: 100%; font-size: 13px; text-align: left;">
+        <td style="border: 1px solid #000000; padding: 4px 6px; vertical-align: top;">
+          <textarea id="wmRemarksInput_${idx}" class="wm-cell-textarea" rows="1" placeholder="Opcjonalne uwagi..." oninput="updateWmItemField(${idx}, 'remarks', this.value); autoResizeWmTextarea(this);" style="text-align: left;">${(it.remarks || '')}</textarea>
         </td>
-        <td class="no-print" style="border: 1px solid #e2e8f0; text-align: center;">
+        <td class="no-print" style="border: 1px solid #e2e8f0; text-align: center; vertical-align: middle;">
           <button type="button" class="btn-danger" style="padding: 2px 6px; font-size: 11px;" onclick="removeWmItem(${idx})" title="Usuń pozycję">✕</button>
         </td>
       `;
       tbody.appendChild(tr);
     });
+
+    // Dopasuj automatycznie wysokość pól tekstowych po wyrenderowaniu
+    setTimeout(() => {
+      document.querySelectorAll('#wmItemsTbody textarea.wm-cell-textarea').forEach(el => autoResizeWmTextarea(el));
+    }, 0);
   }
 
   // --- EKSPORT DO EXCELA: [numer zamówienia, kolor].xlsx ORAZ WIERSZ Z KOLOREM ---
