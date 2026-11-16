@@ -7961,7 +7961,7 @@
     }
     updatePickMaterialProfileSelect('');
 
-    document.getElementById('pickMaterialProfileLength').value = '6000';
+    document.getElementById('pickMaterialProfileLength').value = '';
     document.getElementById('pickMaterialProfileQty').value = '1';
     document.getElementById('pickMaterialProfileRemarks').value = '';
     document.getElementById('pickMaterialProfileCustomName').value = '';
@@ -7982,7 +7982,12 @@
     const idx = parseInt(sel.value);
     const prof = materialsProfiles[idx];
     if (prof) {
-      if (prof.length) document.getElementById('pickMaterialProfileLength').value = prof.length;
+      const isPiece = !!(prof.isPiece || prof.is_piece || prof.unitMode === 'unit' || prof.length === '-' || prof.length === 'szt.' || (prof.length === '' && prof.weight));
+      if (isPiece || !prof.length) {
+        document.getElementById('pickMaterialProfileLength').value = '';
+      } else {
+        document.getElementById('pickMaterialProfileLength').value = prof.length;
+      }
       document.getElementById('pickMaterialProfileCustomName').value = prof.name || '';
     }
   }
@@ -8004,8 +8009,8 @@
       return;
     }
 
-    const length = (document.getElementById('pickMaterialProfileLength').value || '6000').trim();
-    const qty = (document.getElementById('pickMaterialProfileQty').value || '1').trim();
+    const length = (document.getElementById('pickMaterialProfileLength').value || '').trim();
+    const qty = (document.getElementById('pickMaterialProfileQty').value || '').trim();
     const remarks = (document.getElementById('pickMaterialProfileRemarks').value || '').trim();
 
     const newItem = { material: name, length, qty, remarks };
@@ -8146,7 +8151,7 @@
   }
 
   function addEmptyRowToPackageItems() {
-    tempPackageItems.push({ material: '', length: '6000', qty: '1', remarks: '' });
+    tempPackageItems.push({ material: '', length: '', qty: '1', remarks: '' });
     renderPackageItemsTable();
   }
 
@@ -8434,7 +8439,7 @@
         if (sub.packages && sub.packages[pkgIdx] && Array.isArray(sub.packages[pkgIdx].items)) {
           sub.packages[pkgIdx].items.forEach(it => {
             const copy = JSON.parse(JSON.stringify(it));
-            if (!copy.remarks) copy.remarks = `[${sub.name}: ${sub.packages[pkgIdx].title}]`;
+            // Nie dodajemy automatycznych uwag o podzbiorze
             itemsToAdd.push(copy);
           });
         }
@@ -8454,8 +8459,8 @@
     itemsToAdd.forEach(it => {
       wykazMaterialowState.items.push({
         material: it.material || '',
-        length: it.length || '6000',
-        qty: it.qty !== undefined ? String(it.qty) : '1',
+        length: (it.length !== undefined && it.length !== null) ? String(it.length) : '',
+        qty: (it.qty !== undefined && it.qty !== null) ? String(it.qty) : '',
         remarks: it.remarks || ''
       });
     });
