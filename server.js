@@ -49,8 +49,10 @@ if (DATABASE_URL && pg) {
       t NUMERIC(10, 2),
       profile_category VARCHAR(50),
       is_custom BOOLEAN DEFAULT FALSE,
+      is_piece BOOLEAN DEFAULT FALSE,
       created_at BIGINT
     );
+    ALTER TABLE etykiety_profiles ADD COLUMN IF NOT EXISTS is_piece BOOLEAN DEFAULT FALSE;
 
     CREATE TABLE IF NOT EXISTS etykiety_warehouse (
       id SERIAL PRIMARY KEY,
@@ -599,7 +601,7 @@ const server = http.createServer(async (req, res) => {
           res.end(JSON.stringify([]));
           return;
         }
-        const result = await pool.query('SELECT name, type, length, weight, a, b, t, profile_category as "profileCategory", is_custom as "isCustom", created_at as "createdAt" FROM etykiety_profiles ORDER BY id ASC');
+        const result = await pool.query('SELECT name, type, length, weight, a, b, t, profile_category as "profileCategory", is_custom as "isCustom", is_piece as "isPiece", created_at as "createdAt" FROM etykiety_profiles ORDER BY id ASC');
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify(result.rows));
       } catch (err) {
@@ -630,17 +632,18 @@ const server = http.createServer(async (req, res) => {
               for (const p of profiles) {
                 if (!p.name) continue;
                 await client.query(
-                  'INSERT INTO etykiety_profiles (name, type, length, weight, a, b, t, profile_category, is_custom, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
+                  'INSERT INTO etykiety_profiles (name, type, length, weight, a, b, t, profile_category, is_custom, is_piece, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)',
                   [
                     p.name.trim(),
                     p.type || 'Profil kwadrat/prost.',
-                    (p.length || '6000').toString(),
+                    (p.isPiece ? '' : (p.length || '6000')).toString(),
                     (p.weight !== undefined && p.weight !== null && p.weight !== '') ? parseFloat(p.weight) : null,
                     p.a ? parseFloat(p.a) : null,
                     p.b ? parseFloat(p.b) : null,
                     p.t ? parseFloat(p.t) : null,
                     p.profileCategory || '',
                     !!p.isCustom,
+                    !!p.isPiece,
                     p.createdAt || Date.now()
                   ]
                 );
