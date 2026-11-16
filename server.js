@@ -30,8 +30,13 @@ if (DATABASE_URL && pg) {
       username VARCHAR(100) UNIQUE NOT NULL,
       password_hash VARCHAR(255) NOT NULL,
       is_admin BOOLEAN DEFAULT FALSE,
+      is_approved BOOLEAN DEFAULT TRUE,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    ALTER TABLE etykiety_users ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT TRUE;
+    UPDATE etykiety_users SET is_approved = TRUE WHERE is_approved IS NULL;
+    UPDATE etykiety_users SET is_admin = TRUE, is_approved = TRUE WHERE LOWER(username) = 'dominika';
 
     CREATE TABLE IF NOT EXISTS etykiety_profiles (
       id SERIAL PRIMARY KEY,
@@ -138,7 +143,7 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
-        const result = await pool.query('SELECT id, username, password_hash, is_admin FROM etykiety_users WHERE LOWER(username) = LOWER($1)', [cleanUser]);
+        const result = await pool.query('SELECT id, username, password_hash, is_admin, is_approved FROM etykiety_users WHERE LOWER(username) = LOWER($1)', [cleanUser]);
         if (result.rows.length === 0 || result.rows[0].password_hash !== pwdHash) {
           res.writeHead(401, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Nieprawidłowy login lub hasło' }));
@@ -146,6 +151,15 @@ const server = http.createServer(async (req, res) => {
         }
 
         const user = result.rows[0];
+
+        // Sprawdzenie czy konto zostało zatwierdzone przez administratora (Dominikę)
+        const isDominika = user.username.toLowerCase() === 'dominika';
+        if (!isDominika && user.is_approved === false) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Twoje konto oczekuje na zatwierdzenie przez Administratora (Dominikę).' }));
+          return;
+        }
+
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
           success: true,
@@ -184,13 +198,24 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
+        // Konto domyślnie oczekuje na akceptację przez administratora (chyba że to 'dominika')
+        const isDominika = cleanUser.toLowerCase() === 'dominika';
+        const isApproved = isDominika;
+        const isAdmin = isDominika;
+
         await pool.query(
-          'INSERT INTO etykiety_users (username, password_hash, is_admin) VALUES ($1, $2, $3)',
-          [cleanUser, pwdHash, false]
+          'INSERT INTO etykiety_users (username, password_hash, is_admin, is_approved) VALUES ($1, $2, $3, $4)',
+          [cleanUser, pwdHash, isAdmin, isApproved]
         );
 
         res.writeHead(201, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true, username: cleanUser, isAdmin: false }));
+        res.end(JSON.stringify({
+          success: true,
+          username: cleanUser,
+          isAdmin: isAdmin,
+          isApproved: isApproved,
+          message: isApproved ? 'Konto utworzone i aktywne.' : 'Konto zostało zarejestrowane. Oczekuje na zatwierdzenie przez Administratora.'
+        }));
       } catch (e) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Błąd rejestracji' }));
@@ -202,7 +227,7 @@ const server = http.createServer(async (req, res) => {
   // --- API ADMIN: POBIERANIE WSZYSTKICH PRACOWNIKÓW ---
   if (url.pathname === '/api/admin/users' && req.method === 'GET') {
     try {
-      const result = await pool.query('SELECT id, username, is_admin, to_char(created_at, \'YYYY-MM-DD HH24:MI\') as created_at FROM etykiety_users ORDER BY id ASC');
+      const result = await pool.query('SELECT id, username, is_admin, COALESCE(is_approved, TRUE) as is_approved, to_char(created_at, \'YYYY-MM-DD HH24:MI\') as created_at FROM etykiety_users ORDER BY is_approved ASC, id ASC');
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify(result.rows));
     } catch (e) {
@@ -212,13 +237,45 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // --- API ADMIN: AKCEPTACJA LUB ODRZUCENIE OCZEKUJĄCEGO KONTA ---
+  if (url.pathname === '/api/admin/users/approve' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        const { id, approve } = JSON.parse(body);
+        if (!id) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Brak ID użytkownika' }));
+          return;
+        }
+
+        if (approve === false) {
+          // Odrzucenie konta = usunięcie z bazy
+          await pool.query('DELETE FROM etykiety_users WHERE id = $1 AND username != \'dominika\'', [id]);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true, rejected: true }));
+        } else {
+          // Akceptacja konta
+          await pool.query('UPDATE etykiety_users SET is_approved = TRUE WHERE id = $1', [id]);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true, approved: true }));
+        }
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Błąd akceptacji konta' }));
+      }
+    });
+    return;
+  }
+
   // --- API ADMIN: EDYCJA PRACOWNIKA (zmiana loginu lub reset hasła) ---
   if (url.pathname === '/api/admin/users/update' && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => body += chunk);
     req.on('end', async () => {
       try {
-        const { id, username, newPassword } = JSON.parse(body);
+        const { id, username, newPassword, isApproved } = JSON.parse(body);
         if (!id || !username) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Brak id lub loginu' }));
@@ -232,6 +289,10 @@ const server = http.createServer(async (req, res) => {
           await pool.query('UPDATE etykiety_users SET username = $1, password_hash = $2 WHERE id = $3', [cleanUser, hash, id]);
         } else {
           await pool.query('UPDATE etykiety_users SET username = $1 WHERE id = $2', [cleanUser, id]);
+        }
+
+        if (typeof isApproved === 'boolean') {
+          await pool.query('UPDATE etykiety_users SET is_approved = $1 WHERE id = $2', [isApproved, id]);
         }
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -279,7 +340,7 @@ const server = http.createServer(async (req, res) => {
   // --- API LISTA LOGINÓW (PUBLICZNA DLA WYBORU PRACOWNIKA) ---
   if (url.pathname === '/api/workers' && req.method === 'GET') {
     try {
-      const result = await pool.query('SELECT username FROM etykiety_users ORDER BY username ASC');
+      const result = await pool.query('SELECT username FROM etykiety_users WHERE is_approved = TRUE ORDER BY username ASC');
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify(result.rows.map(r => r.username)));
     } catch (e) {
