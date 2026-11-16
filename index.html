@@ -3266,17 +3266,28 @@
     <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 14px;">
       <h4 id="profileFormTitle" style="font-size: 13px; margin-bottom: 8px; color: #1e293b;">Dodaj nowy profil:</h4>
       <input type="hidden" id="editProfileIndex" value="-1">
+      <div style="display: flex; gap: 18px; align-items: center; margin-bottom: 10px; background: #fff; padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1;">
+        <span style="font-size: 12px; font-weight: 700; color: #334155;">Typ rozliczenia:</span>
+        <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; margin: 0; font-weight: 600; color: #1e293b;">
+          <input type="radio" name="profileModalUnitType" id="profileTypeMeter" value="meter" checked onchange="onProfileModalUnitTypeChange()">
+          📏 Profil na metry bieżące (kg/m)
+        </label>
+        <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; margin: 0; font-weight: 600; color: #0284c7;">
+          <input type="radio" name="profileModalUnitType" id="profileTypePiece" value="piece" onchange="onProfileModalUnitTypeChange()">
+          📦 Akcesorium / 1 sztuka (kg/szt.)
+        </label>
+      </div>
       <div style="display: grid; grid-template-columns: 2.5fr 1fr 1fr; gap: 10px; margin-bottom: 10px;">
         <div>
-          <label style="font-size: 11px; font-weight: 600;">Nazwa profilu:</label>
+          <label style="font-size: 11px; font-weight: 600;">Nazwa profilu / elementu:</label>
           <input type="text" id="newProfileName" class="form-control" placeholder="np. Profil 100x100x3 lub Dekiel 80x50" style="font-size: 12px; padding: 6px;">
         </div>
-        <div>
-          <label style="font-size: 11px; font-weight: 600;">Dł. handlowa [mm]:</label>
+        <div id="newProfileLenWrapper">
+          <label id="newProfileLenLabel" style="font-size: 11px; font-weight: 600;">Dł. handlowa [mm]:</label>
           <input type="text" id="newProfileLen" class="form-control" placeholder="6000" value="6000" style="font-size: 12px; padding: 6px;">
         </div>
         <div>
-          <label style="font-size: 11px; font-weight: 600;">Waga [kg/m]:</label>
+          <label id="newProfileWeightLabel" style="font-size: 11px; font-weight: 600;">Waga 1 metra [kg/m]:</label>
           <input type="text" id="newProfileWeight" class="form-control" placeholder="np. 3.142 lub 0,26" style="font-size: 12px; padding: 6px;">
         </div>
       </div>
@@ -3301,10 +3312,10 @@
       <table class="warehouse-table">
         <thead>
           <tr>
-            <th class="wh-col-name">Nazwa profilu</th>
-            <th style="width: 140px; text-align: center;">Dł. handlowa</th>
-            <th style="width: 140px; text-align: right;">Waga (kg/m)</th>
-            <th style="width: 140px; text-align: right;">Waga 1 szt. (6m)</th>
+            <th class="wh-col-name">Nazwa profilu / elementu</th>
+            <th style="width: 130px; text-align: center;">Dł. handlowa</th>
+            <th style="width: 130px; text-align: right;">Waga (kg/m)</th>
+            <th style="width: 150px; text-align: right;">Waga 1 szt.</th>
             <th style="width: 120px; text-align: center;">Akcja</th>
           </tr>
         </thead>
@@ -9053,7 +9064,9 @@
       materialsProfiles.forEach((p, idx) => {
         const opt = document.createElement('option');
         opt.value = idx;
-        opt.textContent = p.name + (p.length ? ` (${p.length} mm)` : '');
+        const isPiece = !!(p.isPiece || p.is_piece || p.unitMode === 'unit' || p.length === '-' || p.length === 'szt.' || (p.length === '' && p.weight));
+        const lenText = isPiece ? ' (1 szt.)' : (p.length ? ` (${p.length} mm)` : ' (6000 mm)');
+        opt.textContent = p.name + lenText;
         sel.appendChild(opt);
       });
     }
@@ -9071,11 +9084,12 @@
       if (wykazMaterialowState.items.length === 2 && !wykazMaterialowState.items[0].material && !wykazMaterialowState.items[1].material) {
         wykazMaterialowState.items = [];
       }
+      const isPiece = !!(prof.isPiece || prof.is_piece || prof.unitMode === 'unit' || prof.length === '-' || prof.length === 'szt.' || (prof.length === '' && prof.weight));
       wykazMaterialowState.items.push({
         material: prof.name || '',
-        length: prof.length || '6000',
+        length: isPiece ? '' : (prof.length || '6000'),
         qty: '1',
-        remarks: ''
+        remarks: isPiece ? '1 szt.' : ''
       });
       renderWmView();
     }
@@ -11896,7 +11910,11 @@
     materialsProfiles.forEach((p, idx) => {
       const opt = document.createElement('option');
       opt.value = idx;
-      const wInfo = (p.weight !== undefined && p.weight !== null && p.weight !== '') ? ` (~ ${parseFloat(p.weight).toFixed(3)} kg/m)` : '';
+      const isPiece = !!(p.isPiece || p.is_piece || p.unitMode === 'unit' || p.length === '-' || p.length === 'szt.' || (p.length === '' && p.weight));
+      let wInfo = '';
+      if (p.weight !== undefined && p.weight !== null && p.weight !== '') {
+        wInfo = isPiece ? ` (${parseFloat(p.weight).toFixed(3)} kg / szt.)` : ` (~ ${parseFloat(p.weight).toFixed(3)} kg/m)`;
+      }
       opt.textContent = `${p.name}${wInfo}`;
       sel.appendChild(opt);
     });
@@ -11951,9 +11969,19 @@
     if (p.t && document.getElementById('matDimT')) document.getElementById('matDimT').value = p.t;
 
     if (targetType === 'custom') {
-      if (p.weight) {
-        document.getElementById('matCustomMeterWeight').value = p.weight;
-        onCustomMeterWeightInput();
+      const isPiece = !!(p.isPiece || p.is_piece || p.unitMode === 'unit' || p.length === '-' || p.length === 'szt.' || (p.length === '' && p.weight));
+      if (isPiece) {
+        setCustomWeightMode('unit');
+        if (p.weight && document.getElementById('matCustomUnitWeight')) {
+          document.getElementById('matCustomUnitWeight').value = p.weight;
+          onCustomUnitWeightInput();
+        }
+      } else {
+        setCustomWeightMode('meter');
+        if (p.weight && document.getElementById('matCustomMeterWeight')) {
+          document.getElementById('matCustomMeterWeight').value = p.weight;
+          onCustomMeterWeightInput();
+        }
       }
     }
 
@@ -11983,14 +12011,16 @@
       dummy.customMeterWeight = cMeter;
       dummy.customUnitWeight = cUnit;
     }
+    const isPiece = (type === 'custom' && typeof currentCustomWeightMode !== 'undefined' && currentCustomWeightMode === 'unit');
     const weights = calculateItemWeights(dummy, getCurrentDensity());
-    const profileWeight = weights.meterWeight;
+    const profileWeight = isPiece ? (dummy.customUnitWeight || weights.unitWeight || 0) : weights.meterWeight;
 
     const newProfile = {
       name,
       type: formatTypeNice(type),
-      length: len,
+      length: isPiece ? '' : len,
       weight: profileWeight,
+      isPiece: isPiece,
       a,
       b,
       t,
@@ -12224,15 +12254,30 @@
     listWithIdx.forEach((p) => {
       const idx = p.originalIdx;
       const tr = document.createElement('tr');
-      const meterW = (p.weight !== undefined && p.weight !== null && p.weight !== '') ? parseFloat(p.weight) : 0;
-      const lenVal = parseFloat(p.length) || 6000;
-      const unitW = meterW * (lenVal / 1000);
+      const isPiece = !!(p.isPiece || p.is_piece || p.unitMode === 'unit' || p.length === '-' || p.length === 'szt.' || (p.length === '' && p.weight));
+      const wVal = (p.weight !== undefined && p.weight !== null && p.weight !== '') ? parseFloat(p.weight) : 0;
+
+      let lenDisplay = '';
+      let meterWDisplay = '';
+      let unitWDisplay = '';
+
+      if (isPiece) {
+        lenDisplay = '<span style="color: #94a3b8; font-weight: 500;">-</span>';
+        meterWDisplay = '<span style="color: #94a3b8; font-size: 11px;">-</span>';
+        unitWDisplay = `<span style="font-weight: 800; color: #0284c7;">${wVal.toFixed(3)} kg</span> <span style="font-size: 11px; font-weight: normal; color: #64748b;">/ szt.</span>`;
+      } else {
+        const lenVal = (p.length && parseFloat(p.length) > 0) ? parseFloat(p.length) : 6000;
+        const unitW = wVal * (lenVal / 1000);
+        lenDisplay = (p.length ? p.length + ' mm' : '6000 mm');
+        meterWDisplay = `<span style="font-weight: 700; color: #0284c7;">${wVal.toFixed(3)} kg/m</span>`;
+        unitWDisplay = `<span style="font-weight: 800; color: #166534;">${unitW.toFixed(3)} kg</span> <span style="font-size: 11px; font-weight: normal; color: #64748b;">(${lenVal}mm)</span>`;
+      }
 
       tr.innerHTML = `
-        <td class="wh-col-name"><strong>${p.name}</strong></td>
-        <td style="text-align: center;">${p.length ? p.length + ' mm' : '6000 mm'}</td>
-        <td style="text-align: right; font-weight: 700; color: #0284c7;">${meterW.toFixed(3)} kg/m</td>
-        <td style="text-align: right; font-weight: 800; color: #166534;">${unitW.toFixed(3)} kg</td>
+        <td class="wh-col-name"><strong>${p.name}</strong>${isPiece ? ' <span style="font-size: 10px; background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: 600; margin-left: 4px;">1 szt.</span>' : ''}</td>
+        <td style="text-align: center;">${lenDisplay}</td>
+        <td style="text-align: right;">${meterWDisplay}</td>
+        <td style="text-align: right;">${unitWDisplay}</td>
         <td style="text-align: center; white-space: nowrap;">
           <button type="button" class="btn-primary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px;" onclick="selectSavedProfileFromDbModal(${idx})" title="Wstaw do formularza">Wstaw</button>
           <button type="button" class="btn-secondary" style="padding: 3px 8px; font-size: 11px; margin-right: 4px;" onclick="startEditProfile(${idx})" title="Edytuj profil">✏️</button>
@@ -12253,6 +12298,34 @@
     switchMainSubpage('weights');
   }
 
+  function onProfileModalUnitTypeChange() {
+    const isPiece = document.getElementById('profileTypePiece') && document.getElementById('profileTypePiece').checked;
+    const lenWrapper = document.getElementById('newProfileLenWrapper');
+    const weightLabel = document.getElementById('newProfileWeightLabel');
+    const weightInput = document.getElementById('newProfileWeight');
+    const lenInput = document.getElementById('newProfileLen');
+
+    if (isPiece) {
+      if (lenWrapper) lenWrapper.style.opacity = '0.35';
+      if (lenInput) {
+        lenInput.value = '';
+        lenInput.disabled = true;
+        lenInput.placeholder = '- (brak)';
+      }
+      if (weightLabel) weightLabel.textContent = 'Waga 1 sztuki [kg]:';
+      if (weightInput) weightInput.placeholder = 'np. 0.220 lub 0,5';
+    } else {
+      if (lenWrapper) lenWrapper.style.opacity = '1';
+      if (lenInput) {
+        lenInput.disabled = false;
+        if (!lenInput.value) lenInput.value = '6000';
+        lenInput.placeholder = '6000';
+      }
+      if (weightLabel) weightLabel.textContent = 'Waga 1 metra [kg/m]:';
+      if (weightInput) weightInput.placeholder = 'np. 3.142 lub 0,26';
+    }
+  }
+
   // Zarządzanie dodawaniem i edycją profilu w modalu (dokładnie jak w Magazynie Opcji)
   function saveProfileFromModalForm() {
     const name = (document.getElementById('newProfileName').value || '').trim();
@@ -12261,7 +12334,8 @@
       document.getElementById('newProfileName').focus();
       return;
     }
-    const len = (document.getElementById('newProfileLen').value || '6000').trim();
+    const isPiece = document.getElementById('profileTypePiece') && document.getElementById('profileTypePiece').checked;
+    const len = isPiece ? '' : (document.getElementById('newProfileLen').value || '6000').trim();
     const weightRaw = document.getElementById('newProfileWeight').value;
     const weightVal = parseCustomWeightVal(weightRaw);
 
@@ -12269,12 +12343,14 @@
 
     if (editIdx >= 0 && materialsProfiles[editIdx]) {
       materialsProfiles[editIdx].name = name;
+      materialsProfiles[editIdx].isPiece = isPiece;
       materialsProfiles[editIdx].length = len;
       materialsProfiles[editIdx].weight = (weightVal > 0) ? weightVal : null;
       materialsProfiles[editIdx].updatedAt = Date.now();
     } else {
       materialsProfiles.push({
         name,
+        isPiece: isPiece,
         length: len,
         weight: (weightVal > 0) ? weightVal : null,
         createdAt: Date.now()
@@ -12286,6 +12362,7 @@
     cancelEditProfile();
     renderProfilesTable();
     updateMatProfilesSelect();
+    updateWmProfilesSelect();
   }
 
   function startEditProfile(idx) {
@@ -12293,10 +12370,21 @@
     if (!p) return;
     document.getElementById('editProfileIndex').value = idx;
     document.getElementById('newProfileName').value = p.name || '';
-    document.getElementById('newProfileLen').value = p.length || '6000';
+    
+    const isPiece = !!(p.isPiece || p.is_piece || p.unitMode === 'unit' || p.length === '-' || p.length === 'szt.' || (p.length === '' && p.weight));
+    if (isPiece) {
+      if (document.getElementById('profileTypePiece')) document.getElementById('profileTypePiece').checked = true;
+    } else {
+      if (document.getElementById('profileTypeMeter')) document.getElementById('profileTypeMeter').checked = true;
+    }
+    onProfileModalUnitTypeChange();
+
+    if (!isPiece) {
+      document.getElementById('newProfileLen').value = p.length || '6000';
+    }
     document.getElementById('newProfileWeight').value = (p.weight !== undefined && p.weight !== null) ? p.weight : '';
     
-    document.getElementById('profileFormTitle').textContent = 'Edytuj profil: ' + (p.name || '');
+    document.getElementById('profileFormTitle').textContent = 'Edytuj pozycję: ' + (p.name || '');
     document.getElementById('saveProfileBtn').textContent = '💾 Zapisz zmiany';
     document.getElementById('cancelEditProfileBtn').style.display = 'inline-block';
     document.getElementById('newProfileName').focus();
@@ -12305,6 +12393,8 @@
   function cancelEditProfile() {
     document.getElementById('editProfileIndex').value = '-1';
     document.getElementById('newProfileName').value = '';
+    if (document.getElementById('profileTypeMeter')) document.getElementById('profileTypeMeter').checked = true;
+    onProfileModalUnitTypeChange();
     document.getElementById('newProfileLen').value = '6000';
     document.getElementById('newProfileWeight').value = '';
     document.getElementById('profileFormTitle').textContent = 'Dodaj nowy profil:';
