@@ -1569,9 +1569,12 @@
         <button class="btn-nav" id="btnNavSets" onclick="openSetsModal()" style="display: none;">
           📚 Magazyn zbiorów
         </button>
-        <!-- Magazyn profili - widoczny tylko na stronie Wykaz materiałów -->
+        <!-- Magazyn profili i zbiorów materiałów - widoczne na stronie Wykaz materiałów i Wagi -->
         <button class="btn-nav" id="btnNavProfiles" onclick="openProfilesModal()" style="display: none;">
           🧱 Magazyn profili
+        </button>
+        <button class="btn-nav" id="btnNavMaterialSets" onclick="openMaterialSetsModal()" style="display: none;">
+          📚 Zbiory materiałów
         </button>
         <button class="btn-nav" id="adminPanelNavBtn" onclick="openAdminModal()" style="display: none; background: #fef3c7; color: #92400e; border-color: #fcd34d;">
           👑 Panel Administratora
@@ -2016,9 +2019,12 @@
   <div class="workspace">
     <!-- Panel boczny konfiguracji Wykazu Materiałów -->
     <div class="panel no-print" style="width: 380px; min-width: 340px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 6px; flex-wrap: wrap;">
         <h2 style="margin: 0; font-size: 18px; color: #1e3a8a;">📋 Wykaz materiałów</h2>
-        <button type="button" class="btn-secondary" onclick="openProfilesModal()" style="font-size: 11px; padding: 4px 8px;">🧱 Magazyn profili</button>
+        <div style="display: flex; gap: 4px;">
+          <button type="button" class="btn-secondary" onclick="openProfilesModal()" style="font-size: 11px; padding: 4px 8px;">🧱 Magazyn profili</button>
+          <button type="button" class="btn-secondary" onclick="openMaterialSetsModal()" style="font-size: 11px; padding: 4px 8px; background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; font-weight: 600;">📚 Zbiory</button>
+        </div>
       </div>
       <p style="font-size: 13px; color: #64748b; margin-bottom: 14px;">
         Zestawienie materiałów do zamówienia. Formularz i eksport odwzorowują arkusz Excel.
@@ -2035,6 +2041,26 @@
       <div class="form-group" style="margin-bottom: 12px;">
         <label for="wmColorInput">Kolor (RAL):</label>
         <input type="text" id="wmColorInput" list="suggestedColorsList" class="form-control" placeholder="np. 7016 str" oninput="handleWmColorInput(this.value)">
+      </div>
+
+      <!-- Wstawianie gotowego zbioru profili (z obsługą podzbiorów i pakietów) -->
+      <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px; margin-bottom: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <label style="font-weight: 700; font-size: 12.5px; color: #166534; display: block; margin: 0;">
+            📚 Wstaw gotowy zbiór profili:
+          </label>
+          <button type="button" class="btn-secondary" onclick="openMaterialSetsModal()" style="font-size: 10.5px; padding: 2px 6px;">⚙️ Zarządzaj</button>
+        </div>
+        <div style="display: flex; gap: 6px; margin-bottom: 6px;">
+          <select id="wmSelectSet" class="form-control" style="flex: 1; font-size: 12px;" onchange="onWmSetSelectChange()">
+            <option value="">-- Wybierz zbiór profili --</option>
+          </select>
+          <button type="button" class="btn-primary" onclick="addMaterialSetToWm()" style="padding: 6px 12px; font-size: 13px; background: #16a34a; border-color: #15803d; font-weight: bold;">+ Dodaj</button>
+        </div>
+        <!-- Kontener na dynamiczne podzbiory / wybór pakietów -->
+        <div id="wmSubsetsSelectionContainer" style="display: none; background: #ffffff; border: 1px solid #86efac; border-radius: 6px; padding: 8px; margin-top: 6px;">
+          <!-- Wstrzykiwane dynamicznie listy wyboru pakietów podzbiorów -->
+        </div>
       </div>
 
       <!-- Szybkie wstawianie z bazy profili -->
@@ -2880,6 +2906,253 @@
     <div style="display: flex; justify-content: flex-end; gap: 8px;">
       <button type="button" class="btn-secondary" onclick="closeCopyFromSetModal()" style="padding: 6px 14px;">Anuluj</button>
       <button type="button" class="btn-primary" onclick="confirmCopyFromSourceSet()" style="padding: 6px 18px; font-weight: bold; background: #16a34a; border-color: #15803d;">📋 Kopiuj pozycje</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================
+     MODAL MAGAZYNU ZBIORÓW PROFILI (Wykaz materiałów)
+     ======================================================== -->
+<div class="modal-overlay" id="materialSetsModal">
+  <div class="modal-box" style="width: 1400px; max-width: 98%; max-height: 94vh; display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; padding: 16px 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <h3 style="margin: 0; color: #166534; display: flex; align-items: center; gap: 8px;">
+        <span>📚</span> Magazyn zbiorów profili (Wykaz materiałów)
+      </h3>
+      <button class="btn-secondary" onclick="closeMaterialSetsModal()" style="padding: 4px 10px;">✕</button>
+    </div>
+    <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">
+      Zbiory grupują profile pod konkretne konstrukcje (np. <em>Furtka standardowa</em>, <em>Brama przesuwna</em>). Możesz tworzyć w nich stałe profile oraz <strong>podzbiory z wariantami pakietów</strong> (np. różne słupki lub wypełnienia).
+    </p>
+
+    <!-- Formularz tworzenia nowego zbioru profili -->
+    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px; margin-bottom: 14px;">
+      <h4 style="font-size: 13px; margin-bottom: 8px; color: #166534;">Utwórz nowy zbiór profili:</h4>
+      <div style="display: grid; grid-template-columns: 1.5fr 1.5fr 2fr auto; gap: 8px; align-items: flex-end;">
+        <div>
+          <label style="font-size: 11px; font-weight: 600;">Element (np. Furtka, Przęsło, Brama):</label>
+          <input type="text" id="newMatSetElement" class="form-control" placeholder="np. Furtka" style="font-size: 12px; padding: 6px;">
+        </div>
+        <div>
+          <label style="font-size: 11px; font-weight: 600;">Model (np. Comb, Nu, Standard):</label>
+          <input type="text" id="newMatSetModel" class="form-control" placeholder="np. Comb" style="font-size: 12px; padding: 6px;">
+        </div>
+        <div>
+          <label style="font-size: 11px; font-weight: 600;">Indywidualna nazwa zbioru (opcjonalnie):</label>
+          <input type="text" id="newMatSetCustomTitle" class="form-control" placeholder="Domyślnie: Element - Model" style="font-size: 12px; padding: 6px;">
+        </div>
+        <button type="button" class="btn-primary" onclick="createMaterialSetFromForm()" style="padding: 7px 16px; font-size: 13px; font-weight: bold; background: #16a34a; border-color: #15803d;">+ Dodaj zbiór</button>
+      </div>
+    </div>
+
+    <!-- Lista zbiorów i szczegóły -->
+    <div style="display: grid; grid-template-columns: 340px 1fr; gap: 16px; flex: 1; min-height: 280px; overflow: hidden;">
+      <!-- Kolumna lewa: lista zbiorów -->
+      <div style="border: 1px solid #e2e8f0; border-radius: 8px; display: flex; flex-direction: column; background: #ffffff; overflow: hidden;">
+        <div style="padding: 8px; background: #f1f5f9; border-bottom: 1px solid #e2e8f0;">
+          <div style="font-weight: 600; font-size: 12px; margin-bottom: 6px;">Dostępne zbiory profili:</div>
+          <input type="text" id="searchMaterialSetsInput" class="form-control" placeholder="🔍 Szukaj zbioru..." oninput="renderMaterialSetsList()" style="width: 100%; font-size: 11px; padding: 4px 6px; margin-bottom: 5px;">
+          <select id="sortMaterialSetsSelect" class="form-control" style="width: 100%; font-size: 11px; padding: 4px 6px;" onchange="renderMaterialSetsList()">
+            <option value="alpha_asc">🔤 Alfabetycznie (A - Z)</option>
+            <option value="alpha_desc">🔤 Alfabetycznie (Z - A)</option>
+            <option value="newest">📅 Data dodania (najnowsze)</option>
+            <option value="oldest">📅 Data dodania (najstarsze)</option>
+          </select>
+        </div>
+        <div id="materialSetsListContainer" style="flex: 1; overflow-y: auto;">
+          <!-- Kafelki zbiorów profili -->
+        </div>
+      </div>
+
+      <!-- Kolumna prawa: zawartość wybranego zbioru -->
+      <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; background: #ffffff; display: flex; flex-direction: column; overflow-y: auto; flex: 1; min-height: 0;">
+        <div id="matSetDetailsHeader" style="margin-bottom: 10px;">
+          <h4 id="matSetDetailsTitle" style="font-size: 16px; color: #166534; margin-bottom: 4px;">Wybierz zbiór z listy po lewej</h4>
+          <div id="matSetDetailsMeta" style="font-size: 11px; color: #64748b;"></div>
+        </div>
+
+        <!-- 1. Sekcja profili stałych -->
+        <div id="matSetItemsTableWrapper" style="display: none; border-bottom: 1px solid #e2e8f0; margin-bottom: 12px;">
+          <div style="font-weight: 700; font-size: 12px; color: #1e3a8a; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+            <span>🧱 Profile stałe (wchodzą zawsze do zamówienia):</span>
+          </div>
+          <table class="warehouse-table" style="margin-top: 0; margin-bottom: 8px;">
+            <thead>
+              <tr style="background: #f1f5f9;">
+                <th style="width: 45px; text-align: center;">Lp.</th>
+                <th>Materiał / Profil</th>
+                <th style="width: 100px; text-align: center;">Długość [mm]</th>
+                <th style="width: 70px; text-align: center;">Ilość</th>
+                <th>Uwagi</th>
+                <th style="width: 40px; text-align: center;">✕</th>
+              </tr>
+            </thead>
+            <tbody id="matSetItemsTbody">
+              <!-- Pozycje stałe w zbiorze -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 2. Sekcja podzbiorów z pakietami wariantowymi -->
+        <div id="matSetSubsetsWrapper" style="display: none; margin-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-weight: 700; font-size: 12px; color: #065f46;">
+              📑 Podzbiory i pakiety wariantowe (do wyboru z rozwijanej listy):
+            </span>
+          </div>
+          <div id="matSetSubsetsList">
+            <!-- Karty podzbiorów i pakietów -->
+          </div>
+        </div>
+
+        <!-- Dolny pasek akcji zbioru -->
+        <div id="matSetDetailsActions" style="display: none; justify-content: space-between; align-items: center; margin-top: auto; border-top: 1px solid #e2e8f0; padding-top: 10px;">
+          <div id="matSetEditActionsLeft" style="display: none; display: flex; gap: 8px; flex-wrap: wrap;">
+            <button type="button" class="btn-secondary" onclick="openAddProfileToCurrentMaterialSetModal()" style="font-size: 12px; background: #f0fdf4; border-color: #86efac; color: #166534; font-weight: bold;">+ Dodaj profil stały</button>
+            <button type="button" class="btn-secondary" onclick="addNewMaterialSubset()" style="font-size: 12px; background: #ecfdf5; border-color: #a7f3d0; color: #047857; font-weight: bold;">+ Dodaj podzbiór (pakiety)</button>
+            <button type="button" class="btn-secondary" onclick="openCopyFromMaterialSetModal()" style="font-size: 12px; background: #eff6ff; border-color: #93c5fd; color: #1d4ed8;">📋 Kopiuj wzór z innego zbioru</button>
+          </div>
+          <div id="matSetViewActionsLeft">
+            <button type="button" class="btn-primary" onclick="startEditingCurrentMaterialSet()" style="font-size: 13px; padding: 6px 14px; font-weight: bold; background: #16a34a; border-color: #15803d;">✏️ Edytuj zbiór</button>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn-danger" onclick="deleteCurrentMaterialSet()" style="font-size: 12px; padding: 4px 10px;">Usuń cały zbiór</button>
+            <button type="button" id="btnCancelEditMatSet" class="btn-secondary" onclick="cancelEditingCurrentMaterialSet()" style="display: none; font-size: 12px; padding: 6px 12px;">Anuluj</button>
+            <button type="button" id="btnSaveEditMatSet" class="btn-success" onclick="saveCurrentMaterialSetChanges()" style="display: none; font-size: 12px; padding: 6px 14px; font-weight: bold;">💾 Zapisz zmiany w zbiorze</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
+      <button class="btn-secondary" onclick="closeMaterialSetsModal()">Zamknij</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Dodawania Profilu Stałego do Zbioru -->
+<div class="modal-overlay" id="pickMaterialProfileModal" style="z-index: 10005;">
+  <div class="modal-box" style="width: 540px; max-width: 95%;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <h3 style="margin: 0; font-size: 16px; color: #166534;">➕ Dodaj profil do zbioru</h3>
+      <button type="button" class="btn-secondary" onclick="closePickMaterialProfileModal()" style="padding: 3px 8px; font-size: 13px;">✕</button>
+    </div>
+    
+    <div style="margin-bottom: 10px;">
+      <label style="display: block; font-size: 12px; font-weight: 600; color: #1e293b; margin-bottom: 4px;">Wybierz profil z bazy:</label>
+      <select id="pickMaterialProfileSelect" class="form-control" style="width: 100%; font-size: 13px; padding: 6px;" onchange="onPickMaterialProfileSelectChange()">
+        <option value="">-- Wybierz profil --</option>
+      </select>
+    </div>
+
+    <div style="margin-bottom: 10px;">
+      <label style="display: block; font-size: 12px; font-weight: 600; color: #1e293b; margin-bottom: 4px;">LUB wpisz własną nazwę profilu / materiału:</label>
+      <input type="text" id="pickMaterialProfileCustomName" class="form-control" placeholder="np. Profil 80x20x1.2 rama" style="font-size: 12px; padding: 6px;">
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+      <div>
+        <label style="display: block; font-size: 12px; font-weight: 600; color: #1e293b; margin-bottom: 4px;">Długość [mm]:</label>
+        <input type="text" id="pickMaterialProfileLength" class="form-control" placeholder="6000" value="6000" style="font-size: 12px; padding: 6px;">
+      </div>
+      <div>
+        <label style="display: block; font-size: 12px; font-weight: 600; color: #1e293b; margin-bottom: 4px;">Ilość [szt.]:</label>
+        <input type="text" id="pickMaterialProfileQty" class="form-control" placeholder="1" value="1" style="font-size: 12px; padding: 6px;">
+      </div>
+    </div>
+
+    <div style="margin-bottom: 14px;">
+      <label style="display: block; font-size: 12px; font-weight: 600; color: #1e293b; margin-bottom: 4px;">Uwagi (opcjonalnie):</label>
+      <input type="text" id="pickMaterialProfileRemarks" class="form-control" placeholder="np. Słupki furtki, Wypełnienie pionowe" style="font-size: 12px; padding: 6px;">
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 8px;">
+      <button type="button" class="btn-secondary" onclick="closePickMaterialProfileModal()">Anuluj</button>
+      <button type="button" class="btn-primary" onclick="confirmAddProfileToCurrentMaterialSet()" style="background: #16a34a; border-color: #15803d; font-weight: bold;">+ Wstaw profil</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Tworzenia / Edycji Pakietu w Podzbiorze -->
+<div class="modal-overlay" id="materialPackageModal" style="z-index: 10006;">
+  <div class="modal-box" style="width: 720px; max-width: 96%;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <h3 id="matPackageModalTitle" style="margin: 0; font-size: 16px; color: #065f46;">📦 Pakiet podzbioru</h3>
+      <button type="button" class="btn-secondary" onclick="closeMaterialPackageModal()" style="padding: 3px 8px; font-size: 13px;">✕</button>
+    </div>
+
+    <p style="font-size: 12.5px; color: #64748b; margin-bottom: 12px;">
+      Podaj tytuł pakietu (np. <em>Słupki 100x100</em>, <em>Wypełnienie pionowe 80x20</em>) oraz listę profili, które wejdą do zamówienia po wybraniu tego pakietu z listy.
+    </p>
+
+    <div style="margin-bottom: 12px;">
+      <label style="display: block; font-size: 12px; font-weight: 700; color: #1e293b; margin-bottom: 4px;">Tytuł pakietu:</label>
+      <input type="text" id="matPackageTitleInput" class="form-control" placeholder="np. Słupki 100x100x3 (L=2600)" style="font-size: 13px; font-weight: bold; padding: 7px;">
+    </div>
+
+    <div style="border: 1px solid #cbd5e1; border-radius: 6px; max-height: 260px; overflow-y: auto; margin-bottom: 10px;">
+      <table class="warehouse-table" style="margin: 0;">
+        <thead>
+          <tr style="background: #f8fafc;">
+            <th style="width: 35px; text-align: center;">Lp.</th>
+            <th>Nazwa profilu / materiału</th>
+            <th style="width: 100px; text-align: center;">Długość [mm]</th>
+            <th style="width: 70px; text-align: center;">Ilość</th>
+            <th style="width: 45px; text-align: center;">Usuń</th>
+          </tr>
+        </thead>
+        <tbody id="matPackageItemsTbody">
+          <!-- Wiersze pakietu -->
+        </tbody>
+      </table>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+      <button type="button" class="btn-secondary" onclick="addEmptyRowToPackageItems()" style="font-size: 12px;">
+        ➕ Dodaj profil do pakietu
+      </button>
+      <div style="display: flex; gap: 8px;">
+        <button type="button" class="btn-secondary" onclick="closeMaterialPackageModal()">Anuluj</button>
+        <button type="button" class="btn-success" onclick="saveCurrentMaterialPackage()" style="font-weight: bold;">💾 Zapisz pakiet</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Kopiowania Wzoru Zbioru Profili -->
+<div class="modal-overlay" id="copyFromMaterialSetModal" style="z-index: 10006;">
+  <div class="modal-box" style="width: 540px; max-width: 95%;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <h3 style="margin: 0; font-size: 16px; color: #166534;">📋 Kopiuj wzór zbioru profili</h3>
+      <button type="button" class="btn-secondary" onclick="closeCopyFromMaterialSetModal()" style="padding: 3px 8px;">✕</button>
+    </div>
+    
+    <p style="font-size: 13px; color: #475569; margin-bottom: 12px;">
+      Kopiujesz do zbioru: <strong id="copyTargetMatSetName" style="color: #166534;">-</strong>
+    </p>
+
+    <div style="margin-bottom: 12px;">
+      <label style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px;">Wybierz zbiór źródłowy:</label>
+      <select id="sourceMatSetSelect" class="form-control" style="width: 100%; font-size: 13px; padding: 6px;" onchange="onSourceMatSetSelectedChange()"></select>
+    </div>
+
+    <div id="sourceMatSetPreviewList" style="max-height: 180px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px; background: #f8fafc; padding: 8px; margin-bottom: 14px; font-size: 12px;"></div>
+
+    <div style="background: #f1f5f9; padding: 10px 12px; border-radius: 6px; margin-bottom: 16px; font-size: 12px;">
+      <div style="font-weight: 600; margin-bottom: 6px; color: #334155;">Jak chcesz skopiować pozycje?</div>
+      <label style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px; cursor: pointer;">
+        <input type="radio" name="copyMatSetMode" value="append" checked>
+        <span><strong>Dołącz</strong> pozycje i podzbiory do istniejących w tym zbiorze</span>
+      </label>
+      <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+        <input type="radio" name="copyMatSetMode" value="replace">
+        <span style="color: #b91c1c;"><strong>Zastąp</strong> (usuń dotychczasowe i wstaw zawartość wybranego)</span>
+      </label>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 8px;">
+      <button type="button" class="btn-secondary" onclick="closeCopyFromMaterialSetModal()">Anuluj</button>
+      <button type="button" class="btn-primary" onclick="confirmCopyFromSourceMaterialSet()" style="background: #16a34a; border-color: #15803d; font-weight: bold;">📋 Kopiuj pozycje</button>
     </div>
   </div>
 </div>
@@ -7018,6 +7291,1029 @@
     }
   }
 
+  // ========================================================
+  // MAGAZYN ZBIORÓW PROFILI I MATERIAŁÓW (Wykaz materiałów)
+  // Obsługa zbiorów, podzbiorów i pakietów profili
+  // ========================================================
+  const defaultMaterialSets = [
+    {
+      id: 1,
+      title: 'Furtka standardowa (Rama + Słupki + Wypełnienie)',
+      element: 'Furtka',
+      model: 'Standard',
+      items: [
+        { material: 'Profil 60x40x2.0', length: '2000', qty: '2', remarks: 'Ramiak pionowy furtki' },
+        { material: 'Profil 60x40x2.0', length: '1000', qty: '2', remarks: 'Ramiak poziomy furtki' }
+      ],
+      subsets: [
+        {
+          id: 'sub_slupki_1',
+          name: 'Wybór słupków',
+          packages: [
+            {
+              id: 'pkg_slup_100',
+              title: 'Słupki 100x100x3',
+              items: [
+                { material: 'Profil 100x100x3.0', length: '2600', qty: '2', remarks: 'Słupki furtki 100x100' }
+              ]
+            },
+            {
+              id: 'pkg_slup_80',
+              title: 'Słupki 80x80x3',
+              items: [
+                { material: 'Profil 80x80x3', length: '2600', qty: '2', remarks: 'Słupki furtki 80x80' }
+              ]
+            }
+          ]
+        },
+        {
+          id: 'sub_wypelnienie_1',
+          name: 'Pakiet wypełnienia (sztachety)',
+          packages: [
+            {
+              id: 'pkg_sztach_80',
+              title: 'Sztachety 80x20 pionowe',
+              items: [
+                { material: 'Profil 80x20x1.2', length: '1400', qty: '10', remarks: 'Wypełnienie pionowe 80x20' }
+              ]
+            },
+            {
+              id: 'pkg_sztach_100',
+              title: 'Sztachety 100x20 poziome',
+              items: [
+                { material: 'Profil 100x20x1.3', length: '920', qty: '8', remarks: 'Wypełnienie poziome 100x20' }
+              ]
+            }
+          ]
+        }
+      ],
+      lastModifiedBy: 'System',
+      lastModifiedAt: new Date().toLocaleString('pl-PL'),
+      createdAt: Date.now()
+    }
+  ];
+
+  let materialSets = JSON.parse(localStorage.getItem('order_app_material_sets')) || defaultMaterialSets;
+  let selectedMaterialSetId = null;
+  let selectedMaterialSetIndex = 0;
+  let isEditingMaterialSet = false;
+  let tempEditMaterialSetItems = null;
+  let tempEditMaterialSetSubsets = null;
+
+  // Aktywny podzbiór edytowany w modalu podzbiorów
+  let activeEditingSubsetIndex = -1;
+
+  function getMaterialSetObjectById(sId) {
+    if (!sId) return null;
+    return materialSets.find((s, idx) => {
+      const thisId = (s.id !== undefined && s.id !== null) ? String(s.id) : ('mat_set_idx_' + idx);
+      return thisId === String(sId);
+    }) || null;
+  }
+
+  function getMaterialSetIndexById(sId) {
+    if (!sId) return -1;
+    return materialSets.findIndex((s, idx) => {
+      const thisId = (s.id !== undefined && s.id !== null) ? String(s.id) : ('mat_set_idx_' + idx);
+      return thisId === String(sId);
+    });
+  }
+
+  function getSortedMaterialSets() {
+    const query = (document.getElementById('searchMaterialSetsInput') ? document.getElementById('searchMaterialSetsInput').value : '').toLowerCase().trim();
+    const sortVal = document.getElementById('sortMaterialSetsSelect') ? document.getElementById('sortMaterialSetsSelect').value : 'alpha_asc';
+
+    let list = materialSets.map((s, idx) => ({
+      ...s,
+      _origIdx: idx,
+      _sId: (s.id !== undefined && s.id !== null) ? String(s.id) : ('mat_set_idx_' + idx)
+    }));
+
+    if (query) {
+      list = list.filter(s => {
+        const t = (s.title || '').toLowerCase();
+        const e = (s.element || '').toLowerCase();
+        const m = (s.model || '').toLowerCase();
+        return t.includes(query) || e.includes(query) || m.includes(query);
+      });
+    }
+
+    list.sort((a, b) => {
+      if (sortVal === 'alpha_asc') return (a.title || '').localeCompare(b.title || '', 'pl');
+      if (sortVal === 'alpha_desc') return (b.title || '').localeCompare(a.title || '', 'pl');
+      if (sortVal === 'newest') return (b.createdAt || b._origIdx || 0) - (a.createdAt || a._origIdx || 0);
+      if (sortVal === 'oldest') return (a.createdAt || a._origIdx || 0) - (b.createdAt || b._origIdx || 0);
+      return 0;
+    });
+
+    return list;
+  }
+
+  function openMaterialSetsModal() {
+    if (!requireLogin('Aby przeglądać i zarządzać Magazynem Zbiorów Profili, musisz być zalogowany.')) return;
+    isEditingMaterialSet = false;
+    tempEditMaterialSetItems = null;
+    tempEditMaterialSetSubsets = null;
+
+    const sorted = getSortedMaterialSets();
+    if (sorted.length > 0) {
+      if (!selectedMaterialSetId || !materialSets.some((s, idx) => String(s.id !== undefined && s.id !== null ? s.id : 'mat_set_idx_' + idx) === String(selectedMaterialSetId))) {
+        selectedMaterialSetId = sorted[0]._sId;
+      }
+    } else {
+      selectedMaterialSetId = null;
+    }
+
+    renderMaterialSetsList();
+    if (selectedMaterialSetId) {
+      renderMaterialSetDetailsById(selectedMaterialSetId);
+    } else {
+      clearMaterialSetDetails();
+    }
+
+    document.getElementById('materialSetsModal').style.display = 'flex';
+    fetchCloudMaterialSets();
+  }
+
+  function closeMaterialSetsModal() {
+    document.getElementById('materialSetsModal').style.display = 'none';
+  }
+
+  function createMaterialSetFromForm() {
+    const elem = document.getElementById('newMatSetElement').value.trim();
+    const mod = document.getElementById('newMatSetModel').value.trim();
+    const customTitle = document.getElementById('newMatSetCustomTitle').value.trim();
+
+    if (!elem && !customTitle) {
+      alert('Podaj element lub nazwę zbioru profili!');
+      document.getElementById('newMatSetElement').focus();
+      return;
+    }
+
+    const title = customTitle || (elem + (mod ? ' - ' + mod : ''));
+    const activeWorker = (currentWorker || localStorage.getItem('order_app_current_worker') || 'Nieznany').trim();
+
+    const newSet = {
+      id: Date.now(),
+      title,
+      element: elem,
+      model: mod,
+      items: [],
+      subsets: [],
+      lastModifiedBy: activeWorker,
+      lastModifiedAt: new Date().toLocaleString('pl-PL'),
+      createdAt: Date.now()
+    };
+
+    materialSets.push(newSet);
+    localStorage.setItem('order_app_material_sets', JSON.stringify(materialSets));
+    syncMaterialSetsWithCloud();
+
+    document.getElementById('newMatSetElement').value = '';
+    document.getElementById('newMatSetModel').value = '';
+    document.getElementById('newMatSetCustomTitle').value = '';
+
+    selectedMaterialSetId = String(newSet.id);
+    renderMaterialSetsList();
+    renderMaterialSetDetailsById(selectedMaterialSetId);
+    updateWmSetsSelect();
+    alert(`Utworzono nowy zbiór profili: ${title}`);
+  }
+
+  function renderMaterialSetsList() {
+    const container = document.getElementById('materialSetsListContainer');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (materialSets.length === 0) {
+      container.innerHTML = '<div style="padding: 15px; color: #94a3b8; font-size: 13px; text-align: center;">Brak zbiorów. Utwórz zbiór powyżej.</div>';
+      return;
+    }
+
+    const sortedList = getSortedMaterialSets();
+
+    if (sortedList.length === 0) {
+      container.innerHTML = '<div style="padding: 15px; color: #94a3b8; font-size: 13px; text-align: center;">Brak pasujących zbiorów.</div>';
+      return;
+    }
+
+    sortedList.forEach((s) => {
+      const sId = s._sId;
+      const isCardActive = (selectedMaterialSetId !== null && String(sId) === String(selectedMaterialSetId));
+      const card = document.createElement('div');
+      card.className = 'set-list-card' + (isCardActive ? ' active' : '');
+      card.dataset.setId = String(sId);
+
+      card.onclick = () => {
+        if (isEditingMaterialSet && String(selectedMaterialSetId) !== String(sId)) {
+          if (!confirm('Masz niezapisane zmiany w edytowanym zbiorze. Czy na pewno przejść do innego zbioru i odrzucić zmiany?')) {
+            return;
+          }
+          isEditingMaterialSet = false;
+          tempEditMaterialSetItems = null;
+          tempEditMaterialSetSubsets = null;
+        }
+        selectedMaterialSetId = String(sId);
+        selectedMaterialSetIndex = s._origIdx;
+        renderMaterialSetsList();
+        renderMaterialSetDetailsById(selectedMaterialSetId);
+      };
+
+      const itemsCount = Array.isArray(s.items) ? s.items.length : 0;
+      const subsetsCount = Array.isArray(s.subsets) ? s.subsets.length : 0;
+
+      card.innerHTML = `
+        <div style="font-weight: 700; font-size: 13px; color: #1e3a8a; margin-bottom: 3px;">${s.title}</div>
+        <div style="font-size: 11px; color: #64748b; display: flex; justify-content: space-between;">
+          <span>${s.element || '-'}${s.model ? ' | ' + s.model : ''}</span>
+          <span><strong>${itemsCount}</strong> profili ${subsetsCount > 0 ? `| <strong style="color: #059669;">${subsetsCount}</strong> podzb.` : ''}</span>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  function clearMaterialSetDetails() {
+    const titleEl = document.getElementById('matSetDetailsTitle');
+    const metaEl = document.getElementById('matSetDetailsMeta');
+    const tableWrap = document.getElementById('matSetItemsTableWrapper');
+    const subsetsWrap = document.getElementById('matSetSubsetsWrapper');
+    const actionsEl = document.getElementById('matSetDetailsActions');
+    if (titleEl) titleEl.textContent = 'Wybierz zbiór z listy po lewej';
+    if (metaEl) metaEl.textContent = '';
+    if (tableWrap) tableWrap.style.display = 'none';
+    if (subsetsWrap) subsetsWrap.style.display = 'none';
+    if (actionsEl) actionsEl.style.display = 'none';
+  }
+
+  function renderMaterialSetDetailsById(sId) {
+    const currentSet = getMaterialSetObjectById(sId);
+    selectedMaterialSetIndex = getMaterialSetIndexById(sId);
+    selectedMaterialSetId = String(sId);
+
+    const cards = document.querySelectorAll('#materialSetsListContainer .set-list-card');
+    cards.forEach(c => {
+      c.classList.toggle('active', c.dataset.setId === String(selectedMaterialSetId));
+    });
+
+    if (!currentSet) {
+      clearMaterialSetDetails();
+      return;
+    }
+
+    document.getElementById('matSetDetailsTitle').innerHTML = `
+      ${currentSet.title} 
+      <button type="button" class="btn-secondary" style="font-size: 11px; padding: 2px 6px; margin-left: 4px;" onclick="renameCurrentMaterialSet()">✏️ Zmień nazwę</button>
+      <button type="button" class="btn-secondary" style="font-size: 11px; padding: 2px 8px; margin-left: 4px; background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; font-weight: 600;" onclick="openCopyFromMaterialSetModal()" title="Kopiuj zawartość z innego zbioru profili">📋 Kopiuj wzór</button>
+    `;
+    document.getElementById('matSetDetailsMeta').textContent = `Ostatnia edycja: ${currentSet.lastModifiedAt || '-'} przez ${currentSet.lastModifiedBy || 'Nieznany'} | Element: ${currentSet.element || '-'}, Model: ${currentSet.model || '-'}`;
+    document.getElementById('matSetItemsTableWrapper').style.display = 'block';
+    document.getElementById('matSetSubsetsWrapper').style.display = 'block';
+    document.getElementById('matSetDetailsActions').style.display = 'flex';
+
+    // Przełączanie przycisków Edytuj vs Zapisz/Anuluj
+    const editLeft = document.getElementById('matSetEditActionsLeft');
+    const viewLeft = document.getElementById('matSetViewActionsLeft');
+    const btnCancel = document.getElementById('btnCancelEditMatSet');
+    const btnSave = document.getElementById('btnSaveEditMatSet');
+
+    if (isEditingMaterialSet) {
+      if (editLeft) editLeft.style.display = 'flex';
+      if (viewLeft) viewLeft.style.display = 'none';
+      if (btnCancel) btnCancel.style.display = 'inline-block';
+      if (btnSave) btnSave.style.display = 'inline-block';
+    } else {
+      if (editLeft) editLeft.style.display = 'none';
+      if (viewLeft) viewLeft.style.display = 'block';
+      if (btnCancel) btnCancel.style.display = 'none';
+      if (btnSave) btnSave.style.display = 'none';
+    }
+
+    // 1. Tabela pozycji stałych
+    const itemsToRender = isEditingMaterialSet && tempEditMaterialSetItems ? tempEditMaterialSetItems : (currentSet.items || []);
+    const tbody = document.getElementById('matSetItemsTbody');
+    if (tbody) {
+      tbody.innerHTML = '';
+      if (itemsToRender.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #94a3b8; padding: 16px;">Ten zbiór nie ma jeszcze przypisanych stałych profili. Kliknij "✏️ Edytuj zbiór", aby dodać pozycje.</td></tr>`;
+      } else {
+        itemsToRender.forEach((it, itIdx) => {
+          const tr = document.createElement('tr');
+          if (isEditingMaterialSet) {
+            tr.innerHTML = `
+              <td style="text-align: center; font-size: 11px; color: #64748b; font-weight: bold;">${itIdx + 1}.</td>
+              <td><input type="text" class="vp-cell-input" style="font-weight: 600;" value="${(it.material || '').replace(/"/g, '&quot;')}" oninput="updateCurrentMatSetItem(${itIdx}, 'material', this.value)" placeholder="Nazwa profilu"></td>
+              <td><input type="text" class="vp-cell-input" style="text-align: center;" value="${(it.length || '').replace(/"/g, '&quot;')}" oninput="updateCurrentMatSetItem(${itIdx}, 'length', this.value)" placeholder="np. 6000"></td>
+              <td><input type="text" class="vp-cell-input" style="text-align: center; font-weight: bold;" value="${(it.qty !== undefined ? it.qty : '1')}" oninput="updateCurrentMatSetItem(${itIdx}, 'qty', this.value)" placeholder="1"></td>
+              <td><input type="text" class="vp-cell-input" value="${(it.remarks || '').replace(/"/g, '&quot;')}" oninput="updateCurrentMatSetItem(${itIdx}, 'remarks', this.value)" placeholder="Uwagi..."></td>
+              <td style="text-align: center;">
+                <button type="button" class="btn-danger" style="padding: 2px 6px; font-size: 11px;" onclick="removeCurrentMatSetItem(${itIdx})" title="Usuń profil ze zbioru">✕</button>
+              </td>
+            `;
+          } else {
+            tr.innerHTML = `
+              <td style="text-align: center; font-size: 11px; color: #94a3b8; font-weight: 600;">${itIdx + 1}.</td>
+              <td style="font-weight: 600; color: #1e293b;">${it.material || '-'}</td>
+              <td style="text-align: center;">${it.length ? it.length + ' mm' : '-'}</td>
+              <td style="text-align: center; font-weight: bold; color: #0284c7;">${it.qty !== undefined ? it.qty : '-'}</td>
+              <td style="color: #64748b; font-size: 12px;">${it.remarks || '-'}</td>
+              <td style="text-align: center; color: #cbd5e1;">-</td>
+            `;
+          }
+          tbody.appendChild(tr);
+        });
+      }
+    }
+
+    // 2. Podzbiory z pakietami
+    renderMaterialSetSubsetsUI(currentSet);
+  }
+
+  function renderMaterialSetSubsetsUI(currentSet) {
+    const container = document.getElementById('matSetSubsetsList');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const subsetsToRender = isEditingMaterialSet && tempEditMaterialSetSubsets ? tempEditMaterialSetSubsets : (currentSet.subsets || []);
+
+    if (subsetsToRender.length === 0) {
+      container.innerHTML = `
+        <div style="padding: 10px; color: #94a3b8; font-size: 12px; font-style: italic; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 6px; text-align: center;">
+          Brak podzbiorów. ${isEditingMaterialSet ? 'Kliknij "+ Dodaj podzbiór (pakiety wariantowe)", aby utworzyć warianty np. różne wypełnienia lub słupki.' : 'W tym zbiorze wszystkie pozycje są stałe.'}
+        </div>
+      `;
+      return;
+    }
+
+    subsetsToRender.forEach((sub, subIdx) => {
+      const subCard = document.createElement('div');
+      subCard.style.cssText = 'background: #ffffff; border: 1.5px solid #a7f3d0; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);';
+
+      const packages = Array.isArray(sub.packages) ? sub.packages : [];
+
+      let packagesHtml = '';
+      if (packages.length === 0) {
+        packagesHtml = `<div style="font-size: 11px; color: #94a3b8; padding: 4px;">Brak pakietów w tym podzbiorze.</div>`;
+      } else {
+        packages.forEach((pkg, pkgIdx) => {
+          const pkgItems = Array.isArray(pkg.items) ? pkg.items : [];
+          const itemsSummary = pkgItems.map(it => `${it.material || 'Profil'} (${it.length || 0}mm x ${it.qty || 1}szt)`).join(', ');
+          packagesHtml += `
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 5px; padding: 6px 10px; margin-top: 5px; font-size: 12px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <strong style="color: #166534;">📦 ${pkg.title || 'Pakiet ' + (pkgIdx + 1)}</strong>
+                <span style="font-size: 11px; color: #475569; margin-left: 8px;">${itemsSummary || '(brak profili)'}</span>
+              </div>
+              ${isEditingMaterialSet ? `
+                <div style="display: flex; gap: 4px;">
+                  <button type="button" class="btn-secondary" style="font-size: 10px; padding: 2px 6px;" onclick="openEditMaterialPackageModal(${subIdx}, ${pkgIdx})">✏️ Edytuj</button>
+                  <button type="button" class="btn-danger" style="font-size: 10px; padding: 2px 6px;" onclick="deleteMaterialPackage(${subIdx}, ${pkgIdx})">✕</button>
+                </div>
+              ` : ''}
+            </div>
+          `;
+        });
+      }
+
+      subCard.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #d1fae5; padding-bottom: 6px; margin-bottom: 6px;">
+          <div>
+            <strong style="font-size: 13px; color: #065f46;">📑 Podzbiór: ${sub.name || 'Bez nazwy'}</strong>
+            <span style="font-size: 11px; color: #059669; margin-left: 8px;">(${packages.length} wariantów pakietów)</span>
+          </div>
+          ${isEditingMaterialSet ? `
+            <div style="display: flex; gap: 6px;">
+              <button type="button" class="btn-secondary" style="font-size: 11px; padding: 2px 8px; background: #ecfdf5; color: #047857; border-color: #a7f3d0;" onclick="openAddMaterialPackageModal(${subIdx})">+ Dodaj pakiet</button>
+              <button type="button" class="btn-secondary" style="font-size: 11px; padding: 2px 6px;" onclick="renameMaterialSubset(${subIdx})">✏️ Nazwa</button>
+              <button type="button" class="btn-danger" style="font-size: 11px; padding: 2px 6px;" onclick="deleteMaterialSubset(${subIdx})">Usuń podzbiór</button>
+            </div>
+          ` : ''}
+        </div>
+        <div>
+          ${packagesHtml}
+        </div>
+      `;
+
+      container.appendChild(subCard);
+    });
+  }
+
+  function startEditingCurrentMaterialSet() {
+    const s = getMaterialSetObjectById(selectedMaterialSetId) || materialSets[selectedMaterialSetIndex];
+    if (!s) return;
+    isEditingMaterialSet = true;
+    tempEditMaterialSetItems = JSON.parse(JSON.stringify(s.items || []));
+    tempEditMaterialSetSubsets = JSON.parse(JSON.stringify(s.subsets || []));
+    renderMaterialSetDetailsById(selectedMaterialSetId);
+  }
+
+  function cancelEditingCurrentMaterialSet() {
+    isEditingMaterialSet = false;
+    tempEditMaterialSetItems = null;
+    tempEditMaterialSetSubsets = null;
+    renderMaterialSetDetailsById(selectedMaterialSetId);
+  }
+
+  function saveCurrentMaterialSetChanges() {
+    const s = getMaterialSetObjectById(selectedMaterialSetId) || materialSets[selectedMaterialSetIndex];
+    if (!s) return;
+    if (isEditingMaterialSet && tempEditMaterialSetItems) {
+      s.items = JSON.parse(JSON.stringify(tempEditMaterialSetItems));
+    }
+    if (isEditingMaterialSet && tempEditMaterialSetSubsets) {
+      s.subsets = JSON.parse(JSON.stringify(tempEditMaterialSetSubsets));
+    }
+    s.lastModifiedBy = (currentWorker || localStorage.getItem('order_app_current_worker') || 'Nieznany').trim();
+    s.lastModifiedAt = new Date().toLocaleString('pl-PL');
+    isEditingMaterialSet = false;
+    tempEditMaterialSetItems = null;
+    tempEditMaterialSetSubsets = null;
+
+    localStorage.setItem('order_app_material_sets', JSON.stringify(materialSets));
+    syncMaterialSetsWithCloud();
+    renderMaterialSetsList();
+    renderMaterialSetDetailsById(selectedMaterialSetId);
+    updateWmSetsSelect();
+    alert(`Zapisano zmiany w zbiorze profili: ${s.title}!`);
+  }
+
+  function deleteCurrentMaterialSet() {
+    const s = getMaterialSetObjectById(selectedMaterialSetId) || materialSets[selectedMaterialSetIndex];
+    if (!s) return;
+    if (confirm(`Czy na pewno bezpowrotnie usunąć zbiór profili "${s.title}"?`)) {
+      const idxToDelete = materialSets.findIndex(item =>
+        ((item.id !== undefined && item.id !== null) ? String(item.id) : null) === String(selectedMaterialSetId) || item === s
+      );
+      if (idxToDelete !== -1) {
+        materialSets.splice(idxToDelete, 1);
+        localStorage.setItem('order_app_material_sets', JSON.stringify(materialSets));
+        syncMaterialSetsWithCloud();
+
+        isEditingMaterialSet = false;
+        tempEditMaterialSetItems = null;
+        tempEditMaterialSetSubsets = null;
+
+        const sorted = getSortedMaterialSets();
+        selectedMaterialSetId = sorted.length > 0 ? sorted[0]._sId : null;
+        selectedMaterialSetIndex = sorted.length > 0 ? sorted[0]._origIdx : 0;
+
+        renderMaterialSetsList();
+        if (selectedMaterialSetId) {
+          renderMaterialSetDetailsById(selectedMaterialSetId);
+        } else {
+          clearMaterialSetDetails();
+        }
+        updateWmSetsSelect();
+      }
+    }
+  }
+
+  function renameCurrentMaterialSet() {
+    const s = getMaterialSetObjectById(selectedMaterialSetId) || materialSets[selectedMaterialSetIndex];
+    if (!s) return;
+    const newName = prompt('Podaj nową nazwę zbioru profili:', s.title || '');
+    if (newName && newName.trim()) {
+      s.title = newName.trim();
+      s.lastModifiedBy = (currentWorker || localStorage.getItem('order_app_current_worker') || 'Nieznany').trim();
+      s.lastModifiedAt = new Date().toLocaleString('pl-PL');
+      localStorage.setItem('order_app_material_sets', JSON.stringify(materialSets));
+      syncMaterialSetsWithCloud();
+      renderMaterialSetsList();
+      renderMaterialSetDetailsById(selectedMaterialSetId);
+      updateWmSetsSelect();
+    }
+  }
+
+  function updateCurrentMatSetItem(itIdx, field, val) {
+    if (isEditingMaterialSet && tempEditMaterialSetItems) {
+      if (!tempEditMaterialSetItems[itIdx]) tempEditMaterialSetItems[itIdx] = {};
+      tempEditMaterialSetItems[itIdx][field] = val;
+    } else {
+      const s = getMaterialSetObjectById(selectedMaterialSetId) || materialSets[selectedMaterialSetIndex];
+      if (s && s.items && s.items[itIdx]) {
+        s.items[itIdx][field] = val;
+      }
+    }
+  }
+
+  function removeCurrentMatSetItem(itIdx) {
+    if (isEditingMaterialSet && tempEditMaterialSetItems) {
+      tempEditMaterialSetItems.splice(itIdx, 1);
+      renderMaterialSetDetailsById(selectedMaterialSetId);
+    } else {
+      const s = getMaterialSetObjectById(selectedMaterialSetId) || materialSets[selectedMaterialSetIndex];
+      if (s && s.items) {
+        s.items.splice(itIdx, 1);
+        renderMaterialSetDetailsById(selectedMaterialSetId);
+      }
+    }
+  }
+
+  // Dodawanie profilu z bazy do zbioru stałego
+  function openAddProfileToCurrentMaterialSetModal() {
+    const s = getMaterialSetObjectById(selectedMaterialSetId) || materialSets[selectedMaterialSetIndex];
+    if (!s) return;
+
+    const select = document.getElementById('pickMaterialProfileSelect');
+    if (select) {
+      select.innerHTML = '<option value="">-- Wybierz profil z Magazynu Profili --</option>';
+      if (Array.isArray(materialsProfiles)) {
+        materialsProfiles.forEach((p, idx) => {
+          const opt = document.createElement('option');
+          opt.value = idx;
+          opt.textContent = `${p.name} (${p.length || 6000} mm)`;
+          select.appendChild(opt);
+        });
+      }
+    }
+
+    document.getElementById('pickMaterialProfileLength').value = '6000';
+    document.getElementById('pickMaterialProfileQty').value = '1';
+    document.getElementById('pickMaterialProfileRemarks').value = '';
+    document.getElementById('pickMaterialProfileCustomName').value = '';
+
+    document.getElementById('pickMaterialProfileModal').style.display = 'flex';
+  }
+
+  function closePickMaterialProfileModal() {
+    document.getElementById('pickMaterialProfileModal').style.display = 'none';
+  }
+
+  function onPickMaterialProfileSelectChange() {
+    const sel = document.getElementById('pickMaterialProfileSelect');
+    if (!sel || sel.value === '') return;
+    const idx = parseInt(sel.value);
+    const prof = materialsProfiles[idx];
+    if (prof) {
+      if (prof.length) document.getElementById('pickMaterialProfileLength').value = prof.length;
+      document.getElementById('pickMaterialProfileCustomName').value = prof.name || '';
+    }
+  }
+
+  function confirmAddProfileToCurrentMaterialSet() {
+    const s = getMaterialSetObjectById(selectedMaterialSetId) || materialSets[selectedMaterialSetIndex];
+    if (!s) return;
+
+    const sel = document.getElementById('pickMaterialProfileSelect');
+    const customName = (document.getElementById('pickMaterialProfileCustomName').value || '').trim();
+    let name = customName;
+    if (!name && sel && sel.value !== '') {
+      const p = materialsProfiles[parseInt(sel.value)];
+      if (p) name = p.name;
+    }
+
+    if (!name) {
+      alert('Podaj nazwę profilu lub wybierz go z listy!');
+      return;
+    }
+
+    const length = (document.getElementById('pickMaterialProfileLength').value || '6000').trim();
+    const qty = (document.getElementById('pickMaterialProfileQty').value || '1').trim();
+    const remarks = (document.getElementById('pickMaterialProfileRemarks').value || '').trim();
+
+    const newItem = { material: name, length, qty, remarks };
+
+    if (isEditingMaterialSet && tempEditMaterialSetItems) {
+      tempEditMaterialSetItems.push(newItem);
+    } else {
+      if (!Array.isArray(s.items)) s.items = [];
+      s.items.push(newItem);
+      s.lastModifiedBy = (currentWorker || localStorage.getItem('order_app_current_worker') || 'Nieznany').trim();
+      s.lastModifiedAt = new Date().toLocaleString('pl-PL');
+      localStorage.setItem('order_app_material_sets', JSON.stringify(materialSets));
+      syncMaterialSetsWithCloud();
+    }
+
+    closePickMaterialProfileModal();
+    renderMaterialSetDetailsById(selectedMaterialSetId);
+  }
+
+  // --- PODZBIORY (SUBSETS) I PAKIETY (PACKAGES) ---
+  function addNewMaterialSubset() {
+    const subName = prompt('Podaj nazwę nowego podzbioru (np. Wariant słupków, Wypełnienie sztachetami, Pochwyt):');
+    if (!subName || !subName.trim()) return;
+
+    const newSubset = {
+      id: 'sub_' + Date.now(),
+      name: subName.trim(),
+      packages: []
+    };
+
+    if (isEditingMaterialSet && tempEditMaterialSetSubsets) {
+      tempEditMaterialSetSubsets.push(newSubset);
+    } else {
+      const s = getMaterialSetObjectById(selectedMaterialSetId) || materialSets[selectedMaterialSetIndex];
+      if (s) {
+        if (!Array.isArray(s.subsets)) s.subsets = [];
+        s.subsets.push(newSubset);
+        s.lastModifiedBy = (currentWorker || localStorage.getItem('order_app_current_worker') || 'Nieznany').trim();
+        s.lastModifiedAt = new Date().toLocaleString('pl-PL');
+        localStorage.setItem('order_app_material_sets', JSON.stringify(materialSets));
+        syncMaterialSetsWithCloud();
+      }
+    }
+
+    renderMaterialSetDetailsById(selectedMaterialSetId);
+  }
+
+  function renameMaterialSubset(subIdx) {
+    const subsets = isEditingMaterialSet && tempEditMaterialSetSubsets ? tempEditMaterialSetSubsets : (getMaterialSetObjectById(selectedMaterialSetId) || {}).subsets;
+    if (!subsets || !subsets[subIdx]) return;
+    const newName = prompt('Zmień nazwę podzbioru:', subsets[subIdx].name || '');
+    if (newName && newName.trim()) {
+      subsets[subIdx].name = newName.trim();
+      if (!isEditingMaterialSet) {
+        localStorage.setItem('order_app_material_sets', JSON.stringify(materialSets));
+        syncMaterialSetsWithCloud();
+      }
+      renderMaterialSetDetailsById(selectedMaterialSetId);
+    }
+  }
+
+  function deleteMaterialSubset(subIdx) {
+    const subsets = isEditingMaterialSet && tempEditMaterialSetSubsets ? tempEditMaterialSetSubsets : (getMaterialSetObjectById(selectedMaterialSetId) || {}).subsets;
+    if (!subsets || !subsets[subIdx]) return;
+    if (confirm(`Czy na pewno usunąć podzbiór "${subsets[subIdx].name}" i wszystkie jego pakiety?`)) {
+      subsets.splice(subIdx, 1);
+      if (!isEditingMaterialSet) {
+        localStorage.setItem('order_app_material_sets', JSON.stringify(materialSets));
+        syncMaterialSetsWithCloud();
+      }
+      renderMaterialSetDetailsById(selectedMaterialSetId);
+    }
+  }
+
+  // Edycja / tworzenie pakietu w podzbiorze
+  let currentEditingSubsetIdx = -1;
+  let currentEditingPackageIdx = -1;
+  let tempPackageItems = [];
+
+  function openAddMaterialPackageModal(subIdx) {
+    currentEditingSubsetIdx = subIdx;
+    currentEditingPackageIdx = -1;
+    tempPackageItems = [];
+
+    document.getElementById('matPackageModalTitle').textContent = `📦 Dodaj nowy pakiet do podzbioru`;
+    document.getElementById('matPackageTitleInput').value = '';
+    renderPackageItemsTable();
+
+    document.getElementById('materialPackageModal').style.display = 'flex';
+  }
+
+  function openEditMaterialPackageModal(subIdx, pkgIdx) {
+    currentEditingSubsetIdx = subIdx;
+    currentEditingPackageIdx = pkgIdx;
+
+    const subsets = isEditingMaterialSet && tempEditMaterialSetSubsets ? tempEditMaterialSetSubsets : (getMaterialSetObjectById(selectedMaterialSetId) || {}).subsets;
+    const pkg = (subsets && subsets[subIdx] && subsets[subIdx].packages) ? subsets[subIdx].packages[pkgIdx] : null;
+    if (!pkg) return;
+
+    document.getElementById('matPackageModalTitle').textContent = `✏️ Edycja pakietu: "${pkg.title}"`;
+    document.getElementById('matPackageTitleInput').value = pkg.title || '';
+    tempPackageItems = JSON.parse(JSON.stringify(pkg.items || []));
+    renderPackageItemsTable();
+
+    document.getElementById('materialPackageModal').style.display = 'flex';
+  }
+
+  function closeMaterialPackageModal() {
+    document.getElementById('materialPackageModal').style.display = 'none';
+    tempPackageItems = [];
+    currentEditingSubsetIdx = -1;
+    currentEditingPackageIdx = -1;
+  }
+
+  function renderPackageItemsTable() {
+    const tbody = document.getElementById('matPackageItemsTbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (tempPackageItems.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 12px;">Brak profili w pakiecie. Kliknij "+ Dodaj profil" poniżej.</td></tr>`;
+      return;
+    }
+
+    tempPackageItems.forEach((it, idx) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="text-align: center; font-size: 11px; color: #64748b; font-weight: bold;">${idx + 1}.</td>
+        <td><input type="text" class="vp-cell-input" style="font-weight: 600;" value="${(it.material || '').replace(/"/g, '&quot;')}" oninput="tempPackageItems[${idx}].material = this.value" placeholder="Nazwa profilu"></td>
+        <td><input type="text" class="vp-cell-input" style="text-align: center;" value="${(it.length || '').replace(/"/g, '&quot;')}" oninput="tempPackageItems[${idx}].length = this.value" placeholder="np. 6000"></td>
+        <td><input type="text" class="vp-cell-input" style="text-align: center; font-weight: bold;" value="${(it.qty !== undefined ? it.qty : '1')}" oninput="tempPackageItems[${idx}].qty = this.value" placeholder="1"></td>
+        <td style="text-align: center;">
+          <button type="button" class="btn-danger" style="padding: 2px 6px; font-size: 11px;" onclick="removePackageItemRow(${idx})">✕</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function addEmptyRowToPackageItems() {
+    tempPackageItems.push({ material: '', length: '6000', qty: '1', remarks: '' });
+    renderPackageItemsTable();
+  }
+
+  function removePackageItemRow(idx) {
+    tempPackageItems.splice(idx, 1);
+    renderPackageItemsTable();
+  }
+
+  function saveCurrentMaterialPackage() {
+    const title = (document.getElementById('matPackageTitleInput').value || '').trim();
+    if (!title) {
+      alert('Podaj tytuł pakietu (np. Słupki 100x100, Sztachety 80x20)!');
+      document.getElementById('matPackageTitleInput').focus();
+      return;
+    }
+
+    const cleanItems = tempPackageItems.filter(it => it.material && it.material.trim());
+    if (cleanItems.length === 0) {
+      alert('Pakiet musi zawierać przynajmniej jeden profil z nazwą!');
+      return;
+    }
+
+    const subsets = isEditingMaterialSet && tempEditMaterialSetSubsets ? tempEditMaterialSetSubsets : (getMaterialSetObjectById(selectedMaterialSetId) || {}).subsets;
+    if (!subsets || !subsets[currentEditingSubsetIdx]) return;
+
+    const sub = subsets[currentEditingSubsetIdx];
+    if (!Array.isArray(sub.packages)) sub.packages = [];
+
+    const pkgData = {
+      id: currentEditingPackageIdx >= 0 && sub.packages[currentEditingPackageIdx] ? sub.packages[currentEditingPackageIdx].id : ('pkg_' + Date.now()),
+      title,
+      items: cleanItems
+    };
+
+    if (currentEditingPackageIdx >= 0) {
+      sub.packages[currentEditingPackageIdx] = pkgData;
+    } else {
+      sub.packages.push(pkgData);
+    }
+
+    if (!isEditingMaterialSet) {
+      localStorage.setItem('order_app_material_sets', JSON.stringify(materialSets));
+      syncMaterialSetsWithCloud();
+    }
+
+    closeMaterialPackageModal();
+    renderMaterialSetDetailsById(selectedMaterialSetId);
+  }
+
+  function deleteMaterialPackage(subIdx, pkgIdx) {
+    const subsets = isEditingMaterialSet && tempEditMaterialSetSubsets ? tempEditMaterialSetSubsets : (getMaterialSetObjectById(selectedMaterialSetId) || {}).subsets;
+    if (!subsets || !subsets[subIdx] || !subsets[subIdx].packages) return;
+    if (confirm(`Czy na pewno usunąć pakiet "${subsets[subIdx].packages[pkgIdx].title}"?`)) {
+      subsets[subIdx].packages.splice(pkgIdx, 1);
+      if (!isEditingMaterialSet) {
+        localStorage.setItem('order_app_material_sets', JSON.stringify(materialSets));
+        syncMaterialSetsWithCloud();
+      }
+      renderMaterialSetDetailsById(selectedMaterialSetId);
+    }
+  }
+
+  // Kopiowanie wzoru z innego zbioru profili
+  function openCopyFromMaterialSetModal() {
+    const targetSet = getMaterialSetObjectById(selectedMaterialSetId) || materialSets[selectedMaterialSetIndex];
+    if (!targetSet) {
+      alert('Najpierw wybierz zbiór z listy po lewej!');
+      return;
+    }
+
+    document.getElementById('copyTargetMatSetName').textContent = targetSet.title;
+    const select = document.getElementById('sourceMatSetSelect');
+    if (!select) return;
+
+    select.innerHTML = '';
+    const otherSets = materialSets.filter(s => {
+      const sId = (s.id !== undefined && s.id !== null) ? String(s.id) : null;
+      return sId !== String(selectedMaterialSetId) && s !== targetSet;
+    });
+
+    if (otherSets.length === 0) {
+      select.innerHTML = '<option value="">-- Brak innych zbiorów do wyboru --</option>';
+    } else {
+      otherSets.sort((a, b) => (a.title || '').localeCompare(b.title || '', 'pl', { sensitivity: 'base' }));
+      otherSets.forEach(s => {
+        const sId = (s.id !== undefined && s.id !== null) ? String(s.id) : '';
+        const count = Array.isArray(s.items) ? s.items.length : 0;
+        const subCount = Array.isArray(s.subsets) ? s.subsets.length : 0;
+        const opt = document.createElement('option');
+        opt.value = sId;
+        opt.textContent = `${s.title} (${count} profili, ${subCount} podzbiorów)`;
+        select.appendChild(opt);
+      });
+    }
+
+    onSourceMatSetSelectedChange();
+    document.getElementById('copyFromMaterialSetModal').style.display = 'flex';
+  }
+
+  function closeCopyFromMaterialSetModal() {
+    document.getElementById('copyFromMaterialSetModal').style.display = 'none';
+  }
+
+  function onSourceMatSetSelectedChange() {
+    const select = document.getElementById('sourceMatSetSelect');
+    const previewDiv = document.getElementById('sourceMatSetPreviewList');
+    if (!select || !previewDiv) return;
+
+    const sourceSet = getMaterialSetObjectById(select.value);
+    if (!sourceSet) {
+      previewDiv.innerHTML = '<div style="color: #94a3b8; font-style: italic;">Brak danych do podglądu.</div>';
+      return;
+    }
+
+    const items = Array.isArray(sourceSet.items) ? sourceSet.items : [];
+    const subsets = Array.isArray(sourceSet.subsets) ? sourceSet.subsets : [];
+
+    let html = `<strong>Stałe profile (${items.length}):</strong><ul style="margin: 4px 0 8px 18px; padding: 0;">`;
+    items.forEach(it => {
+      html += `<li>${it.material || 'Profil'} (${it.length || 0}mm x ${it.qty || 1}szt)</li>`;
+    });
+    html += '</ul>';
+
+    if (subsets.length > 0) {
+      html += `<strong>Podzbiory (${subsets.length}):</strong><ul style="margin: 4px 0 0 18px; padding: 0;">`;
+      subsets.forEach(sub => {
+        const pkgs = Array.isArray(sub.packages) ? sub.packages : [];
+        html += `<li><strong>${sub.name}</strong> - ${pkgs.map(p => p.title).join(' | ')}</li>`;
+      });
+      html += '</ul>';
+    }
+
+    previewDiv.innerHTML = html;
+  }
+
+  function confirmCopyFromSourceMaterialSet() {
+    const targetSet = getMaterialSetObjectById(selectedMaterialSetId) || materialSets[selectedMaterialSetIndex];
+    const select = document.getElementById('sourceMatSetSelect');
+    if (!targetSet || !select || !select.value) return;
+
+    const sourceSet = getMaterialSetObjectById(select.value);
+    if (!sourceSet) return;
+
+    const mode = (document.querySelector('input[name="copyMatSetMode"]:checked') || {}).value || 'append';
+
+    if (mode === 'replace') {
+      targetSet.items = JSON.parse(JSON.stringify(sourceSet.items || []));
+      targetSet.subsets = JSON.parse(JSON.stringify(sourceSet.subsets || []));
+    } else {
+      if (!Array.isArray(targetSet.items)) targetSet.items = [];
+      const newItems = JSON.parse(JSON.stringify(sourceSet.items || []));
+      targetSet.items = targetSet.items.concat(newItems);
+
+      if (!Array.isArray(targetSet.subsets)) targetSet.subsets = [];
+      const newSubsets = JSON.parse(JSON.stringify(sourceSet.subsets || []));
+      targetSet.subsets = targetSet.subsets.concat(newSubsets);
+    }
+
+    targetSet.lastModifiedBy = (currentWorker || localStorage.getItem('order_app_current_worker') || 'Nieznany').trim();
+    targetSet.lastModifiedAt = new Date().toLocaleString('pl-PL');
+
+    isEditingMaterialSet = false;
+    tempEditMaterialSetItems = null;
+    tempEditMaterialSetSubsets = null;
+
+    localStorage.setItem('order_app_material_sets', JSON.stringify(materialSets));
+    syncMaterialSetsWithCloud();
+    closeCopyFromMaterialSetModal();
+    renderMaterialSetsList();
+    renderMaterialSetDetailsById(selectedMaterialSetId);
+    updateWmSetsSelect();
+    alert(`Pomyślnie skopiowano wzór ze zbioru: "${sourceSet.title}"!`);
+  }
+
+  // --- INTEGRACJA Z PANELEM WYKAZU MATERIAŁÓW (WSTAWIANIE ZBIORU I OBSŁUGA ROZWIJANEJ LISTY PODZBIORÓW) ---
+  function updateWmSetsSelect() {
+    const sel = document.getElementById('wmSelectSet');
+    if (!sel) return;
+    const curVal = sel.value;
+    sel.innerHTML = '<option value="">-- Wybierz zbiór profili --</option>';
+
+    if (Array.isArray(materialSets)) {
+      materialSets.forEach((s, idx) => {
+        const opt = document.createElement('option');
+        opt.value = idx;
+        const subCount = Array.isArray(s.subsets) ? s.subsets.length : 0;
+        opt.textContent = (s.title || (s.element + ' - ' + (s.model || ''))) + (subCount > 0 ? ` (${subCount} podzbiorów)` : '');
+        sel.appendChild(opt);
+      });
+    }
+
+    if (curVal !== '') sel.value = curVal;
+    onWmSetSelectChange();
+  }
+
+  function onWmSetSelectChange() {
+    const sel = document.getElementById('wmSelectSet');
+    const container = document.getElementById('wmSubsetsSelectionContainer');
+    if (!sel || !container) return;
+
+    const idx = parseInt(sel.value);
+    if (isNaN(idx) || !materialSets[idx]) {
+      container.style.display = 'none';
+      container.innerHTML = '';
+      return;
+    }
+
+    const setObj = materialSets[idx];
+    const subsets = Array.isArray(setObj.subsets) ? setObj.subsets : [];
+
+    if (subsets.length === 0) {
+      container.style.display = 'none';
+      container.innerHTML = '';
+      return;
+    }
+
+    // Jeśli zbiór zawiera podzbiory, generujemy rozwijane listy wyboru dla każdego podzbioru
+    let html = `<div style="font-size: 11px; font-weight: 700; color: #166534; margin-bottom: 6px;">📑 Wybierz warianty pakietów dla podzbiorów:</div>`;
+
+    subsets.forEach((sub, subIdx) => {
+      const packages = Array.isArray(sub.packages) ? sub.packages : [];
+      html += `
+        <div style="margin-bottom: 6px;">
+          <label style="font-size: 11px; font-weight: 600; color: #1e293b; display: block; margin-bottom: 2px;">
+            ${sub.name}:
+          </label>
+          <select id="wmSubsetSelect_${subIdx}" class="form-control" style="font-size: 11.5px; padding: 4px 6px;">
+            <option value="none">-- Pomiń ten podzbiór --</option>
+      `;
+
+      packages.forEach((pkg, pIdx) => {
+        const itCount = Array.isArray(pkg.items) ? pkg.items.length : 0;
+        html += `<option value="${pIdx}" ${pIdx === 0 ? 'selected' : ''}>📦 ${pkg.title} (${itCount} pozycji)</option>`;
+      });
+
+      html += `
+          </select>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+    container.style.display = 'block';
+  }
+
+  // Wstawianie zbioru wraz z wybranymi pakietami podzbiorów do Wykazu Materiałów
+  function addMaterialSetToWm() {
+    const sel = document.getElementById('wmSelectSet');
+    if (!sel || sel.value === '') {
+      alert('Wybierz najpierw zbiór profili z listy!');
+      return;
+    }
+
+    const idx = parseInt(sel.value);
+    const chosenSet = materialSets[idx];
+    if (!chosenSet) return;
+
+    // Zbieramy pozycje stałe
+    const itemsToAdd = [];
+    if (Array.isArray(chosenSet.items)) {
+      chosenSet.items.forEach(it => {
+        itemsToAdd.push(JSON.parse(JSON.stringify(it)));
+      });
+    }
+
+    // Zbieramy pozycje z wybranych pakietów podzbiorów
+    const subsets = Array.isArray(chosenSet.subsets) ? chosenSet.subsets : [];
+    subsets.forEach((sub, subIdx) => {
+      const selectEl = document.getElementById(`wmSubsetSelect_${subIdx}`);
+      if (selectEl && selectEl.value !== 'none') {
+        const pkgIdx = parseInt(selectEl.value);
+        if (sub.packages && sub.packages[pkgIdx] && Array.isArray(sub.packages[pkgIdx].items)) {
+          sub.packages[pkgIdx].items.forEach(it => {
+            const copy = JSON.parse(JSON.stringify(it));
+            if (!copy.remarks) copy.remarks = `[${sub.name}: ${sub.packages[pkgIdx].title}]`;
+            itemsToAdd.push(copy);
+          });
+        }
+      }
+    });
+
+    if (itemsToAdd.length === 0) {
+      alert('Wybrany zbiór i pakiety nie zawierają żadnych pozycji profili.');
+      return;
+    }
+
+    // Jeśli w wykazie są tylko 2 domyślne puste wiersze, czyścimy je
+    if (wykazMaterialowState.items.length === 2 && !wykazMaterialowState.items[0].material && !wykazMaterialowState.items[1].material) {
+      wykazMaterialowState.items = [];
+    }
+
+    itemsToAdd.forEach(it => {
+      wykazMaterialowState.items.push({
+        material: it.material || '',
+        length: it.length || '6000',
+        qty: it.qty !== undefined ? String(it.qty) : '1',
+        remarks: it.remarks || ''
+      });
+    });
+
+    renderWmView();
+    alert(`Dodano ${itemsToAdd.length} pozycji ze zbioru "${chosenSet.title}" do Wykazu Materiałów!`);
+  }
+
   // --- MAGAZYN PROFILI (Wykaz materiałów) ---
   function restoreDefaultProfiles() {
     if (!confirm('Czy przywrócić fabryczną bazę profili i zaktualizować ją dla wszystkich?')) return;
@@ -7152,6 +8448,46 @@
       });
     } catch (e) {
       console.warn('Nie udało się zapisać zbiorów w chmurze:', e);
+    }
+  }
+
+  // --- SYNCHRONIZACJA ZBIORÓW MATERIAŁÓW / PROFILI Z CHMURĄ ---
+  async function fetchCloudMaterialSets() {
+    if (!CLOUD_API_URL) return;
+    try {
+      const res = await fetch(`${CLOUD_API_URL}/api/material-sets`);
+      if (res.ok) {
+        const cloudSets = await res.json();
+        if (Array.isArray(cloudSets) && cloudSets.length > 0) {
+          materialSets = cloudSets;
+          localStorage.setItem('order_app_material_sets', JSON.stringify(materialSets));
+          
+          const modal = document.getElementById('materialSetsModal');
+          const isModalOpen = modal && modal.style.display === 'flex';
+          if (!isEditingMaterialSet && isModalOpen) {
+            renderMaterialSetsList();
+            if (selectedMaterialSetId !== null) {
+              renderMaterialSetDetailsById(selectedMaterialSetId);
+            }
+          }
+          updateWmSetsSelect();
+        }
+      }
+    } catch (e) {
+      console.warn('Błąd pobierania zbiorów materiałów z chmury:', e);
+    }
+  }
+
+  async function syncMaterialSetsWithCloud() {
+    if (!CLOUD_API_URL) return;
+    try {
+      await fetch(`${CLOUD_API_URL}/api/material-sets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(materialSets)
+      });
+    } catch (e) {
+      console.warn('Nie udało się zapisać zbiorów materiałów w chmurze:', e);
     }
   }
 
@@ -8115,11 +9451,13 @@
     const btnNavOptions = document.getElementById('btnNavOptions');
     const btnNavSets = document.getElementById('btnNavSets');
     const btnNavProfiles = document.getElementById('btnNavProfiles');
+    const btnNavMaterialSets = document.getElementById('btnNavMaterialSets');
 
     if (btnNavWhItems) btnNavWhItems.style.display = (page === 'labels') ? 'inline-flex' : 'none';
     if (btnNavOptions) btnNavOptions.style.display = (page === 'verpackung') ? 'inline-flex' : 'none';
     if (btnNavSets) btnNavSets.style.display = (page === 'verpackung') ? 'inline-flex' : 'none';
     if (btnNavProfiles) btnNavProfiles.style.display = (page === 'weights' || page === 'materials') ? 'inline-flex' : 'none';
+    if (btnNavMaterialSets) btnNavMaterialSets.style.display = (page === 'materials') ? 'inline-flex' : 'none';
 
     if (page === 'verpackung') {
       populateVpSelects();
@@ -8139,6 +9477,7 @@
     } else if (page === 'materials') {
       syncWmOrderFromEtykiety();
       updateWmProfilesSelect();
+      updateWmSetsSelect();
       renderWmView();
       initBarCuttingCalculator();
     } else if (page === 'weights') {
@@ -8181,6 +9520,7 @@
     fetchCloudOptions();
     fetchCloudSets();
     fetchCloudProfiles();
+    fetchCloudMaterialSets();
   }, 5000);
 
   window.addEventListener('focus', () => {
@@ -8189,6 +9529,7 @@
     fetchCloudOptions();
     fetchCloudSets();
     fetchCloudProfiles();
+    fetchCloudMaterialSets();
   });
 
   // ========================================================
