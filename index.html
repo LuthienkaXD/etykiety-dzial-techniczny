@@ -3172,7 +3172,7 @@
 
 <!-- Modal Tworzenia / Edycji Pakietu w Podzbiorze -->
 <div class="modal-overlay" id="materialPackageModal" style="z-index: 10006;">
-  <div class="modal-box" style="width: 720px; max-width: 96%;">
+  <div class="modal-box" style="width: 860px; max-width: 96%;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
       <h3 id="matPackageModalTitle" style="margin: 0; font-size: 16px; color: #065f46;">📦 Pakiet podzbioru</h3>
       <button type="button" class="btn-secondary" onclick="closeMaterialPackageModal()" style="padding: 3px 8px; font-size: 13px;">✕</button>
@@ -3193,8 +3193,9 @@
           <tr style="background: #f8fafc;">
             <th style="width: 55px; text-align: center;">Kolejność</th>
             <th>Nazwa profilu / materiału</th>
-            <th style="width: 100px; text-align: center;">Długość [mm]</th>
-            <th style="width: 70px; text-align: center;">Ilość</th>
+            <th style="width: 95px; text-align: center;">Długość [mm]</th>
+            <th style="width: 65px; text-align: center;">Ilość</th>
+            <th style="width: 150px;">Uwagi</th>
             <th style="width: 45px; text-align: center;">Usuń</th>
           </tr>
         </thead>
@@ -7842,7 +7843,7 @@
       } else {
         packages.forEach((pkg, pkgIdx) => {
           const pkgItems = Array.isArray(pkg.items) ? pkg.items : [];
-          const itemsSummary = pkgItems.map(it => `${it.material || 'Profil'} (${it.length || 0}mm x ${it.qty || 1}szt)`).join(', ');
+          const itemsSummary = pkgItems.map(it => `${it.material || 'Profil'}${it.length ? ' (' + it.length + 'mm)' : ''}${it.qty ? ' x' + it.qty + 'szt' : ''}${it.remarks ? ' [' + it.remarks + ']' : ''}`).join(', ');
           packagesHtml += `
             <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 5px; padding: 6px 10px; margin-top: 5px; font-size: 12px; display: flex; justify-content: space-between; align-items: center;">
               <div>
@@ -8249,8 +8250,9 @@
           <button type="button" class="btn-secondary" style="padding: 1px 5px; font-size: 11px; cursor: pointer;" onclick="movePackageItemRow(${idx}, 1)" title="Przesuń w dół" ${isLast ? 'disabled style="opacity: 0.3; cursor: default;"' : ''}>▼</button>
         </td>
         <td><input type="text" class="vp-cell-input" style="font-weight: 600;" value="${(it.material || '').replace(/"/g, '&quot;')}" oninput="tempPackageItems[${idx}].material = this.value" placeholder="Nazwa profilu"></td>
-        <td><input type="text" class="vp-cell-input" style="text-align: center;" value="${(it.length || '').replace(/"/g, '&quot;')}" oninput="tempPackageItems[${idx}].length = this.value" placeholder="np. 6000"></td>
-        <td><input type="text" class="vp-cell-input" style="text-align: center; font-weight: bold;" value="${(it.qty !== undefined ? it.qty : '1')}" oninput="tempPackageItems[${idx}].qty = this.value" placeholder="1"></td>
+        <td><input type="text" class="vp-cell-input" style="text-align: center;" value="${(it.length !== undefined && it.length !== null ? it.length : '').replace(/"/g, '&quot;')}" oninput="tempPackageItems[${idx}].length = this.value" placeholder="np. 6000"></td>
+        <td><input type="text" class="vp-cell-input" style="text-align: center; font-weight: bold;" value="${(it.qty !== undefined && it.qty !== null ? it.qty : '1')}" oninput="tempPackageItems[${idx}].qty = this.value" placeholder="1"></td>
+        <td><input type="text" class="vp-cell-input" value="${(it.remarks || '').replace(/"/g, '&quot;')}" oninput="tempPackageItems[${idx}].remarks = this.value" placeholder="Opcjonalne uwagi..."></td>
         <td style="text-align: center;">
           <button type="button" class="btn-danger" style="padding: 2px 6px; font-size: 11px;" onclick="removePackageItemRow(${idx})">✕</button>
         </td>
