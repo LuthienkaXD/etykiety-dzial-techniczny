@@ -2073,11 +2073,14 @@
           </label>
           <button type="button" class="btn-secondary" onclick="openMaterialSetsModal()" style="font-size: 10.5px; padding: 2px 6px;">⚙️ Zarządzaj</button>
         </div>
-        <div style="display: flex; gap: 6px; margin-bottom: 6px;">
-          <select id="wmSelectSet" class="form-control" style="flex: 1; font-size: 12px;" onchange="onWmSetSelectChange()">
-            <option value="">-- Wybierz zbiór profili --</option>
-          </select>
-          <button type="button" class="btn-primary" onclick="addMaterialSetToWm()" style="padding: 6px 12px; font-size: 13px; background: #16a34a; border-color: #15803d; font-weight: bold;">+ Dodaj</button>
+        <div style="margin-bottom: 6px;">
+          <input type="text" id="wmSearchSetsInput" class="form-control" placeholder="🔍 Szukaj zbioru po nazwie..." oninput="filterWmSetsSelect()" style="width: 100%; font-size: 11.5px; padding: 4px 7px; margin-bottom: 5px; border-color: #86efac;">
+          <div style="display: flex; gap: 6px;">
+            <select id="wmSelectSet" class="form-control" style="flex: 1; font-size: 12px;" onchange="onWmSetSelectChange()">
+              <option value="">-- Wybierz zbiór profili --</option>
+            </select>
+            <button type="button" class="btn-primary" onclick="addMaterialSetToWm()" style="padding: 6px 12px; font-size: 13px; background: #16a34a; border-color: #15803d; font-weight: bold;">+ Dodaj</button>
+          </div>
         </div>
         <!-- Kontener na dynamiczne podzbiory / wybór pakietów -->
         <div id="wmSubsetsSelectionContainer" style="display: none; background: #ffffff; border: 1px solid #86efac; border-radius: 6px; padding: 8px; margin-top: 6px;">
@@ -2090,11 +2093,14 @@
         <label style="font-weight: 700; font-size: 12px; color: #1e293b; margin-bottom: 6px; display: block;">
           🧱 Dodaj materiał z Magazynu Profili:
         </label>
-        <div style="display: flex; gap: 6px; margin-bottom: 8px;">
-          <select id="wmSelectSavedProfile" class="form-control" style="flex: 1; font-size: 12px;">
-            <option value="">-- Wybierz profil z bazy --</option>
-          </select>
-          <button type="button" class="btn-primary" onclick="addProfileFromWhToWm()" style="padding: 6px 12px; font-size: 13px;">+ Wstaw</button>
+        <div style="margin-bottom: 8px;">
+          <input type="text" id="wmSearchProfilesInput" class="form-control" placeholder="🔍 Szukaj profilu po nazwie..." oninput="filterWmProfilesSelect()" style="width: 100%; font-size: 11.5px; padding: 4px 7px; margin-bottom: 5px; border-color: #93c5fd;">
+          <div style="display: flex; gap: 6px;">
+            <select id="wmSelectSavedProfile" class="form-control" style="flex: 1; font-size: 12px;">
+              <option value="">-- Wybierz profil z bazy --</option>
+            </select>
+            <button type="button" class="btn-primary" onclick="addProfileFromWhToWm()" style="padding: 6px 12px; font-size: 13px;">+ Wstaw</button>
+          </div>
         </div>
         <button type="button" class="btn-secondary" onclick="addEmptyRowToWm()" style="width: 100%; font-size: 12px; padding: 6px;">
           ➕ Dodaj pusty wiersz ręcznie
@@ -3062,6 +3068,7 @@
     
     <div style="margin-bottom: 10px;">
       <label style="display: block; font-size: 12px; font-weight: 600; color: #1e293b; margin-bottom: 4px;">Wybierz profil z bazy:</label>
+      <input type="text" id="searchPickMaterialProfileInput" class="form-control" placeholder="🔍 Szukaj profilu po nazwie..." oninput="filterPickMaterialProfileSelect()" style="width: 100%; font-size: 12px; padding: 5px 8px; margin-bottom: 5px; border-color: #86efac;">
       <select id="pickMaterialProfileSelect" class="form-control" style="width: 100%; font-size: 13px; padding: 6px;" onchange="onPickMaterialProfileSelectChange()">
         <option value="">-- Wybierz profil --</option>
       </select>
@@ -7915,22 +7922,44 @@
   }
 
   // Dodawanie profilu z bazy do zbioru stałego
+  function updatePickMaterialProfileSelect(filterQuery = '') {
+    const select = document.getElementById('pickMaterialProfileSelect');
+    if (!select) return;
+    const q = (filterQuery || '').toLowerCase().trim();
+    const curVal = select.value;
+    select.innerHTML = '<option value="">-- Wybierz profil z Magazynu Profili --</option>';
+
+    if (Array.isArray(materialsProfiles)) {
+      materialsProfiles.forEach((p, idx) => {
+        const name = p.name || '';
+        if (q && !name.toLowerCase().includes(q)) return;
+        const opt = document.createElement('option');
+        opt.value = idx;
+        const isPiece = !!(p.isPiece || p.is_piece || p.unitMode === 'unit' || p.length === '-' || p.length === 'szt.' || (p.length === '' && p.weight));
+        const lenText = isPiece ? ' (1 szt.)' : (p.length ? ` (${p.length} mm)` : ' (6000 mm)');
+        opt.textContent = `${name}${lenText}`;
+        select.appendChild(opt);
+      });
+    }
+
+    if (curVal !== '' && Array.from(select.options).some(o => o.value === curVal)) {
+      select.value = curVal;
+    }
+  }
+
+  function filterPickMaterialProfileSelect() {
+    const q = document.getElementById('searchPickMaterialProfileInput') ? document.getElementById('searchPickMaterialProfileInput').value : '';
+    updatePickMaterialProfileSelect(q);
+  }
+
   function openAddProfileToCurrentMaterialSetModal() {
     const s = getMaterialSetObjectById(selectedMaterialSetId) || materialSets[selectedMaterialSetIndex];
     if (!s) return;
 
-    const select = document.getElementById('pickMaterialProfileSelect');
-    if (select) {
-      select.innerHTML = '<option value="">-- Wybierz profil z Magazynu Profili --</option>';
-      if (Array.isArray(materialsProfiles)) {
-        materialsProfiles.forEach((p, idx) => {
-          const opt = document.createElement('option');
-          opt.value = idx;
-          opt.textContent = `${p.name} (${p.length || 6000} mm)`;
-          select.appendChild(opt);
-        });
-      }
+    if (document.getElementById('searchPickMaterialProfileInput')) {
+      document.getElementById('searchPickMaterialProfileInput').value = '';
     }
+    updatePickMaterialProfileSelect('');
 
     document.getElementById('pickMaterialProfileLength').value = '6000';
     document.getElementById('pickMaterialProfileQty').value = '1';
@@ -7938,6 +7967,9 @@
     document.getElementById('pickMaterialProfileCustomName').value = '';
 
     document.getElementById('pickMaterialProfileModal').style.display = 'flex';
+    if (document.getElementById('searchPickMaterialProfileInput')) {
+      setTimeout(() => document.getElementById('searchPickMaterialProfileInput').focus(), 50);
+    }
   }
 
   function closePickMaterialProfileModal() {
@@ -8290,24 +8322,37 @@
   }
 
   // --- INTEGRACJA Z PANELEM WYKAZU MATERIAŁÓW (WSTAWIANIE ZBIORU I OBSŁUGA ROZWIJANEJ LISTY PODZBIORÓW) ---
-  function updateWmSetsSelect() {
+  function updateWmSetsSelect(filterQuery = '') {
     const sel = document.getElementById('wmSelectSet');
     if (!sel) return;
+    const q = (filterQuery || (document.getElementById('wmSearchSetsInput') ? document.getElementById('wmSearchSetsInput').value : '') || '').toLowerCase().trim();
     const curVal = sel.value;
     sel.innerHTML = '<option value="">-- Wybierz zbiór profili --</option>';
 
     if (Array.isArray(materialSets)) {
       materialSets.forEach((s, idx) => {
+        const title = s.title || ((s.element || '') + ' - ' + (s.model || ''));
+        if (q && !title.toLowerCase().includes(q)) return;
         const opt = document.createElement('option');
         opt.value = idx;
         const subCount = Array.isArray(s.subsets) ? s.subsets.length : 0;
-        opt.textContent = (s.title || (s.element + ' - ' + (s.model || ''))) + (subCount > 0 ? ` (${subCount} podzbiorów)` : '');
+        opt.textContent = title + (subCount > 0 ? ` (${subCount} podzbiorów)` : '');
         sel.appendChild(opt);
       });
     }
 
-    if (curVal !== '') sel.value = curVal;
+    if (curVal !== '' && Array.from(sel.options).some(o => o.value === curVal)) {
+      sel.value = curVal;
+    } else if (q && sel.options.length === 2) {
+      // Jeśli filtr zawęził do dokładnie 1 wyniku, zaznacz go automatycznie
+      sel.selectedIndex = 1;
+    }
     onWmSetSelectChange();
+  }
+
+  function filterWmSetsSelect() {
+    const q = document.getElementById('wmSearchSetsInput') ? document.getElementById('wmSearchSetsInput').value : '';
+    updateWmSetsSelect(q);
   }
 
   function onWmSetSelectChange() {
@@ -9056,20 +9101,36 @@
     }
   }
 
-  function updateWmProfilesSelect() {
+  function updateWmProfilesSelect(filterQuery = '') {
     const sel = document.getElementById('wmSelectSavedProfile');
     if (!sel) return;
+    const q = (filterQuery || (document.getElementById('wmSearchProfilesInput') ? document.getElementById('wmSearchProfilesInput').value : '') || '').toLowerCase().trim();
+    const curVal = sel.value;
     sel.innerHTML = '<option value="">-- Wybierz profil z bazy --</option>';
     if (Array.isArray(materialsProfiles)) {
       materialsProfiles.forEach((p, idx) => {
+        const name = p.name || '';
+        if (q && !name.toLowerCase().includes(q)) return;
         const opt = document.createElement('option');
         opt.value = idx;
         const isPiece = !!(p.isPiece || p.is_piece || p.unitMode === 'unit' || p.length === '-' || p.length === 'szt.' || (p.length === '' && p.weight));
         const lenText = isPiece ? ' (1 szt.)' : (p.length ? ` (${p.length} mm)` : ' (6000 mm)');
-        opt.textContent = p.name + lenText;
+        opt.textContent = name + lenText;
         sel.appendChild(opt);
       });
     }
+
+    if (curVal !== '' && Array.from(sel.options).some(o => o.value === curVal)) {
+      sel.value = curVal;
+    } else if (q && sel.options.length === 2) {
+      // Jeśli po wyszukiwaniu pasuje dokładnie 1 profil, wybierz go automatycznie
+      sel.selectedIndex = 1;
+    }
+  }
+
+  function filterWmProfilesSelect() {
+    const q = document.getElementById('wmSearchProfilesInput') ? document.getElementById('wmSearchProfilesInput').value : '';
+    updateWmProfilesSelect(q);
   }
 
   function addProfileFromWhToWm() {
