@@ -771,12 +771,18 @@ const server = http.createServer(async (req, res) => {
             try {
               await client.query('BEGIN');
               await client.query('DELETE FROM etykiety_material_sets');
+              const seenTitles = new Set();
               for (const s of sets) {
-                if (!s.title && !s.element) continue;
+                const normTitle = (s.title || (s.element + ' - ' + (s.model || ''))).trim();
+                if (!normTitle) continue;
+                const titleKey = normTitle.toLowerCase();
+                if (seenTitles.has(titleKey)) continue; // Zapobiega zapisywaniu duplikatów
+                seenTitles.add(titleKey);
+
                 await client.query(
                   'INSERT INTO etykiety_material_sets (title, element, model, items, subsets, last_modified_by, last_modified_at, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
                   [
-                    (s.title || (s.element + ' - ' + (s.model || ''))).trim(),
+                    normTitle,
                     (s.element || '').trim(),
                     (s.model || '').trim(),
                     JSON.stringify(s.items || []),
