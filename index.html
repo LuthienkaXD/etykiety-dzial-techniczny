@@ -3178,6 +3178,7 @@
           <div id="matSetEditActionsLeft" style="display: none; display: flex; gap: 8px; flex-wrap: wrap;">
             <button type="button" class="btn-secondary" onclick="openAddProfileToCurrentMaterialSetModal()" style="font-size: 12px; background: #f0fdf4; border-color: #86efac; color: #166534; font-weight: bold;">+ Dodaj profil stały</button>
             <button type="button" class="btn-secondary" onclick="addNewMaterialSubset()" style="font-size: 12px; background: #ecfdf5; border-color: #a7f3d0; color: #047857; font-weight: bold;">+ Dodaj podzbiór (pakiety)</button>
+            <button type="button" class="btn-secondary" onclick="openCopyMaterialSubsetModal()" style="font-size: 12px; background: #fdf4ff; border-color: #f5d0fe; color: #a21caf; font-weight: bold;" title="Skopiuj istniejący podzbiór z innego lub tego samego zbioru">📋 Kopiuj podzbiór</button>
             <button type="button" class="btn-secondary" onclick="openCopyFromMaterialSetModal()" style="font-size: 12px; background: #eff6ff; border-color: #93c5fd; color: #1d4ed8;">📋 Kopiuj wzór z innego zbioru</button>
           </div>
           <div id="matSetViewActionsLeft">
@@ -3323,6 +3324,47 @@
     <div style="display: flex; justify-content: flex-end; gap: 8px;">
       <button type="button" class="btn-secondary" onclick="closeCopyFromMaterialSetModal()">Anuluj</button>
       <button type="button" class="btn-primary" onclick="confirmCopyFromSourceMaterialSet()" style="background: #16a34a; border-color: #15803d; font-weight: bold;">📋 Kopiuj pozycje</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL KOPIOWANIA PODZBIORU (Wykaz Materiałów -> Magazyn Zbiorów) -->
+<div class="modal-overlay" id="copyMaterialSubsetModal" style="z-index: 10007;">
+  <div class="modal-box" style="width: 540px; max-width: 95%;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <h3 style="margin: 0; font-size: 16px; color: #86198f;">📑 Kopiuj podzbiór z pakietami</h3>
+      <button type="button" class="btn-secondary" onclick="closeCopyMaterialSubsetModal()" style="padding: 3px 8px;">✕</button>
+    </div>
+    
+    <p style="font-size: 13px; color: #475569; margin-bottom: 12px;">
+      Kopiujesz do zbioru: <strong id="copyTargetSubsetMatSetName" style="color: #166534;">-</strong>
+    </p>
+
+    <!-- Krok 1: Wybór zbioru źródłowego -->
+    <div style="margin-bottom: 10px;">
+      <label style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #1e293b;">1. Wybierz zbiór źródłowy:</label>
+      <select id="copySubsetSourceSetSelect" class="form-control" style="width: 100%; font-size: 13px; padding: 6px;" onchange="onCopySubsetSourceSetChange()"></select>
+    </div>
+
+    <!-- Krok 2: Wybór podzbioru -->
+    <div style="margin-bottom: 12px;">
+      <label style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #1e293b;">2. Wybierz podzbiór do skopiowania:</label>
+      <select id="copySubsetSourceSelect" class="form-control" style="width: 100%; font-size: 13px; padding: 6px;" onchange="onCopySubsetSelectedChange()"></select>
+    </div>
+
+    <!-- Krok 3: Opcjonalna nowa nazwa dla kopiowanego podzbioru -->
+    <div style="margin-bottom: 12px;">
+      <label style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #1e293b;">3. Nazwa dla nowego podzbioru (możesz zmienić):</label>
+      <input type="text" id="copySubsetNewNameInput" class="form-control" placeholder="np. Wybór słupków (kopia)" style="width: 100%; font-size: 13px; padding: 6px;">
+    </div>
+
+    <!-- Podgląd zawartości podzbioru (pakiety i profile) -->
+    <div style="font-size: 11px; font-weight: 700; color: #64748b; margin-bottom: 4px;">Podgląd pakietów w wybranym podzbiorze:</div>
+    <div id="copySubsetPreviewList" style="max-height: 160px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px; background: #fdf4ff; border-color: #f5d0fe; padding: 8px; margin-bottom: 16px; font-size: 12px;"></div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 8px;">
+      <button type="button" class="btn-secondary" onclick="closeCopyMaterialSubsetModal()">Anuluj</button>
+      <button type="button" class="btn-primary" onclick="confirmCopyMaterialSubset()" style="background: #a21caf; border-color: #86198f; font-weight: bold;">📑 Kopiuj podzbiór</button>
     </div>
   </div>
 </div>
@@ -8538,6 +8580,183 @@
     renderMaterialSetDetailsById(selectedMaterialSetId);
     updateWmSetsSelect();
     alert(`Pomyślnie skopiowano wzór ze zbioru: "${sourceSet.title}"!`);
+  }
+
+  // ========================================================
+  // KOPIOWANIE PODZBIORÓW (SUBSETS) POMIĘDZY ZBIORAMI
+  // ========================================================
+  function openCopyMaterialSubsetModal() {
+    const targetSet = getMaterialSetObjectById(selectedMaterialSetId) || materialSets[selectedMaterialSetIndex];
+    if (!targetSet) {
+      alert('Najpierw wybierz zbiór z listy po lewej!');
+      return;
+    }
+
+    const targetTitle = targetSet.title || ((targetSet.element || '') + ' - ' + (targetSet.model || ''));
+    document.getElementById('copyTargetSubsetMatSetName').textContent = targetTitle;
+
+    const sourceSetSelect = document.getElementById('copySubsetSourceSetSelect');
+    if (!sourceSetSelect) return;
+
+    sourceSetSelect.innerHTML = '';
+
+    // Znajdź wszystkie zbiory, które posiadają co najmniej 1 podzbiór
+    const setsWithSubsets = materialSets.filter(s => Array.isArray(s.subsets) && s.subsets.length > 0);
+
+    if (setsWithSubsets.length === 0) {
+      sourceSetSelect.innerHTML = '<option value="">-- Brak zbiorów z podzbiorami w bazie --</option>';
+      document.getElementById('copySubsetSourceSelect').innerHTML = '<option value="">-- Brak podzbiorów --</option>';
+      document.getElementById('copySubsetPreviewList').innerHTML = '<div style="color: #94a3b8; font-style: italic;">Brak podzbiorów do skopiowania. Najpierw utwórz podzbiór w dowolnym zbiorze.</div>';
+      document.getElementById('copyMaterialSubsetModal').style.display = 'flex';
+      return;
+    }
+
+    setsWithSubsets.sort((a, b) => (a.title || '').localeCompare(b.title || '', 'pl', { sensitivity: 'base' }));
+
+    setsWithSubsets.forEach((s, idx) => {
+      const sId = (s.id !== undefined && s.id !== null) ? String(s.id) : ('mat_set_idx_' + idx);
+      const subCount = s.subsets.length;
+      const opt = document.createElement('option');
+      opt.value = sId;
+      const isCurrent = (sId === String(selectedMaterialSetId) || s === targetSet);
+      opt.textContent = `${s.title || ((s.element || '') + ' - ' + (s.model || ''))} (${subCount} podzb.)${isCurrent ? ' [Ten zbiór]' : ''}`;
+      sourceSetSelect.appendChild(opt);
+    });
+
+    // Jeśli bieżący zbiór ma podzbiory, domyślnie zaznacz go (umożliwia powielanie podzbioru wewnątrz tego samego zbioru)
+    if (Array.isArray(targetSet.subsets) && targetSet.subsets.length > 0) {
+      sourceSetSelect.value = String(selectedMaterialSetId);
+    }
+
+    onCopySubsetSourceSetChange();
+    document.getElementById('copyMaterialSubsetModal').style.display = 'flex';
+  }
+
+  function closeCopyMaterialSubsetModal() {
+    document.getElementById('copyMaterialSubsetModal').style.display = 'none';
+  }
+
+  function onCopySubsetSourceSetChange() {
+    const sourceSetSelect = document.getElementById('copySubsetSourceSetSelect');
+    const subsetSelect = document.getElementById('copySubsetSourceSelect');
+    if (!sourceSetSelect || !subsetSelect) return;
+
+    subsetSelect.innerHTML = '';
+    const sourceSet = getMaterialSetObjectById(sourceSetSelect.value);
+
+    if (!sourceSet || !Array.isArray(sourceSet.subsets) || sourceSet.subsets.length === 0) {
+      subsetSelect.innerHTML = '<option value="">-- Wybrany zbiór nie ma podzbiorów --</option>';
+      onCopySubsetSelectedChange();
+      return;
+    }
+
+    sourceSet.subsets.forEach((sub, subIdx) => {
+      const opt = document.createElement('option');
+      opt.value = subIdx;
+      const pkgCount = Array.isArray(sub.packages) ? sub.packages.length : 0;
+      opt.textContent = `${sub.name || ('Podzbiór ' + (subIdx + 1))} (${pkgCount} pakietów)`;
+      subsetSelect.appendChild(opt);
+    });
+
+    onCopySubsetSelectedChange();
+  }
+
+  function onCopySubsetSelectedChange() {
+    const sourceSetSelect = document.getElementById('copySubsetSourceSetSelect');
+    const subsetSelect = document.getElementById('copySubsetSourceSelect');
+    const nameInput = document.getElementById('copySubsetNewNameInput');
+    const previewDiv = document.getElementById('copySubsetPreviewList');
+
+    if (!sourceSetSelect || !subsetSelect || !previewDiv) return;
+
+    const sourceSet = getMaterialSetObjectById(sourceSetSelect.value);
+    const subIdx = parseInt(subsetSelect.value, 10);
+
+    if (!sourceSet || isNaN(subIdx) || !sourceSet.subsets || !sourceSet.subsets[subIdx]) {
+      previewDiv.innerHTML = '<div style="color: #94a3b8; font-style: italic;">Brak danych wybranego podzbioru.</div>';
+      if (nameInput) nameInput.value = '';
+      return;
+    }
+
+    const sub = sourceSet.subsets[subIdx];
+    const targetSet = getMaterialSetObjectById(selectedMaterialSetId) || materialSets[selectedMaterialSetIndex];
+    const isSameSet = (sourceSet === targetSet);
+
+    if (nameInput) {
+      nameInput.value = sub.name + (isSameSet ? ' (kopia)' : '');
+    }
+
+    const packages = Array.isArray(sub.packages) ? sub.packages : [];
+    if (packages.length === 0) {
+      previewDiv.innerHTML = '<div style="color: #64748b; font-style: italic;">Ten podzbiór nie posiada jeszcze żadnych pakietów profili.</div>';
+      return;
+    }
+
+    let html = `<div style="font-weight: 700; color: #86198f; margin-bottom: 6px;">${escapeHtml(sub.name)} (Pakiety: ${packages.length}):</div>`;
+    html += '<ul style="margin: 0; padding-left: 20px;">';
+    packages.forEach(pkg => {
+      const itCount = Array.isArray(pkg.items) ? pkg.items.length : 0;
+      let itList = '';
+      if (itCount > 0) {
+        itList = ' - ' + pkg.items.map(it => `${it.material || 'Profil'} (${it.length || 0}mm x ${it.qty || 1})`).join(', ');
+      }
+      html += `<li style="margin-bottom: 4px;"><strong>📦 ${escapeHtml(pkg.title || 'Pakiet')}</strong> (${itCount} el.)<div style="font-size: 11px; color: #64748b;">${escapeHtml(itList)}</div></li>`;
+    });
+    html += '</ul>';
+
+    previewDiv.innerHTML = html;
+  }
+
+  function confirmCopyMaterialSubset() {
+    const targetSet = getMaterialSetObjectById(selectedMaterialSetId) || materialSets[selectedMaterialSetIndex];
+    const sourceSetSelect = document.getElementById('copySubsetSourceSetSelect');
+    const subsetSelect = document.getElementById('copySubsetSourceSelect');
+    const nameInput = document.getElementById('copySubsetNewNameInput');
+
+    if (!targetSet) {
+      alert('Nie znaleziono docelowego zbioru profili!');
+      return;
+    }
+
+    const sourceSet = getMaterialSetObjectById(sourceSetSelect ? sourceSetSelect.value : '');
+    const subIdx = parseInt(subsetSelect ? subsetSelect.value : '', 10);
+
+    if (!sourceSet || isNaN(subIdx) || !sourceSet.subsets || !sourceSet.subsets[subIdx]) {
+      alert('Wybierz prawidłowy podzbiór do skopiowania!');
+      return;
+    }
+
+    const originalSub = sourceSet.subsets[subIdx];
+    const chosenName = (nameInput && nameInput.value.trim()) ? nameInput.value.trim() : (originalSub.name + ' (kopia)');
+
+    // Głęboka kopia podzbioru wraz ze wszystkimi pakietami i unikalnymi id
+    const newSubset = {
+      id: 'sub_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      name: chosenName,
+      packages: (originalSub.packages || []).map((pkg, pIdx) => ({
+        id: 'pkg_' + Date.now() + '_' + pIdx + '_' + Math.random().toString(36).substr(2, 4),
+        title: pkg.title || ('Pakiet ' + (pIdx + 1)),
+        items: JSON.parse(JSON.stringify(pkg.items || []))
+      }))
+    };
+
+    if (isEditingMaterialSet && tempEditMaterialSetSubsets) {
+      tempEditMaterialSetSubsets.push(newSubset);
+    } else {
+      if (!Array.isArray(targetSet.subsets)) targetSet.subsets = [];
+      targetSet.subsets.push(newSubset);
+      targetSet.lastModifiedBy = (currentWorker || localStorage.getItem('order_app_current_worker') || 'Nieznany').trim();
+      targetSet.lastModifiedAt = new Date().toLocaleString('pl-PL');
+      localStorage.setItem('order_app_material_sets', JSON.stringify(materialSets));
+      syncMaterialSetsWithCloud();
+    }
+
+    closeCopyMaterialSubsetModal();
+    renderMaterialSetDetailsById(selectedMaterialSetId);
+    updateWmSetsSelect();
+
+    const pkgCount = newSubset.packages.length;
+    alert(`Pomyślnie skopiowano podzbiór "${chosenName}" (${pkgCount} pakietów) do zbioru "${targetSet.title}"!`);
   }
 
   // --- INTEGRACJA Z PANELEM WYKAZU MATERIAŁÓW (WSTAWIANIE ZBIORU I OBSŁUGA ROZWIJANEJ LISTY PODZBIORÓW) ---
