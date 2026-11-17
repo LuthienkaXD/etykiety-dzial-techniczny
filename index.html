@@ -2192,7 +2192,7 @@
             <select id="wmSelectSavedProfile" class="form-control" style="flex: 1; font-size: 12px;">
               <option value="">-- Wybierz profil z bazy --</option>
             </select>
-            <button type="button" class="btn-primary" onclick="addProfileFromWhToWm()" style="padding: 6px 12px; font-size: 13px;">+ Wstaw</button>
+            <button type="button" class="btn-primary" onclick="addWarehouseProfileToWm()" style="padding: 6px 12px; font-size: 13px;">+ Wstaw</button>
           </div>
         </div>
         <button type="button" class="btn-secondary" onclick="addEmptyRowToWm()" style="width: 100%; font-size: 12px; padding: 6px;">
@@ -8611,7 +8611,7 @@
     }
 
     const idx = parseInt(sel.value);
-    const chosenSet = materialSets[idx];
+    const chosenSet = (materialSets && materialSets[idx]) ? materialSets[idx] : null;
     if (!chosenSet) return;
 
     // Zbieramy pozycje stałe
@@ -8631,7 +8631,6 @@
         if (sub.packages && sub.packages[pkgIdx] && Array.isArray(sub.packages[pkgIdx].items)) {
           sub.packages[pkgIdx].items.forEach(it => {
             const copy = JSON.parse(JSON.stringify(it));
-            // Nie dodajemy automatycznych uwag o podzbiorze
             itemsToAdd.push(copy);
           });
         }
@@ -8643,13 +8642,18 @@
       return;
     }
 
-    // Jeśli w wykazie są tylko 2 domyślne puste wiersze, czyścimy je
-    if (wykazMaterialowState.items.length === 2 && !wykazMaterialowState.items[0].material && !wykazMaterialowState.items[1].material) {
-      wykazMaterialowState.items = [];
+    const curPage = getActiveWmPage();
+    if (!curPage.items) curPage.items = [];
+
+    // Jeśli w wykazie są tylko puste wiersze początkowe, czyścimy je
+    if (curPage.items.length === 1 && !curPage.items[0].material && !curPage.items[0].length && !curPage.items[0].qty) {
+      curPage.items = [];
+    } else if (curPage.items.length === 2 && !curPage.items[0].material && !curPage.items[1].material) {
+      curPage.items = [];
     }
 
     itemsToAdd.forEach(it => {
-      wykazMaterialowState.items.push({
+      curPage.items.push({
         material: it.material || '',
         length: (it.length !== undefined && it.length !== null) ? String(it.length) : '',
         qty: (it.qty !== undefined && it.qty !== null) ? String(it.qty) : '',
@@ -8658,7 +8662,8 @@
     });
 
     renderWmView();
-    alert(`Dodano ${itemsToAdd.length} pozycji ze zbioru "${chosenSet.title}" do Wykazu Materiałów!`);
+    const setName = chosenSet.title || ((chosenSet.element || '') + ' - ' + (chosenSet.model || ''));
+    alert(`Dodano ${itemsToAdd.length} pozycji ze zbioru "${setName}" do Wykazu Materiałów!`);
   }
 
   // ========================================================
@@ -8847,7 +8852,8 @@
   }
 
   function updatePaintProducerForCurrentColor() {
-    const colorVal = (wykazMaterialowState.color || (document.getElementById('wmColorInput') ? document.getElementById('wmColorInput').value : '') || '').trim();
+    const curPage = (typeof getActiveWmPage === 'function') ? getActiveWmPage() : (wykazMaterialowState.pages ? wykazMaterialowState.pages[0] : wykazMaterialowState);
+    const colorVal = ((curPage && curPage.color) || (document.getElementById('wmColorInput') ? document.getElementById('wmColorInput').value : '') || '').trim();
     const rowEl = document.getElementById('wmPaintProducerRow');
     const badgeEl = document.getElementById('wmPaintProducerCountBadge');
     const selectWrap = document.getElementById('wmPaintProducerSelectWrapper');
@@ -8857,6 +8863,7 @@
 
     if (!colorVal) {
       if (rowEl) rowEl.style.display = 'none';
+      if (curPage) curPage.paintProducer = '';
       wykazMaterialowState.paintProducer = '';
       if (viewProd) viewProd.textContent = '';
       return;
@@ -8873,6 +8880,7 @@
           singleEl.innerHTML = `<span style="color: #94a3b8; font-style: italic; font-weight: normal;">Brak przypisanego producenta w bazie (możesz dodać w "Baza farb")</span>`;
         }
       }
+      if (curPage) curPage.paintProducer = '';
       wykazMaterialowState.paintProducer = '';
       if (viewProd) viewProd.textContent = '';
       return;
@@ -8883,13 +8891,15 @@
     if (matches.length === 1) {
       // Dokładnie 1 producent
       const m = matches[0];
-      wykazMaterialowState.paintProducer = m.producer + (m.symbol ? ` (${m.symbol})` : '');
+      const prodStr = m.producer + (m.symbol ? ` (${m.symbol})` : '');
+      if (curPage) curPage.paintProducer = prodStr;
+      wykazMaterialowState.paintProducer = prodStr;
       if (badgeEl) badgeEl.textContent = '1 dopasowanie';
       if (selectWrap) selectWrap.style.display = 'none';
       if (singleEl) {
         singleEl.innerHTML = `<span style="font-weight: 700; color: #86198f;">${m.producer}</span>${m.symbol ? ` <span style="font-size: 11px; color: #475569;">(${m.symbol})</span>` : ''}`;
       }
-      if (viewProd) viewProd.textContent = `[Producent: ${wykazMaterialowState.paintProducer}]`;
+      if (viewProd) viewProd.textContent = `[Producent: ${prodStr}]`;
     } else {
       // Więcej niż 1 producent -> dajemy możliwość wyboru z rozwijanej listy
       if (badgeEl) badgeEl.textContent = `${matches.length} producentów (wybierz z listy)`;
@@ -8897,7 +8907,7 @@
       if (singleEl) singleEl.innerHTML = '';
 
       if (selectEl) {
-        const curSelected = wykazMaterialowState.paintProducer;
+        const curSelected = (curPage && curPage.paintProducer) ? curPage.paintProducer : wykazMaterialowState.paintProducer;
         selectEl.innerHTML = '';
         matches.forEach((m, idx) => {
           const valStr = m.producer + (m.symbol ? ` (${m.symbol})` : '');
@@ -8913,13 +8923,17 @@
         });
 
         // Ustaw aktywną wartość z selecta
-        wykazMaterialowState.paintProducer = selectEl.value;
-        if (viewProd) viewProd.textContent = `[Producent: ${wykazMaterialowState.paintProducer}]`;
+        const prodVal = selectEl.value;
+        if (curPage) curPage.paintProducer = prodVal;
+        wykazMaterialowState.paintProducer = prodVal;
+        if (viewProd) viewProd.textContent = `[Producent: ${prodVal}]`;
       }
     }
   }
 
   function onWmPaintProducerSelectChange(val) {
+    const curPage = (typeof getActiveWmPage === 'function') ? getActiveWmPage() : null;
+    if (curPage) curPage.paintProducer = val;
     wykazMaterialowState.paintProducer = val;
     const viewProd = document.getElementById('wmViewProducer');
     if (viewProd) viewProd.textContent = val ? `[Producent: ${val}]` : '';
@@ -9221,6 +9235,7 @@
   let wykazMaterialowState = {
     orderNumber: '',
     activePageIndex: 0,
+    paintProducer: '',
     pages: [
       {
         id: 'page_1',
@@ -9237,7 +9252,7 @@
   };
 
   function getActiveWmPage() {
-    if (!wykazMaterialowState.pages || wykazMaterialowState.pages.length === 0) {
+    if (!wykazMaterialowState.pages || !Array.isArray(wykazMaterialowState.pages) || wykazMaterialowState.pages.length === 0) {
       wykazMaterialowState.pages = [{
         id: 'page_' + Date.now(),
         color: '',
@@ -9256,6 +9271,7 @@
 
   function initWmModule() {
     updateWmProfilesSelect();
+    updateWmSetsSelect();
     renderWmTabs();
     renderWmView();
   }
@@ -9283,15 +9299,17 @@
       bar.appendChild(btn);
     });
 
-    // Update raw materials toggle checkbox
+    // Ustawienie checkboxa materiałów surowych dla aktywnej podstrony
     const curPage = getActiveWmPage();
     const rawToggle = document.getElementById('wmRawMaterialsToggle');
     if (rawToggle) rawToggle.checked = !!curPage.hasRawMaterials;
 
-    // Update color input and paint producer row
+    // Ustawienie inputu koloru dla aktywnej podstrony
     const colInput = document.getElementById('wmColorInput');
     if (colInput) colInput.value = curPage.color || '';
-    updateWmPaintProducerUI(curPage.color || '');
+
+    // Odświeżenie producenta farby
+    updatePaintProducerForCurrentColor();
   }
 
   function addNewWmColorTab(initialColor = '') {
@@ -9306,10 +9324,14 @@
       hasRawMaterials: false,
       rawItems: []
     };
-    if (initialColor) {
-      const match = findPaintProducerByColor(initialColor);
-      if (match.producer) newPage.paintProducer = match.producer;
+
+    if (initialColor && typeof getMatchingProducersForColor === 'function') {
+      const match = getMatchingProducersForColor(initialColor);
+      if (match.length > 0) {
+        newPage.paintProducer = match[0].producer + (match[0].symbol ? ' (' + match[0].symbol + ')' : '');
+      }
     }
+
     wykazMaterialowState.pages.push(newPage);
     wykazMaterialowState.activePageIndex = wykazMaterialowState.pages.length - 1;
     renderWmTabs();
@@ -9361,7 +9383,7 @@
     if (cleanNum) {
       const foundOrd = savedOrders.find(o => (o.orderNumber || '').trim().toLowerCase() === cleanNum.toLowerCase());
       if (foundOrd) {
-        // Jeśli zamówienie ma zapisaną strukturę wykazMaterialow z pages
+        // Jeśli zamówienie ma zapisaną strukturę wykazMaterialow z podstronami
         if (foundOrd.wykazMaterialow && Array.isArray(foundOrd.wykazMaterialow.pages) && foundOrd.wykazMaterialow.pages.length > 0) {
           wykazMaterialowState.pages = JSON.parse(JSON.stringify(foundOrd.wykazMaterialow.pages));
           wykazMaterialowState.activePageIndex = 0;
@@ -9370,7 +9392,7 @@
           return;
         }
 
-        // Jeśli zamówienie ma wiele kolorów z etykiet (orderColors)
+        // Jeśli zamówienie ma kolory z etykiet (orderColors)
         let colorsList = [];
         if (Array.isArray(foundOrd.orderColors) && foundOrd.orderColors.length > 0) {
           colorsList = foundOrd.orderColors.filter(c => c && c.trim());
@@ -9380,11 +9402,15 @@
 
         if (colorsList.length > 0) {
           wykazMaterialowState.pages = colorsList.map((col, idx) => {
-            const match = findPaintProducerByColor(col);
+            let prod = '';
+            if (typeof getMatchingProducersForColor === 'function') {
+              const m = getMatchingProducersForColor(col);
+              if (m.length > 0) prod = m[0].producer + (m[0].symbol ? ' (' + m[0].symbol + ')' : '');
+            }
             return {
               id: 'page_' + (idx + 1),
               color: col,
-              paintProducer: match.producer || '',
+              paintProducer: prod,
               items: [
                 { material: '', length: '', qty: '', remarks: '' },
                 { material: '', length: '', qty: '', remarks: '' }
@@ -9405,73 +9431,10 @@
   function handleWmColorInput(val) {
     const curPage = getActiveWmPage();
     curPage.color = val;
-    updateWmPaintProducerUI(val);
+    updatePaintProducerForCurrentColor();
     renderWmTabs();
     const viewCol = document.getElementById('wmViewColor');
     if (viewCol) viewCol.textContent = val || '-';
-  }
-
-  function updateWmPaintProducerUI(colorVal) {
-    const curPage = getActiveWmPage();
-    const cleanCol = (colorVal || '').trim();
-    const row = document.getElementById('wmPaintProducerRow');
-    const badge = document.getElementById('wmPaintProducerCountBadge');
-    const selectWrapper = document.getElementById('wmPaintProducerSelectWrapper');
-    const select = document.getElementById('wmPaintProducerSelect');
-    const singleDisplay = document.getElementById('wmPaintProducerSingleDisplay');
-    const viewProd = document.getElementById('wmViewProducer');
-
-    if (!cleanCol) {
-      if (row) row.style.display = 'none';
-      curPage.paintProducer = '';
-      if (viewProd) viewProd.textContent = '';
-      return;
-    }
-
-    const match = findPaintProducerByColor(cleanCol);
-    if (!match.producers || match.producers.length === 0) {
-      if (row) row.style.display = 'none';
-      curPage.paintProducer = '';
-      if (viewProd) viewProd.textContent = '';
-      return;
-    }
-
-    if (row) row.style.display = 'block';
-
-    if (match.producers.length === 1) {
-      curPage.paintProducer = match.producers[0];
-      if (selectWrapper) selectWrapper.style.display = 'none';
-      if (singleDisplay) {
-        singleDisplay.style.display = 'block';
-        singleDisplay.textContent = match.producers[0];
-      }
-      if (badge) badge.textContent = '(1 producent)';
-    } else {
-      if (!curPage.paintProducer || !match.producers.includes(curPage.paintProducer)) {
-        curPage.paintProducer = match.producers[0];
-      }
-      if (singleDisplay) singleDisplay.style.display = 'none';
-      if (selectWrapper) {
-        selectWrapper.style.display = 'block';
-        if (select) {
-          select.innerHTML = match.producers.map(p => `<option value="${escapeHtml(p)}" ${p === curPage.paintProducer ? 'selected' : ''}>${escapeHtml(p)}</option>`).join('');
-        }
-      }
-      if (badge) badge.textContent = `(${match.producers.length} producentów - wybierz)`;
-    }
-
-    if (viewProd) {
-      viewProd.textContent = curPage.paintProducer ? `[Producent: ${curPage.paintProducer}]` : '';
-    }
-  }
-
-  function onWmPaintProducerSelectChange(val) {
-    const curPage = getActiveWmPage();
-    curPage.paintProducer = val;
-    const viewProd = document.getElementById('wmViewProducer');
-    if (viewProd) {
-      viewProd.textContent = val ? `[Producent: ${val}]` : '';
-    }
   }
 
   function syncWmOrderFromEtykiety() {
@@ -9487,19 +9450,22 @@
       wykazMaterialowState.orderNumber = numToUse;
     }
 
-    // Sprawdź kolory z etykiet (orderColors array)
+    // Sprawdź kolory z etykiet (orderColors)
     const validColors = (typeof orderColors !== 'undefined' && Array.isArray(orderColors))
       ? orderColors.filter(c => c && c.trim())
       : [];
 
     if (validColors.length > 0) {
-      // Jeśli etykiety mają wiele kolorów, stwórz po podstronie na każdy kolor!
       wykazMaterialowState.pages = validColors.map((col, idx) => {
-        const match = findPaintProducerByColor(col);
+        let prod = '';
+        if (typeof getMatchingProducersForColor === 'function') {
+          const m = getMatchingProducersForColor(col);
+          if (m.length > 0) prod = m[0].producer + (m[0].symbol ? ' (' + m[0].symbol + ')' : '');
+        }
         return {
           id: 'page_' + (idx + 1),
           color: col,
-          paintProducer: match.producer || '',
+          paintProducer: prod,
           items: [
             { material: '', length: '', qty: '', remarks: '' },
             { material: '', length: '', qty: '', remarks: '' }
@@ -9514,8 +9480,10 @@
       if (singleCol) {
         const curPage = getActiveWmPage();
         curPage.color = singleCol;
-        const match = findPaintProducerByColor(singleCol);
-        if (match.producer) curPage.paintProducer = match.producer;
+        if (typeof getMatchingProducersForColor === 'function') {
+          const m = getMatchingProducersForColor(singleCol);
+          if (m.length > 0) curPage.paintProducer = m[0].producer + (m[0].symbol ? ' (' + m[0].symbol + ')' : '');
+        }
       }
     }
 
@@ -9523,164 +9491,83 @@
     renderWmView();
   }
 
+  // --- MAGAZYN PROFILI (Lista rozwijana w Wykazie materiałów) ---
   function updateWmProfilesSelect(filterQuery = '') {
-    const sel = document.getElementById('wmSelectProfile');
+    const sel = document.getElementById('wmSelectSavedProfile') || document.getElementById('wmSelectProfile');
     if (!sel) return;
-    const q = (filterQuery || '').trim().toLowerCase();
-    const profiles = warehouseProfilesDB || [];
-    
-    let htmlOpts = '<option value="">-- Wybierz materiał z magazynu --</option>';
-    let count = 0;
-    profiles.forEach(p => {
-      const name = p.name || '';
-      if (!q || name.toLowerCase().includes(q)) {
-        const lenTxt = (p.unitWeightOnly || !p.commercialLength) ? 'Waga: ' + (p.weightPerMeter || 0) + ' kg/szt' : (p.commercialLength + ' mm');
-        htmlOpts += `<option value="${p.id}">${escapeHtml(name)} (${lenTxt})</option>`;
-        count++;
-      }
-    });
-    if (count === 0 && q) {
-      htmlOpts += `<option value="" disabled>Brak wyników dla "${escapeHtml(filterQuery)}"</option>`;
+    const q = (filterQuery || (document.getElementById('wmSearchProfilesInput') ? document.getElementById('wmSearchProfilesInput').value : '') || '').toLowerCase().trim();
+    const curVal = sel.value;
+    sel.innerHTML = '<option value="">-- Wybierz profil z bazy --</option>';
+
+    if (Array.isArray(materialsProfiles)) {
+      materialsProfiles.forEach((p, idx) => {
+        const name = p.name || '';
+        if (q && !name.toLowerCase().includes(q)) return;
+        const opt = document.createElement('option');
+        opt.value = idx;
+        const isPiece = !!(p.isPiece || p.is_piece || p.unitMode === 'unit' || p.length === '-' || p.length === 'szt.' || (p.length === '' && p.weight));
+        let lenInfo = '';
+        if (isPiece) {
+          lenInfo = p.weight ? ` (${parseFloat(p.weight).toFixed(2)} kg/szt.)` : ' (1 szt.)';
+        } else {
+          lenInfo = p.length ? ` (${p.length} mm)` : ' (6000 mm)';
+        }
+        opt.textContent = `${name}${lenInfo}`;
+        sel.appendChild(opt);
+      });
     }
-    sel.innerHTML = htmlOpts;
+
+    if (curVal !== '' && Array.from(sel.options).some(o => o.value === curVal)) {
+      sel.value = curVal;
+    } else if (q && sel.options.length === 2) {
+      sel.selectedIndex = 1;
+    }
   }
 
   function filterWmProfilesSelect() {
-    const query = (document.getElementById('wmSearchProfilesInput').value || '');
-    updateWmProfilesSelect(query);
+    const q = document.getElementById('wmSearchProfilesInput') ? document.getElementById('wmSearchProfilesInput').value : '';
+    updateWmProfilesSelect(q);
   }
 
-  function filterWmSetsSelect() {
-    const query = (document.getElementById('wmSearchSetsInput').value || '').trim().toLowerCase();
-    const sel = document.getElementById('wmSelectSet');
-    if (!sel) return;
-    
-    const sets = materialSetsDB || [];
-    let htmlOpts = '<option value="">-- Wybierz zbiór profili --</option>';
-    let count = 0;
-    sets.forEach(s => {
-      const name = s.name || '';
-      if (!query || name.toLowerCase().includes(query)) {
-        htmlOpts += `<option value="${s.id}">${escapeHtml(name)} (${(s.items || []).length} el.)</option>`;
-        count++;
-      }
-    });
-    if (count === 0 && query) {
-      htmlOpts += `<option value="" disabled>Brak wyników dla "${escapeHtml(document.getElementById('wmSearchSetsInput').value)}"</option>`;
-    }
-    sel.innerHTML = htmlOpts;
-    onWmSetSelectChange();
-  }
-
-  function onWmSetSelectChange() {
-    const sel = document.getElementById('wmSelectSet');
-    const container = document.getElementById('wmSubsetsSelectionContainer');
-    if (!sel || !container) return;
-    const setId = sel.value;
-    if (!setId) {
-      container.style.display = 'none';
-      container.innerHTML = '';
-      return;
-    }
-
-    const s = (materialSetsDB || []).find(item => item.id === setId);
-    if (!s || !s.subsets || s.subsets.length === 0) {
-      container.style.display = 'none';
-      container.innerHTML = '';
-      return;
-    }
-
-    let subHtml = '<div style="font-weight: 700; font-size: 11.5px; color: #166534; margin-bottom: 6px;">📦 Wybierz warianty pakietów dla podzbiorów:</div>';
-    s.subsets.forEach((sub, subIdx) => {
-      subHtml += `
-        <div style="margin-bottom: 6px; padding: 4px 6px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px;">
-          <div style="font-size: 11px; font-weight: 600; color: #15803d; margin-bottom: 2px;">${escapeHtml(sub.name || ('Podzbiór ' + (subIdx + 1)))}:</div>
-          <select id="wmSubsetPkgSelect_${subIdx}" class="form-control" style="font-size: 11.5px; padding: 3px 6px;">
-      `;
-      (sub.packages || []).forEach((pkg, pIdx) => {
-        subHtml += `<option value="${pIdx}">${escapeHtml(pkg.title || ('Pakiet ' + (pIdx + 1)))} (${(pkg.items || []).length} el.)</option>`;
-      });
-      subHtml += `</select></div>`;
-    });
-
-    container.innerHTML = subHtml;
-    container.style.display = 'block';
-  }
-
-  function addMaterialSetToWm() {
-    const sel = document.getElementById('wmSelectSet');
-    if (!sel || !sel.value) {
-      alert('Wybierz zbiór profili z listy!');
-      return;
-    }
-    const s = (materialSetsDB || []).find(item => item.id === sel.value);
-    if (!s) return;
-
-    const curPage = getActiveWmPage();
-    if (!curPage.items) curPage.items = [];
-
-    // Jeśli jedyny wiersz na liście jest całkowicie pusty, zastąp go
-    if (curPage.items.length === 1 && !curPage.items[0].material && !curPage.items[0].length && !curPage.items[0].qty) {
-      curPage.items = [];
-    }
-
-    // 1. Dodaj pozycje główne zbioru
-    (s.items || []).forEach(it => {
-      curPage.items.push({
-        material: it.material || '',
-        length: (it.length !== undefined && it.length !== null) ? String(it.length) : '',
-        qty: (it.qty !== undefined && it.qty !== null) ? String(it.qty) : '',
-        remarks: it.remarks || ''
-      });
-    });
-
-    // 2. Dodaj wybrane pakiety z podzbiorów
-    if (s.subsets && s.subsets.length > 0) {
-      s.subsets.forEach((sub, subIdx) => {
-        const pkgSel = document.getElementById(`wmSubsetPkgSelect_${subIdx}`);
-        const pIdx = pkgSel ? parseInt(pkgSel.value, 10) : 0;
-        const chosenPkg = (sub.packages && sub.packages[pIdx]) ? sub.packages[pIdx] : (sub.packages ? sub.packages[0] : null);
-        if (chosenPkg && chosenPkg.items) {
-          chosenPkg.items.forEach(pItem => {
-            curPage.items.push({
-              material: pItem.material || '',
-              length: (pItem.length !== undefined && pItem.length !== null) ? String(pItem.length) : '',
-              qty: (pItem.qty !== undefined && pItem.qty !== null) ? String(pItem.qty) : '',
-              remarks: pItem.remarks || ''
-            });
-          });
-        }
-      });
-    }
-
-    renderWmView();
-  }
-
+  // Wstawianie profilu z Magazynu Profili do aktywnej podstrony
   function addWarehouseProfileToWm() {
-    const sel = document.getElementById('wmSelectProfile');
-    if (!sel || !sel.value) {
+    const sel = document.getElementById('wmSelectSavedProfile') || document.getElementById('wmSelectProfile');
+    if (!sel || sel.value === '') {
       alert('Wybierz profil z listy!');
       return;
     }
-    const p = (warehouseProfilesDB || []).find(item => item.id === sel.value);
-    if (!p) return;
 
+    const idx = parseInt(sel.value);
+    if (isNaN(idx) || !materialsProfiles[idx]) {
+      alert('Nie znaleziono wybranego profilu!');
+      return;
+    }
+
+    const p = materialsProfiles[idx];
     const curPage = getActiveWmPage();
     if (!curPage.items) curPage.items = [];
 
+    // Jeśli jedyny wiersz jest pusty, zastępujemy go
     if (curPage.items.length === 1 && !curPage.items[0].material && !curPage.items[0].length && !curPage.items[0].qty) {
       curPage.items = [];
     }
 
-    const lenStr = (p.unitWeightOnly || !p.commercialLength) ? '' : String(p.commercialLength);
+    const isPiece = !!(p.isPiece || p.is_piece || p.unitMode === 'unit' || p.length === '-' || p.length === 'szt.' || (p.length === '' && p.weight));
+    const lenVal = isPiece ? '' : (p.length || '6000');
+
     curPage.items.push({
       material: p.name || '',
-      length: lenStr,
+      length: lenVal,
       qty: '1',
       remarks: ''
     });
 
     renderWmView();
+  }
+
+  // Kompatybilny alias
+  function addProfileFromWhToWm() {
+    addWarehouseProfileToWm();
   }
 
   function addEmptyRowToWm() {
@@ -9761,9 +9648,12 @@
 
     if (viewNum) viewNum.textContent = wykazMaterialowState.orderNumber || '_26';
     if (viewCol) viewCol.textContent = curPage.color || '-';
-    if (viewProd) viewProd.textContent = curPage.paintProducer ? `[Producent: ${curPage.paintProducer}]` : '';
+    
+    // ZAWSZE odczytuj producenta z curPage.paintProducer lub wykazMaterialowState.paintProducer
+    const activeProd = curPage.paintProducer || wykazMaterialowState.paintProducer || '';
+    if (viewProd) viewProd.textContent = activeProd ? `[Producent: ${activeProd}]` : '';
+    
     if (!tbody) return;
-
     tbody.innerHTML = '';
 
     if (!curPage.items || curPage.items.length === 0) {
@@ -9800,7 +9690,7 @@
       tbody.appendChild(tr);
     });
 
-    // RENDER MATERIAŁY SUROWE (Jeśli włączone)
+    // RENDER MATERIAŁY SUROWE (Jeśli opcja jest zaznaczona w bieżącej podstronie)
     if (curPage.hasRawMaterials) {
       if (rawSpacer) rawSpacer.style.display = '';
       if (rawTbody) rawTbody.style.display = '';
@@ -9861,7 +9751,7 @@
       return;
     }
 
-    const profiles = warehouseProfilesDB || [];
+    const profiles = materialsProfiles || [];
     const valLow = val.toLowerCase();
     const match = profiles.find(p => (p.name || '').toLowerCase().startsWith(valLow));
 
@@ -9885,14 +9775,16 @@
           updateWmItemField(idx, 'material', fullName);
           updateWmPrintDiv(idx, 'mat', fullName);
 
-          const matchedProf = (warehouseProfilesDB || []).find(p => (p.name || '').toLowerCase() === fullName.toLowerCase());
-          if (matchedProf && matchedProf.commercialLength && !matchedProf.unitWeightOnly) {
+          const matchedProf = (materialsProfiles || []).find(p => (p.name || '').toLowerCase() === fullName.toLowerCase());
+          if (matchedProf) {
+            const isPiece = !!(matchedProf.isPiece || matchedProf.is_piece || matchedProf.unitMode === 'unit' || matchedProf.length === '-' || matchedProf.length === 'szt.' || (matchedProf.length === '' && matchedProf.weight));
             const curPage = getActiveWmPage();
             if (curPage.items[idx] && !curPage.items[idx].length) {
-              curPage.items[idx].length = String(matchedProf.commercialLength);
+              const defLen = isPiece ? '' : (matchedProf.length || '6000');
+              curPage.items[idx].length = String(defLen);
               const lenInput = document.getElementById(`wmLenInput_${idx}`);
-              if (lenInput) lenInput.value = matchedProf.commercialLength;
-              updateWmPrintDiv(idx, 'len', matchedProf.commercialLength);
+              if (lenInput) lenInput.value = defLen;
+              updateWmPrintDiv(idx, 'len', defLen);
             }
           }
           autoResizeWmTextarea(inputEl);
