@@ -7606,7 +7606,20 @@
     }
   ];
 
-  let materialSets = JSON.parse(localStorage.getItem('order_app_material_sets')) || defaultMaterialSets;
+  let materialSets = (() => {
+    const raw = JSON.parse(localStorage.getItem('order_app_material_sets')) || defaultMaterialSets;
+    if (!Array.isArray(raw)) return defaultMaterialSets;
+    const unique = [];
+    const seen = new Set();
+    for (const s of raw) {
+      const key = (s.title || (s.element + ' - ' + (s.model || ''))).trim().toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(s);
+      }
+    }
+    return unique;
+  })();
   let selectedMaterialSetId = null;
   let selectedMaterialSetIndex = 0;
   let isEditingMaterialSet = false;
@@ -7717,6 +7730,15 @@
       lastModifiedAt: new Date().toLocaleString('pl-PL'),
       createdAt: Date.now()
     };
+
+    const existingIdx = materialSets.findIndex(s => (s.title || (s.element + ' - ' + (s.model || ''))).trim().toLowerCase() === title.toLowerCase());
+    if (existingIdx >= 0) {
+      alert(`Zbiór profili o nazwie "${title}" już istnieje w bazie!`);
+      selectedMaterialSetId = String(materialSets[existingIdx].id !== undefined ? materialSets[existingIdx].id : 'mat_set_idx_' + existingIdx);
+      renderMaterialSetsList();
+      renderMaterialSetDetailsById(selectedMaterialSetId);
+      return;
+    }
 
     materialSets.push(newSet);
     localStorage.setItem('order_app_material_sets', JSON.stringify(materialSets));
@@ -9077,14 +9099,33 @@
   }
 
   // --- SYNCHRONIZACJA ZBIORÓW MATERIAŁÓW / PROFILI Z CHMURĄ ---
+  let isMaterialSetsSyncing = false;
+  let lastMaterialSetsLocalSaveTime = 0;
+
+  function deduplicateMaterialSets(setsList) {
+    if (!Array.isArray(setsList)) return [];
+    const unique = [];
+    const seen = new Set();
+    for (const s of setsList) {
+      const key = (s.title || (s.element + ' - ' + (s.model || ''))).trim().toLowerCase();
+      if (!key) continue;
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(s);
+      }
+    }
+    return unique;
+  }
+
   async function fetchCloudMaterialSets() {
-    if (!CLOUD_API_URL) return;
+    if (!CLOUD_API_URL || isMaterialSetsSyncing) return;
+    if (Date.now() - lastMaterialSetsLocalSaveTime < 8000) return;
     try {
       const res = await fetch(`${CLOUD_API_URL}/api/material-sets`);
       if (res.ok) {
         const cloudSets = await res.json();
         if (Array.isArray(cloudSets) && cloudSets.length > 0) {
-          materialSets = cloudSets;
+          materialSets = deduplicateMaterialSets(cloudSets);
           localStorage.setItem('order_app_material_sets', JSON.stringify(materialSets));
           
           const modal = document.getElementById('materialSetsModal');
@@ -9105,7 +9146,12 @@
 
   async function syncMaterialSetsWithCloud() {
     if (!CLOUD_API_URL) return;
+    lastMaterialSetsLocalSaveTime = Date.now();
     try {
+      isMaterialSetsSyncing = true;
+      materialSets = deduplicateMaterialSets(materialSets);
+      localStorage.setItem('order_app_material_sets', JSON.stringify(materialSets));
+
       await fetch(`${CLOUD_API_URL}/api/material-sets`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -9113,6 +9159,10 @@
       });
     } catch (e) {
       console.warn('Nie udało się zapisać zbiorów materiałów w chmurze:', e);
+    } finally {
+      setTimeout(() => {
+        isMaterialSetsSyncing = false;
+      }, 1500);
     }
   }
 
