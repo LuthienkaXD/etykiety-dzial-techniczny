@@ -3203,7 +3203,7 @@
 <div class="modal-overlay" id="pickMaterialProfileModal" style="z-index: 10005;">
   <div class="modal-box" style="width: 540px; max-width: 95%;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-      <h3 style="margin: 0; font-size: 16px; color: #166534;">➕ Dodaj profil do zbioru</h3>
+      <h3 id="pickMaterialProfileModalTitle" style="margin: 0; font-size: 16px; color: #166534;">➕ Dodaj profil do zbioru</h3>
       <button type="button" class="btn-secondary" onclick="closePickMaterialProfileModal()" style="padding: 3px 8px; font-size: 13px;">✕</button>
     </div>
     
@@ -3279,9 +3279,14 @@
     </div>
 
     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
-      <button type="button" class="btn-secondary" onclick="addEmptyRowToPackageItems()" style="font-size: 12px;">
-        ➕ Dodaj profil do pakietu
-      </button>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button type="button" class="btn-secondary" onclick="addEmptyRowToPackageItems()" style="font-size: 12px;">
+          ➕ Dodaj pusty wiersz
+        </button>
+        <button type="button" class="btn-primary" onclick="openPickProfileForPackageModal()" style="font-size: 12px; background: #0284c7; border-color: #0369a1; font-weight: bold;">
+          🧱 Wybierz profil z Magazynu
+        </button>
+      </div>
       <div style="display: flex; gap: 8px;">
         <button type="button" class="btn-secondary" onclick="closeMaterialPackageModal()">Anuluj</button>
         <button type="button" class="btn-success" onclick="saveCurrentMaterialPackage()" style="font-weight: bold;">💾 Zapisz pakiet</button>
@@ -5838,6 +5843,24 @@
   }
 
   // --- RENDEROWANIE CAŁOŚCI ---
+  function formatClickableLinks(str) {
+    if (str === null || str === undefined) return '';
+    // Escapujemy najpierw znaki HTML żeby zapobiec XSS
+    const safe = escapeHtml(String(str));
+    // Wykrywamy linki http, https oraz www. (z zachowaniem interpunkcji na końcu)
+    return safe.replace(/((?:https?:\/\/|www\.)[^\s<]+)/gi, (match) => {
+      let trailingPunct = '';
+      const punctMatch = match.match(/[.,;:!?)]+$/);
+      let cleanUrl = match;
+      if (punctMatch) {
+        trailingPunct = punctMatch[0];
+        cleanUrl = match.slice(0, -trailingPunct.length);
+      }
+      const href = cleanUrl.toLowerCase().startsWith('www.') ? ('https://' + cleanUrl) : cleanUrl;
+      return `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color: #1d4ed8; text-decoration: underline; word-break: break-all; cursor: pointer;">${cleanUrl}</a>${trailingPunct}`;
+    });
+  }
+
   function renderAll() {
     const orderNum = document.getElementById('orderNumber').value || '';
     const rawOrderDate = document.getElementById('orderDate').value;
@@ -5861,7 +5884,7 @@
     document.getElementById('viewOrderNum').textContent = orderNum;
     document.getElementById('viewDate').textContent = formattedOrderDate;
     document.getElementById('viewWorker').textContent = worker;
-    document.getElementById('viewClient').textContent = clientData;
+    document.getElementById('viewClient').innerHTML = formatClickableLinks(clientData);
     document.getElementById('viewModel').textContent = modelDisplay;
     document.getElementById('viewColor').textContent = colorDisplay;
 
@@ -5882,7 +5905,7 @@
         const c = orderColors[item.assignedColorIndex];
         if (c && c.trim()) bracketsStr += ` [${c.trim()}]`;
       }
-      line.textContent = `${item.qty} x ${item.name.trim()}${paramStr}${bracketsStr}`;
+      line.innerHTML = formatClickableLinks(`${item.qty} x ${item.name.trim()}${paramStr}${bracketsStr}`);
       itemsListEl.appendChild(line);
     });
 
@@ -5903,7 +5926,7 @@
       pickupNoticeEl.style.display = 'none';
     }
 
-    document.getElementById('viewRemarks').textContent = remarks;
+    document.getElementById('viewRemarks').innerHTML = formatClickableLinks(remarks);
 
     // Renderowanie etykiet
     renderLabelsView(orderNum, clientData, modelDisplay, colorDisplay);
@@ -8233,10 +8256,60 @@
     }
   }
 
-  function confirmAddProfileToCurrentMaterialSet() {
+  let pickProfileTargetMode = 'set'; // 'set' lub 'package'
+
+  function openPickProfileForPackageModal() {
+    pickProfileTargetMode = 'package';
+    const titleEl = document.getElementById('pickMaterialProfileModalTitle');
+    if (titleEl) {
+      titleEl.textContent = '🧱 Wybierz profil do pakietu';
+      titleEl.style.color = '#0369a1';
+    }
+
+    if (document.getElementById('searchPickMaterialProfileInput')) {
+      document.getElementById('searchPickMaterialProfileInput').value = '';
+    }
+    updatePickMaterialProfileSelect('');
+
+    document.getElementById('pickMaterialProfileLength').value = '';
+    document.getElementById('pickMaterialProfileQty').value = '1';
+    document.getElementById('pickMaterialProfileRemarks').value = '';
+    document.getElementById('pickMaterialProfileCustomName').value = '';
+
+    document.getElementById('pickMaterialProfileModal').style.display = 'flex';
+    if (document.getElementById('searchPickMaterialProfileInput')) {
+      setTimeout(() => document.getElementById('searchPickMaterialProfileInput').focus(), 50);
+    }
+  }
+
+  function openAddProfileToCurrentMaterialSetModal() {
+    pickProfileTargetMode = 'set';
     const s = getMaterialSetObjectById(selectedMaterialSetId) || materialSets[selectedMaterialSetIndex];
     if (!s) return;
 
+    const titleEl = document.getElementById('pickMaterialProfileModalTitle');
+    if (titleEl) {
+      titleEl.textContent = '➕ Dodaj profil do zbioru';
+      titleEl.style.color = '#166534';
+    }
+
+    if (document.getElementById('searchPickMaterialProfileInput')) {
+      document.getElementById('searchPickMaterialProfileInput').value = '';
+    }
+    updatePickMaterialProfileSelect('');
+
+    document.getElementById('pickMaterialProfileLength').value = '';
+    document.getElementById('pickMaterialProfileQty').value = '1';
+    document.getElementById('pickMaterialProfileRemarks').value = '';
+    document.getElementById('pickMaterialProfileCustomName').value = '';
+
+    document.getElementById('pickMaterialProfileModal').style.display = 'flex';
+    if (document.getElementById('searchPickMaterialProfileInput')) {
+      setTimeout(() => document.getElementById('searchPickMaterialProfileInput').focus(), 50);
+    }
+  }
+
+  function confirmAddProfileToCurrentMaterialSet() {
     const sel = document.getElementById('pickMaterialProfileSelect');
     const customName = (document.getElementById('pickMaterialProfileCustomName').value || '').trim();
     let name = customName;
@@ -8251,10 +8324,22 @@
     }
 
     const length = (document.getElementById('pickMaterialProfileLength').value || '').trim();
-    const qty = (document.getElementById('pickMaterialProfileQty').value || '').trim();
+    const qty = (document.getElementById('pickMaterialProfileQty').value || '').trim() || '1';
     const remarks = (document.getElementById('pickMaterialProfileRemarks').value || '').trim();
 
     const newItem = { material: name, length, qty, remarks };
+
+    if (pickProfileTargetMode === 'package') {
+      if (!Array.isArray(tempPackageItems)) tempPackageItems = [];
+      tempPackageItems.push(newItem);
+      closePickMaterialProfileModal();
+      renderPackageItemsTable();
+      return;
+    }
+
+    // Tryb 'set' (dodawanie do profilu stałego w zbiorze)
+    const s = getMaterialSetObjectById(selectedMaterialSetId) || materialSets[selectedMaterialSetIndex];
+    if (!s) return;
 
     if (isEditingMaterialSet && tempEditMaterialSetItems) {
       tempEditMaterialSetItems.push(newItem);
