@@ -9015,13 +9015,45 @@
     }
 
     itemsToAdd.forEach(it => {
-      curPage.items.push({
-        material: it.material || '',
-        length: (it.length !== undefined && it.length !== null) ? String(it.length) : '',
-        qty: (it.qty !== undefined && it.qty !== null) ? String(it.qty) : '',
-        remarks: it.remarks || ''
-      });
+      const rem = it.remarks || '';
+      const rawRegex = /\bsurow(?:y|a|e|ego|ej|ym|ych|ymi|ą)?\b/i;
+      if (rawRegex.test(rem)) {
+        let cleanedRemarks = rem
+          .replace(rawRegex, '')
+          .replace(/\s{2,}/g, ' ')
+          .replace(/^[\s,;.-]+|[\s,;.-]+$/g, '')
+          .trim();
+
+        if (!curPage.hasRawMaterials) {
+          curPage.hasRawMaterials = true;
+          const rawToggle = document.getElementById('wmRawMaterialsToggle');
+          if (rawToggle) rawToggle.checked = true;
+        }
+        if (!Array.isArray(curPage.rawItems)) curPage.rawItems = [];
+        if (curPage.rawItems.length === 1 && !curPage.rawItems[0].material && !curPage.rawItems[0].length && !curPage.rawItems[0].qty) {
+          curPage.rawItems = [];
+        } else if (curPage.rawItems.length === 2 && !curPage.rawItems[0].material && !curPage.rawItems[1].material) {
+          curPage.rawItems = [];
+        }
+        curPage.rawItems.push({
+          material: it.material || '',
+          length: (it.length !== undefined && it.length !== null) ? String(it.length) : '',
+          qty: (it.qty !== undefined && it.qty !== null) ? String(it.qty) : '',
+          remarks: cleanedRemarks
+        });
+      } else {
+        curPage.items.push({
+          material: it.material || '',
+          length: (it.length !== undefined && it.length !== null) ? String(it.length) : '',
+          qty: (it.qty !== undefined && it.qty !== null) ? String(it.qty) : '',
+          remarks: it.remarks || ''
+        });
+      }
     });
+
+    if (curPage.items.length === 0) {
+      curPage.items.push({ material: '', length: '', qty: '', remarks: '' });
+    }
 
     renderWmView();
     const setName = chosenSet.title || ((chosenSet.element || '') + ' - ' + (chosenSet.model || ''));
@@ -10031,6 +10063,66 @@
     const curPage = getActiveWmPage();
     if (curPage.items && curPage.items[idx]) {
       curPage.items[idx][field] = val;
+
+      if (field === 'remarks') {
+        checkAndTransferRawWmItem(idx);
+      }
+    }
+  }
+
+  // Automatyczne wykrywanie słowa "surowy" w uwagach i przenoszenie pozycji do tabeli surowej
+  function checkAndTransferRawWmItem(idx) {
+    const curPage = getActiveWmPage();
+    if (!curPage || !curPage.items || !curPage.items[idx]) return;
+
+    const item = curPage.items[idx];
+    const rem = item.remarks || '';
+    const rawRegex = /\bsurow(?:y|a|e|ego|ej|ym|ych|ymi|ą)?\b/i;
+
+    if (rawRegex.test(rem)) {
+      // Oczyszczenie uwag ze słowa "surowy"
+      let cleanedRemarks = rem
+        .replace(rawRegex, '')
+        .replace(/\s{2,}/g, ' ')
+        .replace(/^[\s,;.-]+|[\s,;.-]+$/g, '')
+        .trim();
+
+      item.remarks = cleanedRemarks;
+
+      // Aktywacja sekcji materiałów surowych jeśli jeszcze nie była włączona
+      if (!curPage.hasRawMaterials) {
+        curPage.hasRawMaterials = true;
+        const rawToggle = document.getElementById('wmRawMaterialsToggle');
+        if (rawToggle) rawToggle.checked = true;
+      }
+
+      if (!Array.isArray(curPage.rawItems)) {
+        curPage.rawItems = [];
+      }
+
+      // Jeśli tabela surowa zawiera tylko 1 lub 2 puste wiersze startowe, usuwamy je
+      if (curPage.rawItems.length === 1 && !curPage.rawItems[0].material && !curPage.rawItems[0].length && !curPage.rawItems[0].qty) {
+        curPage.rawItems = [];
+      } else if (curPage.rawItems.length === 2 && !curPage.rawItems[0].material && !curPage.rawItems[1].material) {
+        curPage.rawItems = [];
+      }
+
+      // Przeniesienie pozycji do materiałów surowych
+      curPage.rawItems.push({
+        material: item.material || '',
+        length: item.length !== undefined && item.length !== null ? String(item.length) : '',
+        qty: item.qty !== undefined && item.qty !== null ? String(item.qty) : '',
+        remarks: cleanedRemarks
+      });
+
+      // Usunięcie z pozycji głównych
+      curPage.items.splice(idx, 1);
+      if (curPage.items.length === 0) {
+        curPage.items.push({ material: '', length: '', qty: '', remarks: '' });
+      }
+
+      // Odświeżenie widoku
+      renderWmView();
     }
   }
 
