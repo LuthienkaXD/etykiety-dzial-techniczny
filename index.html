@@ -10077,20 +10077,20 @@
         <td style="border: 1px solid #000000; padding: 4px 6px; position: relative; vertical-align: middle;">
           <div class="autocomplete-wrapper wm-edit-field" style="position: relative; width: 100%;">
             <div class="ghost-input-hint" id="wmGhostHint_${idx}" style="left: 8px;"></div>
-            <textarea id="wmMatInput_${idx}" class="wm-cell-textarea" rows="1" placeholder="Wpisz materiał / profil..." oninput="handleWmMaterialTyping(${idx}, this.value); autoResizeWmTextarea(this); updateWmPrintDiv(${idx}, 'mat', this.value);" onkeydown="handleWmMaterialKeydown(${idx}, event)" style="font-weight: 500; text-align: left; position: relative; z-index: 2; background: transparent;">${escapeHtml(it.material || '')}</textarea>
+            <textarea id="wmMatInput_${idx}" class="wm-cell-textarea" rows="1" placeholder="" oninput="handleWmMaterialTyping(${idx}, this.value); autoResizeWmTextarea(this); updateWmPrintDiv(${idx}, 'mat', this.value);" onkeydown="handleWmMaterialKeydown(${idx}, event)" style="font-weight: 500; text-align: left; position: relative; z-index: 2; background: transparent;">${escapeHtml(it.material || '')}</textarea>
           </div>
           <div id="wmPrintMat_${idx}" class="wm-print-div" style="display: none; font-weight: 600; text-align: left;">${escapeHtml(it.material || '')}</div>
         </td>
         <td style="border: 1px solid #000000; padding: 4px 6px; text-align: center; vertical-align: middle;">
-          <input type="text" id="wmLenInput_${idx}" class="vp-cell-input wm-edit-field" style="text-align: center; font-size: 13px;" value="${escapeHtml(it.length !== undefined ? String(it.length) : '')}" placeholder="np. 6000" oninput="updateWmItemField(${idx}, 'length', this.value); updateWmPrintDiv(${idx}, 'len', this.value);">
+          <input type="text" id="wmLenInput_${idx}" class="vp-cell-input wm-edit-field" style="text-align: center; font-size: 13px;" value="${escapeHtml(it.length !== undefined ? String(it.length) : '')}" placeholder="" oninput="updateWmItemField(${idx}, 'length', this.value); updateWmPrintDiv(${idx}, 'len', this.value);">
           <div id="wmPrintLen_${idx}" class="wm-print-div" style="display: none; text-align: center;">${escapeHtml(it.length !== undefined ? String(it.length) : '')}</div>
         </td>
         <td style="border: 1px solid #000000; padding: 4px 6px; text-align: center; vertical-align: middle;">
-          <input type="text" id="wmQtyInput_${idx}" class="vp-cell-input wm-edit-field" style="text-align: center; font-weight: bold; font-size: 13px;" value="${escapeHtml(it.qty !== undefined ? String(it.qty) : '')}" placeholder="np. 1" oninput="updateWmItemField(${idx}, 'qty', this.value); updateWmPrintDiv(${idx}, 'qty', this.value);">
+          <input type="text" id="wmQtyInput_${idx}" class="vp-cell-input wm-edit-field" style="text-align: center; font-weight: bold; font-size: 13px;" value="${escapeHtml(it.qty !== undefined ? String(it.qty) : '')}" placeholder="" oninput="updateWmItemField(${idx}, 'qty', this.value); updateWmPrintDiv(${idx}, 'qty', this.value);">
           <div id="wmPrintQty_${idx}" class="wm-print-div" style="display: none; font-weight: bold; text-align: center;">${escapeHtml(it.qty !== undefined ? String(it.qty) : '')}</div>
         </td>
         <td style="border: 1px solid #000000; padding: 4px 6px; position: relative; vertical-align: middle;">
-          <textarea id="wmRemInput_${idx}" class="wm-cell-textarea wm-edit-field" rows="1" placeholder="Opcjonalne uwagi..." oninput="updateWmItemField(${idx}, 'remarks', this.value); autoResizeWmTextarea(this); updateWmPrintDiv(${idx}, 'rem', this.value);" style="font-size: 12.5px; text-align: left;">${escapeHtml(it.remarks || '')}</textarea>
+          <textarea id="wmRemInput_${idx}" class="wm-cell-textarea wm-edit-field" rows="1" placeholder="" oninput="updateWmItemField(${idx}, 'remarks', this.value); autoResizeWmTextarea(this); updateWmPrintDiv(${idx}, 'rem', this.value);" style="font-size: 12.5px; text-align: left;">${escapeHtml(it.remarks || '')}</textarea>
           <div id="wmPrintRem_${idx}" class="wm-print-div" style="display: none; font-size: 12px; text-align: left;">${escapeHtml(it.remarks || '')}</div>
         </td>
         <td class="no-print" style="border: 1px solid #e2e8f0; text-align: center; vertical-align: middle;">
@@ -10117,19 +10117,19 @@
           tr.style.minHeight = '34px';
           tr.innerHTML = `
             <td style="border: 1px solid #000000; padding: 4px 6px; position: relative; vertical-align: middle;">
-              <textarea id="wmRawMatInput_${idx}" class="wm-cell-textarea wm-edit-field" rows="1" placeholder="Materiał surowy..." oninput="updateWmRawItemField(${idx}, 'material', this.value); autoResizeWmTextarea(this); updateWmRawPrintDiv(${idx}, 'mat', this.value);" style="font-weight: 500; text-align: left;">${escapeHtml(it.material || '')}</textarea>
+              <textarea id="wmRawMatInput_${idx}" class="wm-cell-textarea wm-edit-field" rows="1" placeholder="" oninput="updateWmRawItemField(${idx}, 'material', this.value); autoResizeWmTextarea(this); updateWmRawPrintDiv(${idx}, 'mat', this.value);" style="font-weight: 500; text-align: left;">${escapeHtml(it.material || '')}</textarea>
               <div id="wmRawPrintMat_${idx}" class="wm-print-div" style="display: none; font-weight: 600; text-align: left;">${escapeHtml(it.material || '')}</div>
             </td>
             <td style="border: 1px solid #000000; padding: 4px 6px; text-align: center; vertical-align: middle;">
-              <input type="text" id="wmRawLenInput_${idx}" class="vp-cell-input wm-edit-field" style="text-align: center; font-size: 13px;" value="${escapeHtml(it.length !== undefined ? String(it.length) : '')}" placeholder="np. 6000" oninput="updateWmRawItemField(${idx}, 'length', this.value); updateWmRawPrintDiv(${idx}, 'len', this.value);">
+              <input type="text" id="wmRawLenInput_${idx}" class="vp-cell-input wm-edit-field" style="text-align: center; font-size: 13px;" value="${escapeHtml(it.length !== undefined ? String(it.length) : '')}" placeholder="" oninput="updateWmRawItemField(${idx}, 'length', this.value); updateWmRawPrintDiv(${idx}, 'len', this.value);">
               <div id="wmRawPrintLen_${idx}" class="wm-print-div" style="display: none; text-align: center;">${escapeHtml(it.length !== undefined ? String(it.length) : '')}</div>
             </td>
             <td style="border: 1px solid #000000; padding: 4px 6px; text-align: center; vertical-align: middle;">
-              <input type="text" id="wmRawQtyInput_${idx}" class="vp-cell-input wm-edit-field" style="text-align: center; font-weight: bold; font-size: 13px;" value="${escapeHtml(it.qty !== undefined ? String(it.qty) : '')}" placeholder="np. 1" oninput="updateWmRawItemField(${idx}, 'qty', this.value); updateWmRawPrintDiv(${idx}, 'qty', this.value);">
+              <input type="text" id="wmRawQtyInput_${idx}" class="vp-cell-input wm-edit-field" style="text-align: center; font-weight: bold; font-size: 13px;" value="${escapeHtml(it.qty !== undefined ? String(it.qty) : '')}" placeholder="" oninput="updateWmRawItemField(${idx}, 'qty', this.value); updateWmRawPrintDiv(${idx}, 'qty', this.value);">
               <div id="wmRawPrintQty_${idx}" class="wm-print-div" style="display: none; font-weight: bold; text-align: center;">${escapeHtml(it.qty !== undefined ? String(it.qty) : '')}</div>
             </td>
             <td style="border: 1px solid #000000; padding: 4px 6px; position: relative; vertical-align: middle;">
-              <textarea id="wmRawRemInput_${idx}" class="wm-cell-textarea wm-edit-field" rows="1" placeholder="Opcjonalne uwagi..." oninput="updateWmRawItemField(${idx}, 'remarks', this.value); autoResizeWmTextarea(this); updateWmRawPrintDiv(${idx}, 'rem', this.value);" style="font-size: 12.5px; text-align: left;">${escapeHtml(it.remarks || '')}</textarea>
+              <textarea id="wmRawRemInput_${idx}" class="wm-cell-textarea wm-edit-field" rows="1" placeholder="" oninput="updateWmRawItemField(${idx}, 'remarks', this.value); autoResizeWmTextarea(this); updateWmRawPrintDiv(${idx}, 'rem', this.value);" style="font-size: 12.5px; text-align: left;">${escapeHtml(it.remarks || '')}</textarea>
               <div id="wmRawPrintRem_${idx}" class="wm-print-div" style="display: none; font-size: 12px; text-align: left;">${escapeHtml(it.remarks || '')}</div>
             </td>
             <td class="no-print" style="border: 1px solid #e2e8f0; text-align: center; vertical-align: middle;">
