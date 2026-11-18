@@ -9863,6 +9863,14 @@
     if (numToUse) {
       document.getElementById('wmOrderNumber').value = numToUse;
       wykazMaterialowState.orderNumber = numToUse;
+      const foundOrd = savedOrders.find(o => (o.orderNumber || '').trim().toLowerCase() === numToUse.toLowerCase());
+      if (foundOrd && foundOrd.wykazMaterialow && Array.isArray(foundOrd.wykazMaterialow.pages) && foundOrd.wykazMaterialow.pages.length > 0) {
+        wykazMaterialowState.pages = JSON.parse(JSON.stringify(foundOrd.wykazMaterialow.pages));
+        wykazMaterialowState.activePageIndex = foundOrd.wykazMaterialow.activePageIndex || 0;
+        renderWmTabs();
+        renderWmView();
+        return;
+      }
     }
 
     // Sprawdź kolory z etykiet (orderColors)
@@ -10912,7 +10920,17 @@
         renderVerpackungView();
       }
     } else if (page === 'materials') {
-      syncWmOrderFromEtykiety();
+      const currentWmNum = (document.getElementById('wmOrderNumber').value || document.getElementById('orderNumber').value || '').trim();
+      if (currentWmNum) {
+        const foundOrd = savedOrders.find(o => (o.orderNumber || '').trim().toLowerCase() === currentWmNum.toLowerCase());
+        if (foundOrd && foundOrd.wykazMaterialow && Array.isArray(foundOrd.wykazMaterialow.pages) && foundOrd.wykazMaterialow.pages.length > 0) {
+          loadWykazMaterialowForEdit(foundOrd.orderNumber);
+        } else {
+          syncWmOrderFromEtykiety();
+        }
+      } else {
+        syncWmOrderFromEtykiety();
+      }
       updateWmProfilesSelect();
       updateWmSetsSelect();
       renderWmView();
