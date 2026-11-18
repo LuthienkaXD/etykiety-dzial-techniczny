@@ -2151,7 +2151,7 @@
       <div style="background: #fffbeb; border: 1px solid #fef08a; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px;">
         <label style="display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 12.5px; color: #92400e; cursor: pointer; margin: 0;">
           <input type="checkbox" id="wmRawMaterialsToggle" onchange="toggleWmRawMaterials(this.checked)" style="width: 16px; height: 16px; accent-color: #d97706; cursor: pointer;">
-          <span>⚙️ Opcja: Materiały surowe</span>
+          <span>Materiały surowe</span>
         </label>
         <p style="font-size: 11px; color: #b45309; margin: 4px 0 0 24px;">
           Tworzy osobną tabelę z surowymi materiałami dokładnie 2 wiersze poniżej głównej tabeli.
@@ -2361,7 +2361,7 @@
             <!-- Nagłówek sekcji surowej -->
             <tr style="height: 30px;">
               <td colspan="4" style="border: 1px solid #000000; font-size: 13pt; font-weight: bold; padding: 4px 10px; background: #fffbeb; color: #92400e; text-align: left; vertical-align: middle;">
-                ⚙️ Materiały surowe:
+                Materiały surowe:
               </td>
               <td class="no-print" style="border: none;"></td>
             </tr>
@@ -10398,7 +10398,7 @@
           currentRow++;
 
           // Nagłówek sekcji surowej
-          const rawHdrIdx = getStrIdx('⚙️ Materiały surowe:');
+          const rawHdrIdx = getStrIdx('Materiały surowe:');
           rowsXml += '<row r="' + currentRow + '" spans="1:4" ht="22" x14ac:dyDescent="0.3"><c r="A' + currentRow + '" s="4" t="s"><v>' + rawHdrIdx + '</v></c><c r="B' + currentRow + '" s="5"/><c r="C' + currentRow + '" s="5"/><c r="D' + currentRow + '" s="6"/></row>';
           mergeCellsXml += '<mergeCell ref="A' + currentRow + ':D' + currentRow + '"/>';
           mergeCount++;
