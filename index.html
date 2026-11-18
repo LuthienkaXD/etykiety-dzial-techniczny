@@ -8852,6 +8852,17 @@
     if (!sel) return;
     const q = (filterQuery || (document.getElementById('wmSearchSetsInput') ? document.getElementById('wmSearchSetsInput').value : '') || '').toLowerCase().trim();
     const curVal = sel.value;
+
+    // Zapamiętaj aktualnie wybrane warianty pakietów w podzbiorach, aby ich nie resetować przy pollingu w tle
+    const savedSubsetSelections = {};
+    const container = document.getElementById('wmSubsetsSelectionContainer');
+    if (container) {
+      const selects = container.querySelectorAll('select[id^="wmSubsetSelect_"]');
+      selects.forEach(s => {
+        savedSubsetSelections[s.id] = s.value;
+      });
+    }
+
     sel.innerHTML = '<option value="">-- Wybierz zbiór profili --</option>';
 
     if (Array.isArray(materialSets)) {
@@ -8872,7 +8883,7 @@
       // Jeśli filtr zawęził do dokładnie 1 wyniku, zaznacz go automatycznie
       sel.selectedIndex = 1;
     }
-    onWmSetSelectChange();
+    onWmSetSelectChange(savedSubsetSelections);
   }
 
   function filterWmSetsSelect() {
@@ -8880,7 +8891,7 @@
     updateWmSetsSelect(q);
   }
 
-  function onWmSetSelectChange() {
+  function onWmSetSelectChange(savedSelections = null) {
     const sel = document.getElementById('wmSelectSet');
     const container = document.getElementById('wmSubsetsSelectionContainer');
     if (!sel || !container) return;
@@ -8901,23 +8912,41 @@
       return;
     }
 
+    // Jeśli nie przekazano savedSelections, sprawdź czy są już wybrane opcje w DOM
+    const currentSelections = savedSelections || {};
+    if (!savedSelections) {
+      const existingSelects = container.querySelectorAll('select[id^="wmSubsetSelect_"]');
+      existingSelects.forEach(s => {
+        currentSelections[s.id] = s.value;
+      });
+    }
+
     // Jeśli zbiór zawiera podzbiory, generujemy rozwijane listy wyboru dla każdego podzbioru
     let html = `<div style="font-size: 11px; font-weight: 700; color: #166534; margin-bottom: 6px;">📑 Wybierz warianty pakietów dla podzbiorów:</div>`;
 
     subsets.forEach((sub, subIdx) => {
       const packages = Array.isArray(sub.packages) ? sub.packages : [];
+      const selectId = `wmSubsetSelect_${subIdx}`;
+      const prevVal = currentSelections[selectId];
+
       html += `
         <div style="margin-bottom: 6px;">
           <label style="font-size: 11px; font-weight: 600; color: #1e293b; display: block; margin-bottom: 2px;">
             ${sub.name}:
           </label>
-          <select id="wmSubsetSelect_${subIdx}" class="form-control" style="font-size: 11.5px; padding: 4px 6px;">
-            <option value="none">-- Pomiń ten podzbiór --</option>
+          <select id="${selectId}" class="form-control" style="font-size: 11.5px; padding: 4px 6px;">
+            <option value="none" ${prevVal === 'none' ? 'selected' : ''}>-- Pomiń ten podzbiór --</option>
       `;
 
       packages.forEach((pkg, pIdx) => {
         const itCount = Array.isArray(pkg.items) ? pkg.items.length : 0;
-        html += `<option value="${pIdx}" ${pIdx === 0 ? 'selected' : ''}>📦 ${pkg.title} (${itCount} pozycji)</option>`;
+        let isSelected = false;
+        if (prevVal !== undefined && prevVal !== null && prevVal !== '') {
+          isSelected = (String(pIdx) === String(prevVal));
+        } else {
+          isSelected = (pIdx === 0);
+        }
+        html += `<option value="${pIdx}" ${isSelected ? 'selected' : ''}>📦 ${pkg.title} (${itCount} pozycji)</option>`;
       });
 
       html += `
@@ -9431,18 +9460,23 @@
       if (res.ok) {
         const cloudSets = await res.json();
         if (Array.isArray(cloudSets) && cloudSets.length > 0) {
-          materialSets = deduplicateMaterialSets(cloudSets);
-          localStorage.setItem('order_app_material_sets', JSON.stringify(materialSets));
-          
-          const modal = document.getElementById('materialSetsModal');
-          const isModalOpen = modal && modal.style.display === 'flex';
-          if (!isEditingMaterialSet && isModalOpen) {
-            renderMaterialSetsList();
-            if (selectedMaterialSetId !== null) {
-              renderMaterialSetDetailsById(selectedMaterialSetId);
+          const newDeduped = deduplicateMaterialSets(cloudSets);
+          const oldStr = JSON.stringify(materialSets);
+          const newStr = JSON.stringify(newDeduped);
+          if (oldStr !== newStr) {
+            materialSets = newDeduped;
+            localStorage.setItem('order_app_material_sets', JSON.stringify(materialSets));
+            
+            const modal = document.getElementById('materialSetsModal');
+            const isModalOpen = modal && modal.style.display === 'flex';
+            if (!isEditingMaterialSet && isModalOpen) {
+              renderMaterialSetsList();
+              if (selectedMaterialSetId !== null) {
+                renderMaterialSetDetailsById(selectedMaterialSetId);
+              }
             }
+            updateWmSetsSelect();
           }
-          updateWmSetsSelect();
         }
       }
     } catch (e) {
