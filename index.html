@@ -3200,7 +3200,7 @@
 </div>
 
 <!-- Modal Dodawania Profilu Stałego do Zbioru -->
-<div class="modal-overlay" id="pickMaterialProfileModal" style="z-index: 10005;">
+<div class="modal-overlay" id="pickMaterialProfileModal" style="z-index: 10010;">
   <div class="modal-box" style="width: 540px; max-width: 95%;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
       <h3 id="pickMaterialProfileModalTitle" style="margin: 0; font-size: 16px; color: #166534;">➕ Dodaj profil do zbioru</h3>
@@ -8260,6 +8260,8 @@
 
   function openPickProfileForPackageModal() {
     pickProfileTargetMode = 'package';
+    const modalEl = document.getElementById('pickMaterialProfileModal');
+    if (modalEl) modalEl.style.zIndex = '10010';
     const titleEl = document.getElementById('pickMaterialProfileModalTitle');
     if (titleEl) {
       titleEl.textContent = '🧱 Wybierz profil do pakietu';
