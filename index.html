@@ -4265,7 +4265,12 @@
     labelCustomBottomDims = ord.labelCustomBottomDims ? JSON.parse(JSON.stringify(ord.labelCustomBottomDims)) : {};
     labelCustomOverrides = ord.labelCustomOverrides ? JSON.parse(JSON.stringify(ord.labelCustomOverrides)) : {};
 
-    currentWorker = ord.workerName || currentWorker;
+    // NIE nadpisujemy currentWorker zamówieniem, aby zalogowane konto użytkownika nie zmieniało się przy wczytywaniu!
+    if (currentWorker) {
+      document.getElementById('workerNameInput').value = currentWorker;
+    } else if (ord.workerName) {
+      document.getElementById('workerNameInput').value = ord.workerName;
+    }
     updateWorkerDisplay();
 
     renderItemFormRows();
