@@ -151,9 +151,10 @@ const server = http.createServer(async (req, res) => {
 
   // --- API LOGOWANIE ---
   if (url.pathname === '/api/login' && req.method === 'POST') {
-    let body = '';
-    req.on('data', chunk => body += chunk);
+    const _bodyChunks = [];
+    req.on('data', chunk => _bodyChunks.push(chunk));
     req.on('end', async () => {
+      const body = Buffer.concat(_bodyChunks).toString('utf8');
       try {
         const { username, password } = JSON.parse(body);
         if (!username || !password) {
@@ -204,9 +205,10 @@ const server = http.createServer(async (req, res) => {
 
   // --- API REJESTRACJA (dla nowych pracowników) ---
   if (url.pathname === '/api/register' && req.method === 'POST') {
-    let body = '';
-    req.on('data', chunk => body += chunk);
+    const _bodyChunks = [];
+    req.on('data', chunk => _bodyChunks.push(chunk));
     req.on('end', async () => {
+      const body = Buffer.concat(_bodyChunks).toString('utf8');
       try {
         const { username, password } = JSON.parse(body);
         const cleanUser = (username || '').trim();
@@ -267,9 +269,10 @@ const server = http.createServer(async (req, res) => {
 
   // --- API ADMIN: AKCEPTACJA LUB ODRZUCENIE OCZEKUJĄCEGO KONTA ---
   if (url.pathname === '/api/admin/users/approve' && req.method === 'POST') {
-    let body = '';
-    req.on('data', chunk => body += chunk);
+    const _bodyChunks = [];
+    req.on('data', chunk => _bodyChunks.push(chunk));
     req.on('end', async () => {
+      const body = Buffer.concat(_bodyChunks).toString('utf8');
       try {
         const { id, approve } = JSON.parse(body);
         if (!id) {
@@ -299,9 +302,10 @@ const server = http.createServer(async (req, res) => {
 
   // --- API ADMIN: EDYCJA PRACOWNIKA (zmiana loginu lub reset hasła) ---
   if (url.pathname === '/api/admin/users/update' && req.method === 'POST') {
-    let body = '';
-    req.on('data', chunk => body += chunk);
+    const _bodyChunks = [];
+    req.on('data', chunk => _bodyChunks.push(chunk));
     req.on('end', async () => {
+      const body = Buffer.concat(_bodyChunks).toString('utf8');
       try {
         const { id, username, newPassword, isApproved } = JSON.parse(body);
         if (!id || !username) {
@@ -335,9 +339,10 @@ const server = http.createServer(async (req, res) => {
 
   // --- API ADMIN: USUNIĘCIE PRACOWNIKA ---
   if (url.pathname === '/api/admin/users/delete' && req.method === 'POST') {
-    let body = '';
-    req.on('data', chunk => body += chunk);
+    const _bodyChunks = [];
+    req.on('data', chunk => _bodyChunks.push(chunk));
     req.on('end', async () => {
+      const body = Buffer.concat(_bodyChunks).toString('utf8');
       try {
         const { id } = JSON.parse(body);
         if (!id) {
@@ -399,9 +404,10 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'POST') {
-      let body = '';
-      req.on('data', chunk => body += chunk);
+      const _bodyChunks = [];
+      req.on('data', chunk => _bodyChunks.push(chunk));
       req.on('end', async () => {
+        const body = Buffer.concat(_bodyChunks).toString('utf8');
         try {
           const order = JSON.parse(body);
           const cleanNum = (order.orderNumber || '').trim();
@@ -475,9 +481,10 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'POST') {
-      let body = '';
-      req.on('data', chunk => body += chunk);
+      const _bodyChunks = [];
+      req.on('data', chunk => _bodyChunks.push(chunk));
       req.on('end', async () => {
+        const body = Buffer.concat(_bodyChunks).toString('utf8');
         try {
           const items = JSON.parse(body);
           if (!Array.isArray(items)) {
@@ -540,9 +547,10 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'POST') {
-      let body = '';
-      req.on('data', chunk => body += chunk);
+      const _bodyChunks = [];
+      req.on('data', chunk => _bodyChunks.push(chunk));
       req.on('end', async () => {
+        const body = Buffer.concat(_bodyChunks).toString('utf8');
         try {
           const sets = JSON.parse(body);
           if (!Array.isArray(sets)) {
@@ -613,9 +621,10 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'POST') {
-      let body = '';
-      req.on('data', chunk => body += chunk);
+      const _bodyChunks = [];
+      req.on('data', chunk => _bodyChunks.push(chunk));
       req.on('end', async () => {
+        const body = Buffer.concat(_bodyChunks).toString('utf8');
         try {
           const profiles = JSON.parse(body);
           if (!Array.isArray(profiles)) {
@@ -690,9 +699,10 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'POST') {
-      let body = '';
-      req.on('data', chunk => body += chunk);
+      const _bodyChunks = [];
+      req.on('data', chunk => _bodyChunks.push(chunk));
       req.on('end', async () => {
+        const body = Buffer.concat(_bodyChunks).toString('utf8');
         try {
           const items = JSON.parse(body);
           if (!Array.isArray(items)) {
@@ -755,9 +765,10 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'POST') {
-      let body = '';
-      req.on('data', chunk => body += chunk);
+      const _bodyChunks = [];
+      req.on('data', chunk => _bodyChunks.push(chunk));
       req.on('end', async () => {
+        const body = Buffer.concat(_bodyChunks).toString('utf8');
         try {
           const sets = JSON.parse(body);
           if (!Array.isArray(sets)) {
@@ -835,9 +846,10 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'POST') {
-      let body = '';
-      req.on('data', chunk => body += chunk);
+      const _bodyChunks = [];
+      req.on('data', chunk => _bodyChunks.push(chunk));
       req.on('end', async () => {
+        const body = Buffer.concat(_bodyChunks).toString('utf8');
         try {
           const producers = JSON.parse(body);
           if (!Array.isArray(producers)) {
