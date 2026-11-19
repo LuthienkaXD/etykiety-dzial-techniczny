@@ -2779,6 +2779,49 @@
   </div>
 </div>
 
+<!-- Modal Podglądu i Dostosowania Zbioru Profili przed Wstawieniem do Wykazu Materiałów -->
+<div class="modal-overlay" id="reviewWmSetModal">
+  <div class="modal-box" style="width: 850px; max-width: 96%;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <h3 id="reviewWmSetModalTitle" style="margin: 0; color: #166534;">📚 Dostosuj pozycje zbioru do Wykazu Materiałów</h3>
+      <button class="btn-secondary" onclick="closeReviewWmSetModal()" style="padding: 4px 10px;">✕</button>
+    </div>
+    <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">
+      Przed dodaniem do Wykazu Materiałów możesz zweryfikować listę pozycji, zmienić długości, ilości, dopisać uwagi (np. <em>surowy</em>) lub usunąć niepotrzebne profile.
+    </p>
+
+    <div style="max-height: 380px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 14px;">
+      <table class="warehouse-table" style="margin: 0;">
+        <thead>
+          <tr style="background: #f0fdf4;">
+            <th style="width: 35px; text-align: center;">Lp.</th>
+            <th>Materiał / Profil</th>
+            <th style="width: 110px; text-align: center;">Długość [mm]</th>
+            <th style="width: 85px; text-align: center;">Ilość</th>
+            <th>Uwagi</th>
+            <th style="width: 45px; text-align: center;">Usuń</th>
+          </tr>
+        </thead>
+        <tbody id="reviewWmSetTbody">
+          <!-- Wiersze generowane dynamicznie -->
+        </tbody>
+      </table>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+      <button type="button" class="btn-secondary" onclick="addEmptyRowToReviewWmSet()" style="font-size: 12px;">
+        ➕ Dodaj dodatkowy wiersz do tego zbioru
+      </button>
+      <div style="display: flex; gap: 8px;">
+        <button type="button" class="btn-secondary" onclick="closeReviewWmSetModal()">Anuluj</button>
+        <button type="button" class="btn-success" onclick="confirmInsertSetToWm()" style="padding: 8px 18px; font-weight: bold; font-size: 14px; background: #16a34a; border-color: #15803d;">
+          ✔️ Wstaw pozycje do Wykazu
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Modal Magazynu Opcji -->
 <div class="modal-overlay" id="optionsModal">
   <div class="modal-box" style="width: 1350px; max-width: 98%;">
@@ -8964,7 +9007,9 @@
     container.style.display = 'block';
   }
 
-  // Wstawianie zbioru wraz z wybranymi pakietami podzbiorów do Wykazu Materiałów
+  // Bufor tymczasowy i obsługa modala dostosowywania zbioru profili przed wstawieniem do Wykazu Materiałów
+  let tempReviewWmSetItems = [];
+
   function addMaterialSetToWm() {
     const sel = document.getElementById('wmSelectSet');
     if (!sel || sel.value === '') {
@@ -9004,6 +9049,75 @@
       return;
     }
 
+    // Kopiujemy zebrane pozycje do tymczasowego bufora przeglądu
+    tempReviewWmSetItems = itemsToAdd.map(it => ({
+      material: it.material || '',
+      length: (it.length !== undefined && it.length !== null) ? String(it.length) : '',
+      qty: (it.qty !== undefined && it.qty !== null) ? String(it.qty) : '1',
+      remarks: it.remarks || ''
+    }));
+
+    const setName = chosenSet.title || ((chosenSet.element || '') + ' - ' + (chosenSet.model || ''));
+    document.getElementById('reviewWmSetModalTitle').textContent = `📚 Dostosuj zbiór profili: "${setName}" do Wykazu Materiałów`;
+    renderReviewWmSetTable();
+    document.getElementById('reviewWmSetModal').style.display = 'flex';
+  }
+
+  function closeReviewWmSetModal() {
+    document.getElementById('reviewWmSetModal').style.display = 'none';
+    tempReviewWmSetItems = [];
+  }
+
+  function renderReviewWmSetTable() {
+    const tbody = document.getElementById('reviewWmSetTbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (tempReviewWmSetItems.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #94a3b8; padding: 20px;">Wszystkie pozycje zostały usunięte z tego wstawienia.</td></tr>';
+      return;
+    }
+
+    tempReviewWmSetItems.forEach((it, idx) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="text-align: center; font-weight: bold; color: #64748b;">${idx + 1}</td>
+        <td>
+          <input type="text" class="vp-cell-input" value="${(it.material || '').replace(/"/g, '&quot;')}" oninput="tempReviewWmSetItems[${idx}].material = this.value" placeholder="Nazwa materiału / profilu...">
+        </td>
+        <td style="text-align: center;">
+          <input type="text" class="vp-cell-input" style="text-align: center;" value="${(it.length !== undefined && it.length !== null ? String(it.length) : '').replace(/"/g, '&quot;')}" oninput="tempReviewWmSetItems[${idx}].length = this.value" placeholder="np. 6000">
+        </td>
+        <td style="text-align: center;">
+          <input type="text" class="vp-cell-input" style="text-align: center; font-weight: bold;" value="${(it.qty !== undefined && it.qty !== null ? String(it.qty) : '').replace(/"/g, '&quot;')}" oninput="tempReviewWmSetItems[${idx}].qty = this.value" placeholder="np. 1">
+        </td>
+        <td>
+          <input type="text" class="vp-cell-input" value="${(it.remarks || '').replace(/"/g, '&quot;')}" oninput="tempReviewWmSetItems[${idx}].remarks = this.value" placeholder="Opcjonalne uwagi (np. surowy)...">
+        </td>
+        <td style="text-align: center;">
+          <button type="button" class="btn-danger" style="padding: 2px 6px; font-size: 11px;" onclick="removeRowFromReviewWmSet(${idx})" title="Usuń z tego wstawienia">✕</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function removeRowFromReviewWmSet(idx) {
+    tempReviewWmSetItems.splice(idx, 1);
+    renderReviewWmSetTable();
+  }
+
+  function addEmptyRowToReviewWmSet() {
+    tempReviewWmSetItems.push({ material: '', length: '6000', qty: '1', remarks: '' });
+    renderReviewWmSetTable();
+  }
+
+  function confirmInsertSetToWm() {
+    if (tempReviewWmSetItems.length === 0) {
+      alert('Brak pozycji do wstawienia.');
+      return;
+    }
+
     const curPage = getActiveWmPage();
     if (!curPage.items) curPage.items = [];
 
@@ -9014,7 +9128,8 @@
       curPage.items = [];
     }
 
-    itemsToAdd.forEach(it => {
+    let addedCount = 0;
+    tempReviewWmSetItems.forEach(it => {
       const rem = it.remarks || '';
       const rawRegex = /\bsurow(?:y|a|e|ego|ej|ym|ych|ymi|ą)?\b/i;
       if (rawRegex.test(rem)) {
@@ -9049,6 +9164,7 @@
           remarks: it.remarks || ''
         });
       }
+      addedCount++;
     });
 
     if (curPage.items.length === 0) {
@@ -9056,8 +9172,8 @@
     }
 
     renderWmView();
-    const setName = chosenSet.title || ((chosenSet.element || '') + ' - ' + (chosenSet.model || ''));
-    alert(`Dodano ${itemsToAdd.length} pozycji ze zbioru "${setName}" do Wykazu Materiałów!`);
+    closeReviewWmSetModal();
+    alert(`Pomyślnie dodano ${addedCount} pozycji do Wykazu Materiałów!`);
   }
 
   // ========================================================
