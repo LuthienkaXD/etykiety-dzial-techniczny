@@ -7721,6 +7721,7 @@
 
   let materialSets = (() => {
     const raw = JSON.parse(localStorage.getItem('order_app_material_sets')) || defaultMaterialSets;
+    if (Array.isArray(raw)) raw.forEach(s => typeof sanitizeMaterialSet === 'function' && sanitizeMaterialSet(s));
     if (!Array.isArray(raw)) return defaultMaterialSets;
     const unique = [];
     const seen = new Set();
@@ -9590,11 +9591,58 @@
   let isMaterialSetsSyncing = false;
   let lastMaterialSetsLocalSaveTime = 0;
 
+  function cleanCorruptedPolishText(val) {
+    if (typeof val !== 'string') return val;
+    return val
+      .replace(/prz[\uFFFD\?]+d/gi, (m) => m[0] === 'P' ? 'Przód' : 'przód')
+      .replace(/s[\uFFFD\?]+upek/gi, (m) => m[0] === 'S' ? 'Słupek' : 'słupek')
+      .replace(/p[\uFFFD\?]+yta/gi, (m) => m[0] === 'P' ? 'Płyta' : 'płyta')
+      .replace(/k[\uFFFD\?]+townik/gi, (m) => m[0] === 'K' ? 'Kątownik' : 'kątownik')
+      .replace(/p[\uFFFD\?]+askownik/gi, (m) => m[0] === 'P' ? 'Płaskownik' : 'płaskownik')
+      .replace(/w[\uFFFD\?]+zek/gi, (m) => m[0] === 'W' ? 'Wózek' : 'wózek')
+      .replace(/nap[\uFFFD\?]+d/gi, (m) => m[0] === 'N' ? 'Napęd' : 'napęd')
+      .replace(/do[\uFFFD\?]+/gi, (m) => m[0] === 'D' ? 'Dół' : 'dół')
+      .replace(/g[\uFFFD\?]+ra/gi, (m) => m[0] === 'G' ? 'Góra' : 'góra')
+      .replace(/podzb[\uFFFD\?]+r/gi, (m) => m[0] === 'P' ? 'Podzbiór' : 'podzbiór')
+      .replace(/[\uFFFD]+/g, '');
+  }
+
+  function sanitizeMaterialSet(s) {
+    if (!s || typeof s !== 'object') return s;
+    if (s.title) s.title = cleanCorruptedPolishText(s.title);
+    if (s.element) s.element = cleanCorruptedPolishText(s.element);
+    if (s.model) s.model = cleanCorruptedPolishText(s.model);
+    if (Array.isArray(s.items)) {
+      s.items.forEach(it => {
+        if (it.material) it.material = cleanCorruptedPolishText(it.material);
+        if (it.remarks) it.remarks = cleanCorruptedPolishText(it.remarks);
+      });
+    }
+    if (Array.isArray(s.subsets)) {
+      s.subsets.forEach(sub => {
+        if (sub.name) sub.name = cleanCorruptedPolishText(sub.name);
+        if (Array.isArray(sub.packages)) {
+          sub.packages.forEach(pkg => {
+            if (pkg.title) pkg.title = cleanCorruptedPolishText(pkg.title);
+            if (Array.isArray(pkg.items)) {
+              pkg.items.forEach(it => {
+                if (it.material) it.material = cleanCorruptedPolishText(it.material);
+                if (it.remarks) it.remarks = cleanCorruptedPolishText(it.remarks);
+              });
+            }
+          });
+        }
+      });
+    }
+    return s;
+  }
+
   function deduplicateMaterialSets(setsList) {
     if (!Array.isArray(setsList)) return [];
     const unique = [];
     const seen = new Set();
-    for (const s of setsList) {
+    for (let s of setsList) {
+      s = sanitizeMaterialSet(s);
       const key = (s.title || (s.element + ' - ' + (s.model || ''))).trim().toLowerCase();
       if (!key) continue;
       if (!seen.has(key)) {
