@@ -7743,20 +7743,36 @@
   // Aktywny podzbiór edytowany w modalu podzbiorów
   let activeEditingSubsetIndex = -1;
 
+  let lastSelectedMaterialSetTitle = '';
+
   function getMaterialSetObjectById(sId) {
     if (!sId) return null;
-    return materialSets.find((s, idx) => {
+    let found = materialSets.find((s, idx) => {
       const thisId = (s.id !== undefined && s.id !== null) ? String(s.id) : ('mat_set_idx_' + idx);
       return thisId === String(sId);
-    }) || null;
+    });
+    if (!found && lastSelectedMaterialSetTitle) {
+      found = materialSets.find(s => (s.title || '').trim().toLowerCase() === lastSelectedMaterialSetTitle.toLowerCase());
+      if (found && found.id) {
+        selectedMaterialSetId = String(found.id);
+      }
+    }
+    if (found && found.title) {
+      lastSelectedMaterialSetTitle = found.title.trim();
+    }
+    return found || null;
   }
 
   function getMaterialSetIndexById(sId) {
     if (!sId) return -1;
-    return materialSets.findIndex((s, idx) => {
-      const thisId = (s.id !== undefined && s.id !== null) ? String(s.id) : ('mat_set_idx_' + idx);
+    let idx = materialSets.findIndex((s, i) => {
+      const thisId = (s.id !== undefined && s.id !== null) ? String(s.id) : ('mat_set_idx_' + i);
       return thisId === String(sId);
     });
+    if (idx === -1 && lastSelectedMaterialSetTitle) {
+      idx = materialSets.findIndex(s => (s.title || '').trim().toLowerCase() === lastSelectedMaterialSetTitle.toLowerCase());
+    }
+    return idx;
   }
 
   function getSortedMaterialSets() {
@@ -7946,6 +7962,12 @@
     });
 
     if (!currentSet) {
+      const fallback = (lastSelectedMaterialSetTitle ? materialSets.find(s => (s.title || '').trim().toLowerCase() === lastSelectedMaterialSetTitle.toLowerCase()) : null) || materialSets[selectedMaterialSetIndex] || (materialSets.length > 0 ? materialSets[0] : null);
+      if (fallback) {
+        selectedMaterialSetId = String(fallback.id !== undefined && fallback.id !== null ? fallback.id : 0);
+        renderMaterialSetDetailsById(selectedMaterialSetId);
+        return;
+      }
       clearMaterialSetDetails();
       return;
     }
@@ -9670,9 +9692,14 @@
             
             const modal = document.getElementById('materialSetsModal');
             const isModalOpen = modal && modal.style.display === 'flex';
-            if (!isEditingMaterialSet && isModalOpen) {
+            if (isModalOpen) {
+              // Jeśli użytkownik ma zaznaczony zbiór po nazwie, upewnijmy się, że selectedMaterialSetId wskazuje na właściwy obiekt
+              const curObj = getMaterialSetObjectById(selectedMaterialSetId);
+              if (curObj && curObj.id) {
+                selectedMaterialSetId = String(curObj.id);
+              }
               renderMaterialSetsList();
-              if (selectedMaterialSetId !== null) {
+              if (!isEditingMaterialSet && selectedMaterialSetId !== null) {
                 renderMaterialSetDetailsById(selectedMaterialSetId);
               }
             }
